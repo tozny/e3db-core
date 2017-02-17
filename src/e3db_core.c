@@ -338,6 +338,20 @@ const char *E3DB_RecordMeta_GetType(E3DB_RecordMeta *meta)
   return meta->type;
 }
 
+/* Utility function to safely get the string value of a JSON object field,
+ * returning an empty string if not present. */
+static char *cJSON_GetSafeObjectItemString(cJSON *json, const char *name)
+{
+  cJSON *obj = cJSON_GetObjectItem(json, name);
+
+  if (obj == NULL || obj->type != cJSON_String) {
+    fprintf(stderr, "Warning: Field '%s' missing or not a string.\n", name);
+    return "";
+  } else {
+    return obj->valuestring;
+  }
+}
+
 /*
  * {API Calls}
  */
@@ -475,10 +489,10 @@ void E3DB_ListRecordsResultIterator_Next(E3DB_ListRecordsResultIterator *it)
 
 E3DB_RecordMeta *E3DB_ListRecordsResultIterator_Get(E3DB_ListRecordsResultIterator *it)
 {
-  it->meta.record_id = cJSON_GetObjectItem(it->pos, "record_id")->valuestring;
-  it->meta.writer_id = cJSON_GetObjectItem(it->pos, "writer_id")->valuestring;
-  it->meta.user_id   = cJSON_GetObjectItem(it->pos,   "user_id")->valuestring;
-  it->meta.type      = cJSON_GetObjectItem(it->pos,      "type")->valuestring;
+  it->meta.record_id = cJSON_GetSafeObjectItemString(it->pos, "record_id");
+  it->meta.writer_id = cJSON_GetSafeObjectItemString(it->pos, "writer_id");
+  it->meta.user_id   = cJSON_GetSafeObjectItemString(it->pos, "user_id");
+  it->meta.type      = cJSON_GetSafeObjectItemString(it->pos, "type");
 
   return &it->meta;
 }
