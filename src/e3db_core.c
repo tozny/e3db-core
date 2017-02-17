@@ -361,7 +361,7 @@ typedef struct _E3DB_ListRecordsResult {
 } E3DB_ListRecordsResult;
 
 typedef struct _E3DB_ListRecordsResultIterator {
-  cJSON *pos;   // never needs freeing
+  cJSON *pos;               // never needs freeing
   E3DB_RecordMeta meta;     // reused to avoid allocations on iteration
 } E3DB_ListRecordsResultIterator;
 
@@ -397,29 +397,6 @@ static int E3DB_ListRecords_Response(E3DB_Op *op, int response_code,
 
   E3DB_ListRecordsResult *result = op->result;
   result->json = json;
-
-#if 0
-  if (json != NULL) {
-    if (json->type == cJSON_Array) {
-
-      cJSON *obj;
-      cJSON_ArrayForEach(obj, json) {
-        cJSON *record_id = cJSON_GetObjectItem(obj, "record_id");
-        cJSON *writer_id = cJSON_GetObjectItem(obj, "writer_id");
-
-        if (record_id != NULL && writer_id != NULL) {
-          printf("%-40s %s\n", record_id->valuestring, writer_id->valuestring);
-        } else {
-          // TODO: What to do if one element of the results is invalid?
-        }
-      }
-    } else {
-      // TODO: Return an error code here.
-    }
-
-    cJSON_Delete(json);
-  }
-#endif
 
   E3DB_Op_Finish(op);
   return 0;
