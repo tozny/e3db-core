@@ -78,6 +78,7 @@ int CurlRunOp(E3DB_Op *op)
         header = E3DB_HttpHeader_GetNext(header);
       }
 
+      curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, E3DB_Op_GetHttpMethod(op));
       curl_easy_setopt(curl, CURLOPT_URL, E3DB_Op_GetHttpUrl(op));
       curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
       curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);

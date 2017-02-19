@@ -98,6 +98,7 @@ void E3DB_Op_Delete(E3DB_Op *op);
 /* Return true if `op' is in an HTTP request state. */
 int E3DB_Op_IsHttpState(E3DB_Op *op);
 
+const char *E3DB_Op_GetHttpMethod(E3DB_Op *op);
 const char *E3DB_Op_GetHttpUrl(E3DB_Op *op);
 E3DB_HttpHeaderList *E3DB_Op_GetHttpHeaders(E3DB_Op *op);
 const char *E3DB_Op_GetHttpBody(E3DB_Op *op);

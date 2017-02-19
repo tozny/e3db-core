@@ -122,6 +122,7 @@ struct _E3DB_Op {
   /* Information for the caller about the current state. */
   union {
     struct {
+      char *method;
       char *url;
       char *body;
       E3DB_HttpHeaderList *headers;
@@ -166,6 +167,7 @@ static void E3DB_Op_Finish(E3DB_Op *op)
     case E3DB_OP_STATE_HTTP:
       xfree(op->request.http.url);
       xfree(op->request.http.body);
+      xfree(op->request.http.method);
       E3DB_HttpHeaderList_Delete(op->request.http.headers);
       break;
     case E3DB_OP_STATE_KEY:
@@ -277,6 +279,12 @@ const char *E3DB_HttpHeader_GetValue(E3DB_HttpHeader *header)
 int E3DB_Op_IsHttpState(E3DB_Op *op)
 {
   return (op->state == E3DB_OP_STATE_HTTP);
+}
+
+const char *E3DB_Op_GetHttpMethod(E3DB_Op *op)
+{
+  assert(op->state == E3DB_OP_STATE_HTTP);
+  return op->request.http.method;
 }
 
 const char *E3DB_Op_GetHttpUrl(E3DB_Op *op)
@@ -414,6 +422,7 @@ E3DB_Op *E3DB_ListRecords_Begin(E3DB_Client *client, int limit, int offset,
   asprintf(&(op->request.http.url), "%s/records?limit=%d&offset=%d",
            client->options->api_url, limit, offset);
 
+  op->request.http.method = xstrdup("GET");
   op->request.http.body = xstrdup("");
 
   // TODO: Use the auth service once it is ready for prime time.
