@@ -8,6 +8,8 @@
 #ifndef E3DB_CORE_H_INCLUDED
 #define E3DB_CORE_H_INCLUDED
 
+#include <stdlib.h>          // for size_t
+
 /*
  * {Client Options}
  */

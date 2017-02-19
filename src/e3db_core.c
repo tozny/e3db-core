@@ -11,9 +11,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <openssl/bio.h>
-#include <openssl/evp.h>
-
 #include "asprintf.h"
 #include "cJSON.h"
 #include "utlist.h"

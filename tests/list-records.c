@@ -85,7 +85,7 @@ int CurlRunOp(E3DB_Op *op)
 
       curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, E3DB_Op_GetHttpMethod(op));
       curl_easy_setopt(curl, CURLOPT_URL, E3DB_Op_GetHttpUrl(op));
-      curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+      curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
       curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
       curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemBuffer);
       curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buf);
@@ -134,7 +134,6 @@ int main(int argc, char **argv)
   printf("--------------------------------------------------------------------------------------------------------\n");
 
   while (!E3DB_ListRecordsResultIterator_IsDone(it)) {
-    E3DB_ListRecordsResultIterator_Get(it);
     E3DB_RecordMeta *meta = E3DB_ListRecordsResultIterator_Get(it);
 
     printf("%-40s %-40s %s\n",
