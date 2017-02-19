@@ -1,6 +1,7 @@
 # Created by https://www.gitignore.io/api/c,macos
 
 build
+e3db-core-*.zip
 
 ### C ###
 # Prerequisites
