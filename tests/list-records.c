@@ -74,7 +74,12 @@ int CurlRunOp(E3DB_Op *op)
       E3DB_HttpHeader *header = E3DB_HttpHeaderList_GetFirst(headers);
 
       while (header != NULL) {
-        chunk = curl_slist_append(chunk, E3DB_HttpHeader_GetValue(header));
+        const char *name  = E3DB_HttpHeader_GetName(header);
+        const char *value = E3DB_HttpHeader_GetValue(header);
+        char combined[strlen(name) + strlen(value) + 3];
+
+        snprintf(combined, sizeof(combined), "%s: %s", name, value);
+        chunk = curl_slist_append(chunk, combined);
         header = E3DB_HttpHeader_GetNext(header);
       }
 

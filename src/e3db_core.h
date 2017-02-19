@@ -59,7 +59,7 @@ void E3DB_HttpHeaderList_Delete(E3DB_HttpHeaderList *hdrs);
 
 /* Add a header to a set of HTTP headers.  The header list will own a copy
  * of the string in `header'. */
-void E3DB_HttpHeaderList_Add(E3DB_HttpHeaderList *hdrs, const char *header);
+void E3DB_HttpHeaderList_Add(E3DB_HttpHeaderList *hdrs, const char *name, const char *value);
 
 /* Return the number of headers in a set. */
 size_t E3DB_HttpHeaderList_GetLength(E3DB_HttpHeaderList *hdrs);
@@ -75,6 +75,9 @@ E3DB_HttpHeader *E3DB_HttpHeaderList_GetFirst(E3DB_HttpHeaderList *hdrs);
  * returned header has a lifetime of the containing header list and
  * should not be freed by the caller. */
 E3DB_HttpHeader *E3DB_HttpHeader_GetNext(E3DB_HttpHeader *header);
+
+/* Return the string name of an HTTP header. */
+const char *E3DB_HttpHeader_GetName(E3DB_HttpHeader *header);
 
 /* Return the string value of an HTTP header.  The returned string
  * has a lifetime of the containing header and should not be freed

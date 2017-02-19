@@ -204,6 +204,7 @@ int E3DB_Op_IsDone(E3DB_Op *op)
 typedef struct _E3DB_HttpHeader E3DB_HttpHeader;
 
 struct _E3DB_HttpHeader {
+  char *name;
   char *value;
   E3DB_HttpHeader *next;
 };
@@ -227,6 +228,7 @@ void E3DB_HttpHeaderList_Delete(E3DB_HttpHeaderList *hdrs)
 
   LL_FOREACH_SAFE(hdrs->header_list, hdr, tmp) {
     LL_DELETE(hdrs->header_list, hdr);
+    xfree(hdr->name);
     xfree(hdr->value);
     xfree(hdr);
   }
@@ -235,10 +237,11 @@ void E3DB_HttpHeaderList_Delete(E3DB_HttpHeaderList *hdrs)
 }
 
 /* Add a header to a set of HTTP headers. */
-void E3DB_HttpHeaderList_Add(E3DB_HttpHeaderList *hdrs, const char *header)
+void E3DB_HttpHeaderList_Add(E3DB_HttpHeaderList *hdrs, const char *name, const char *value)
 {
   E3DB_HttpHeader *hdr = xmalloc(sizeof(E3DB_HttpHeader));
-  hdr->value = xstrdup(header);
+  hdr->name  = xstrdup(name);
+  hdr->value = xstrdup(value);
   LL_PREPEND(hdrs->header_list, hdr);
 }
 
@@ -263,6 +266,13 @@ E3DB_HttpHeader *E3DB_HttpHeader_GetNext(E3DB_HttpHeader *header)
 {
   assert(header != NULL);
   return header->next;
+}
+
+/* Return the string name of an HTTP header. */
+const char *E3DB_HttpHeader_GetName(E3DB_HttpHeader *header)
+{
+  assert(header != NULL);
+  return header->name;
 }
 
 /* Return the string value of an HTTP header. */
@@ -429,10 +439,10 @@ E3DB_Op *E3DB_ListRecords_Begin(E3DB_Client *client, int limit, int offset,
   char *credentials, *credentials_base64, *auth_header;
   asprintf(&credentials, "%s:%s", client->options->api_key, client->options->api_secret);
   credentials_base64 = base64_encode(credentials);
-  asprintf(&auth_header, "Authorization: Basic %s", credentials_base64);
+  asprintf(&auth_header, "Basic %s", credentials_base64);
 
   op->request.http.headers = E3DB_HttpHeaderList_New();
-  E3DB_HttpHeaderList_Add(op->request.http.headers, auth_header);
+  E3DB_HttpHeaderList_Add(op->request.http.headers, "Authorization", auth_header);
   op->request.http.next_state = E3DB_ListRecords_Response;
 
   op->result = xmalloc(sizeof(E3DB_ListRecordsResult));
