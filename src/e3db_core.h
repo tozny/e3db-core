@@ -10,6 +10,8 @@
 
 #include <stdlib.h>          // for size_t
 
+// TODO: Add error handling machinery to this library.
+
 /*
  * {Client Options}
  */

@@ -11,9 +11,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "asprintf.h"
 #include "cJSON.h"
 #include "utlist.h"
+#include "sds.h"
 
 #include "e3db_core.h"
 #include "e3db_mem.h"
@@ -28,9 +28,9 @@
 #define DEFAULT_API_SECRET ""
 
 struct _E3DB_ClientOptions {
-  char *api_url;
-  char *api_key;
-  char *api_secret;
+  sds api_url;
+  sds api_key;
+  sds api_secret;
   // TODO: Add other forms of authentication.
 };
 
@@ -38,37 +38,37 @@ E3DB_ClientOptions *E3DB_ClientOptions_New(void)
 {
   E3DB_ClientOptions *opts = xmalloc(sizeof(E3DB_ClientOptions));
 
-  opts->api_url    = xstrdup(DEFAULT_API_URL);
-  opts->api_key    = xstrdup(DEFAULT_API_KEY);
-  opts->api_secret = xstrdup(DEFAULT_API_SECRET);
+  opts->api_url    = sdsnew(DEFAULT_API_URL);
+  opts->api_key    = sdsnew(DEFAULT_API_KEY);
+  opts->api_secret = sdsnew(DEFAULT_API_SECRET);
 
   return opts;
 }
 
 void E3DB_ClientOptions_Delete(E3DB_ClientOptions *opts)
 {
-  xfree(opts->api_url);
-  xfree(opts->api_key);
-  xfree(opts->api_secret);
+  sdsfree(opts->api_url);
+  sdsfree(opts->api_key);
+  sdsfree(opts->api_secret);
   xfree(opts);
 }
 
 void E3DB_ClientOptions_SetApiUrl(E3DB_ClientOptions *opts, const char *url)
 {
-  xfree(opts->api_url);
-  opts->api_url = xstrdup(url);
+  sdsfree(opts->api_url);
+  opts->api_url = sdsnew(url);
 }
 
 void E3DB_ClientOptions_SetApiKey(E3DB_ClientOptions *opts, const char *api_key)
 {
-  xfree(opts->api_key);
-  opts->api_key = xstrdup(api_key);
+  sdsfree(opts->api_key);
+  opts->api_key = sdsnew(api_key);
 }
 
 void E3DB_ClientOptions_SetApiSecret(E3DB_ClientOptions *opts, const char *api_secret)
 {
-  xfree(opts->api_secret);
-  opts->api_secret = xstrdup(api_secret);
+  sdsfree(opts->api_secret);
+  opts->api_secret = sdsnew(api_secret);
 }
 
 /*
@@ -119,9 +119,9 @@ struct _E3DB_Op {
   /* Information for the caller about the current state. */
   union {
     struct {
-      char *method;
-      char *url;
-      char *body;
+      sds method;
+      sds url;
+      sds body;
       E3DB_HttpHeaderList *headers;
       int (*next_state)(E3DB_Op *op, int response_code, const char *body,
                         E3DB_HttpHeaderList *headers, size_t num_headers);
@@ -162,9 +162,9 @@ static void E3DB_Op_Finish(E3DB_Op *op)
 {
   switch (op->state) {
     case E3DB_OP_STATE_HTTP:
-      xfree(op->request.http.url);
-      xfree(op->request.http.body);
-      xfree(op->request.http.method);
+      sdsfree(op->request.http.url);
+      sdsfree(op->request.http.body);
+      sdsfree(op->request.http.method);
       E3DB_HttpHeaderList_Delete(op->request.http.headers);
       break;
     case E3DB_OP_STATE_KEY:
@@ -225,8 +225,8 @@ void E3DB_HttpHeaderList_Delete(E3DB_HttpHeaderList *hdrs)
 
   LL_FOREACH_SAFE(hdrs->header_list, hdr, tmp) {
     LL_DELETE(hdrs->header_list, hdr);
-    xfree(hdr->name);
-    xfree(hdr->value);
+    sdsfree(hdr->name);
+    sdsfree(hdr->value);
     xfree(hdr);
   }
 
@@ -237,8 +237,8 @@ void E3DB_HttpHeaderList_Delete(E3DB_HttpHeaderList *hdrs)
 void E3DB_HttpHeaderList_Add(E3DB_HttpHeaderList *hdrs, const char *name, const char *value)
 {
   E3DB_HttpHeader *hdr = xmalloc(sizeof(E3DB_HttpHeader));
-  hdr->name  = xstrdup(name);
-  hdr->value = xstrdup(value);
+  hdr->name  = sdsnew(name);
+  hdr->value = sdsnew(value);
   LL_PREPEND(hdrs->header_list, hdr);
 }
 
@@ -316,8 +316,7 @@ int E3DB_Op_FinishHttpState(E3DB_Op *op, int response_code, const char *body,
                          E3DB_HttpHeaderList *headers, size_t num_headers)
 {
   assert(op->state == E3DB_OP_STATE_HTTP);
-  return (*op->request.http.next_state)(op, response_code, body, headers,
-                                        num_headers);
+  return (*op->request.http.next_state)(op, response_code, body, headers, num_headers);
 }
 
 /*
@@ -370,6 +369,19 @@ static char *cJSON_GetSafeObjectItemString(cJSON *json, const char *name)
 /*
  * {API Calls}
  */
+
+static sds E3DB_GetAuthHeader(E3DB_Client *client)
+{
+  sds credentials = sdscatprintf(sdsempty(), "%s:%s", client->options->api_key, client->options->api_secret);
+  sds credentials_base64 = base64_encode(credentials);
+  sds auth_header = sdsnew("Basic ");
+  auth_header = sdscat(auth_header, credentials_base64);
+
+  sdsfree(credentials_base64);
+  sdsfree(credentials);
+
+  return auth_header;
+}
 
 typedef struct _E3DB_ListRecordsResult {
   cJSON *json;
@@ -426,28 +438,20 @@ E3DB_Op *E3DB_ListRecords_Begin(E3DB_Client *client, int limit, int offset,
 
   // TODO: Handle the `writer_id' and `types' parameters.
   op->state = E3DB_OP_STATE_HTTP;
-  asprintf(&(op->request.http.url), "%s/records?limit=%d&offset=%d",
-           client->options->api_url, limit, offset);
+  op->request.http.url = sdscatprintf(sdsempty(), "%s/records?limit=%d&offset=%d",
+                                      client->options->api_url, limit, offset);
 
-  op->request.http.method = xstrdup("GET");
-  op->request.http.body = xstrdup("");
-
-  // TODO: Use the auth service once it is ready for prime time.
-  char *credentials, *credentials_base64, *auth_header;
-  asprintf(&credentials, "%s:%s", client->options->api_key, client->options->api_secret);
-  credentials_base64 = base64_encode(credentials);
-  asprintf(&auth_header, "Basic %s", credentials_base64);
-
-  op->request.http.headers = E3DB_HttpHeaderList_New();
-  E3DB_HttpHeaderList_Add(op->request.http.headers, "Authorization", auth_header);
+  op->request.http.method = sdsnew("GET");
+  op->request.http.body = sdsnew("");
   op->request.http.next_state = E3DB_ListRecords_Response;
+  op->request.http.headers = E3DB_HttpHeaderList_New();
+
+  sds auth_header = E3DB_GetAuthHeader(client);
+  E3DB_HttpHeaderList_Add(op->request.http.headers, "Authorization", auth_header);
+  sdsfree(auth_header);
 
   op->result = xmalloc(sizeof(E3DB_ListRecordsResult));
   op->free_result = E3DB_ListRecordsResult_Delete;
-
-  xfree(auth_header);
-  xfree(credentials_base64);
-  xfree(credentials);
 
   return op;
 }

@@ -28,15 +28,18 @@ void *xmalloc(size_t size)
   return p;
 }
 
+void *xrealloc(void *p, size_t size)
+{
+  if ((p = realloc(p, size)) == NULL) {
+    default_oom_handler(size);
+    fprintf(stderr, "Fatal: Return from out-of-memory handler.\n");
+    abort();
+  }
+
+  return p;
+}
+
 void xfree(void *p)
 {
   free(p);
-}
-
-char *xstrdup(const char *str)
-{
-  size_t len = strlen(str) + 1;
-  char *p = xmalloc(len);
-  memcpy(p, str, len);
-  return p;
 }

@@ -8,14 +8,16 @@
 #ifndef E3DB_BASE64_H_INCLUDED
 #define E3DB_BASE64_H_INCLUDED
 
+#include "sds.h"
+
 /* Base64 encode a string, returning a freshly allocated result. The result
  * string must be free'd with `xfree'. */
-char *base64_encode(const char *s);
+sds base64_encode(const char *s);
 
 /* Base64 decode a string, returning a freshly allocated result. The
  * result string must be free'd with `xfree'.
  *
  * TODO: How do we handle decode errors? */
-char *base64_decode(const char *s);
+sds base64_decode(const char *s);
 
 #endif   /* !defined E3DB_BASE64_H_INCLUDED */

@@ -11,13 +11,13 @@
 #include <openssl/evp.h>
 #include <openssl/buffer.h>
 
-#include "e3db_mem.h"
+#include "sds.h"
 
-char *base64_encode(const char *s)
+sds base64_encode(const char *s)
 {
   BIO *bio, *b64;
   BUF_MEM *buf;
-  char *result;
+  sds result;
 
   b64 = BIO_new(BIO_f_base64());
   bio = BIO_new(BIO_s_mem());
@@ -29,8 +29,7 @@ char *base64_encode(const char *s)
 
   BIO_get_mem_ptr(bio, &buf);
 
-  result = xmalloc(buf->length + 1);
-  memcpy(result, buf->data, buf->length);
+  result = sdsnewlen(buf->data, buf->length + 1);
   result[buf->length] = '\0';
 
   BIO_free_all(bio);
