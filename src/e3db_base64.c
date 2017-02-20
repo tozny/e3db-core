@@ -16,7 +16,7 @@
 sds base64_encode(const char *s)
 {
   BIO *bio, *b64;
-  BUF_MEM *buf;
+  char *buf;
   sds result;
 
   b64 = BIO_new(BIO_f_base64());
@@ -25,12 +25,11 @@ sds base64_encode(const char *s)
 
   BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
   BIO_write(bio, s, strlen(s));
+  BIO_write(bio, "\0", 1);
   BIO_flush(bio);
 
-  BIO_get_mem_ptr(bio, &buf);
-
-  result = sdsnewlen(buf->data, buf->length + 1);
-  result[buf->length] = '\0';
+  BIO_get_mem_data(bio, &buf);
+  result = sdsnew(buf);
 
   BIO_free_all(bio);
   return result;

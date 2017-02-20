@@ -6,26 +6,27 @@
 #
 
 VERSION        := 0.0.1
-TESTS          := build/tests/list-records
 PUBLIC_HEADERS := src/e3db_core.h
 
 BUILD_DIR      := build
-LIB            := $(BUILD_DIR)/libe3db.a
 
 SOURCES        := $(wildcard src/*.c)
 OBJECTS        := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SOURCES))
 HEADERS        := $(wildcard src/*.h)
+LIB            := $(BUILD_DIR)/libe3db.a
 
-TEST_SOURCES   := $(wildcard tests/*.c)
-TEST_OBJECTS   := $(patsubst %.c,$(BUILD_DIR)/%.o,$(TEST_SOURCES))
+CMD_SOURCES    := $(wildcard cmd/*.c)
+CMD_OBJECTS    := $(patsubst %.c,$(BUILD_DIR)/%.o,$(CMD_SOURCES))
+CMD_HEADERS    := $(wildcard cmd/*.h)
+CMD            := $(BUILD_DIR)/e3db
 
 UNAME := $(shell uname)
 
 ifeq ($(UNAME),Darwin)
-DIST_ZIP  := e3db-core-macosx-$(VERSION).zip
+DIST_NAME := e3db-core-macosx-$(VERSION)
 else
 ifeq ($(UNAME),Linux)
-DIST_ZIP  := e3db-core-linux-$(VERSION).zip
+DIST_NAME := e3db-core-linux-$(VERSION)
 else
 $(error "Unknown operating system.")
 endif
@@ -33,26 +34,27 @@ endif
 
 DIST_DIR  := $(BUILD_DIR)/dist
 DIST_PRE  := ../..
-DIST_NAME := e3db-core-$(VERSION)
+DIST_ZIP  := $(DIST_NAME).zip
 DIST_BASE := $(DIST_DIR)/$(DIST_NAME)
 
-all: $(LIB) $(TESTS)
+all: $(LIB) $(CMD)
 
 dist: $(DIST_ZIP)
 
-$(DIST_ZIP): $(LIB) $(PUBLIC_HEADERS)
+$(DIST_ZIP): $(LIB) $(CMD) $(PUBLIC_HEADERS)
 	@printf "%-10s %s\n" "ZIP" "$@"
 	@rm -rf $(DIST_ZIP) $(DIST_BASE)
-	@mkdir -p $(DIST_BASE)/include $(DIST_BASE)/lib
+	@mkdir -p $(DIST_BASE)/include $(DIST_BASE)/lib $(DIST_BASE)/bin
 	@cp $(PUBLIC_HEADERS) $(DIST_BASE)/include
 	@cp $(LIB) $(DIST_BASE)/lib
+	@cp $(CMD) $(DIST_BASE)/bin
 	@cd $(DIST_DIR) && zip -qr $(DIST_PRE)/$(DIST_ZIP) $(DIST_NAME)
 
 $(LIB): $(OBJECTS)
 	@printf "%-10s %s\n" "AR" "$@"
 	@ar cru $(LIB) $(OBJECTS)
 
-$(BUILD_DIR)/tests/%: $(BUILD_DIR)/tests/%.o $(LIB) $(HEADERS)
+$(CMD): $(CMD_OBJECTS) $(CMD_HEADERS) $(LIB) $(HEADERS)
 	@printf "%-10s %s\n" "LINK" "$@"
 	@-mkdir -p $(dir $@)
 	@gcc -g -o $@ -Isrc $< $(LIB) -lcurl -lssl -lcrypto -lm
@@ -67,6 +69,6 @@ clean:
 
 # Stop GNU Make from removing object files resulting from chains
 # of implicit rules.
-.SECONDARY: $(OBJECTS) $(TEST_OBJECTS)
+.SECONDARY: $(OBJECTS) $(CMD_OBJECTS)
 
 # vim: set noet ts=2:

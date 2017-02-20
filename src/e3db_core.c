@@ -103,6 +103,7 @@ void E3DB_Client_Delete(E3DB_Client *client)
 
 typedef enum {
   E3DB_OP_LIST_RECORDS,
+  E3DB_OP_READ_RECORDS,
 } E3DB_OpType;
 
 typedef enum {
@@ -366,6 +367,93 @@ static char *cJSON_GetSafeObjectItemString(cJSON *json, const char *name)
   }
 }
 
+static void E3DB_GetRecordMetaFromJSON(cJSON *json, E3DB_RecordMeta *meta)
+{
+  meta->record_id = cJSON_GetSafeObjectItemString(json, "record_id");
+  meta->writer_id = cJSON_GetSafeObjectItemString(json, "writer_id");
+  meta->user_id   = cJSON_GetSafeObjectItemString(json, "user_id");
+  meta->type      = cJSON_GetSafeObjectItemString(json, "type");
+}
+
+// TODO: How to reconcile this with decryption?
+struct _E3DB_Record {
+  cJSON *json;        // "data" field within record
+};
+
+struct _E3DB_RecordFieldIterator {
+  cJSON *pos;
+};
+
+/* Return the value of a field in a record. Returns NULL if the field
+ * doesn't exist. The returned string lasts until the containing
+ * record is deleted. */
+const char *E3DB_Record_GetField(E3DB_Record *r, const char *field)
+{
+  assert(r != NULL);
+  assert(r->json != NULL);
+
+  cJSON *j = cJSON_GetObjectItem(r->json, field);
+  if (j == NULL) {
+    fprintf(stderr, "Error: Field '%s' doesn't exist.\n", field);
+    return NULL;
+  }
+
+  if (j->type != cJSON_String) {
+    fprintf(stderr, "Error: Field '%s' has unexpected type.\n", field);
+    return NULL;
+  }
+
+  return j->valuestring;
+}
+
+/* Return an iterator over the fields of a record. */
+E3DB_RecordFieldIterator *E3DB_Record_GetFieldIterator(E3DB_Record *r)
+{
+  assert(r != NULL);
+  assert(r->json != NULL);
+
+  E3DB_RecordFieldIterator *it = xmalloc(sizeof(*it));
+  it->pos = r->json->child;
+  return it;
+}
+
+/* Delete a record field iterator. */
+void E3DB_RecordFieldIterator_Delete(E3DB_RecordFieldIterator *it)
+{
+  xfree(it);
+}
+
+/* Returns true if a record field iterator is completed. */
+int E3DB_RecordFieldIterator_IsDone(E3DB_RecordFieldIterator *it)
+{
+  assert(it != NULL);
+  return (it->pos == NULL);
+}
+
+/* Move a record field iterator to the next value. */
+void E3DB_RecordFieldIterator_Next(E3DB_RecordFieldIterator *it)
+{
+  assert(it != NULL);
+  assert(it->pos != NULL);
+  it->pos = it->pos->next;
+}
+
+/* Return the name of the current field an iterator is pointing to. */
+const char *E3DB_RecordFieldIterator_GetName(E3DB_RecordFieldIterator *it)
+{
+  assert(it != NULL);
+  assert(it->pos != NULL);
+  return it->pos->string;
+}
+
+/* Return the value of the current field an iterator is pointing to. */
+const char *E3DB_RecordFieldIterator_GetValue(E3DB_RecordFieldIterator *it)
+{
+  assert(it != NULL);
+  assert(it->pos != NULL);
+  return it->pos->valuestring;
+}
+
 /*
  * {API Calls}
  */
@@ -400,7 +488,7 @@ static void E3DB_ListRecordsResult_Delete(void *p)
     if (result->json != NULL) {
       cJSON_Delete(result->json);
     }
-    free(result);
+    xfree(result);
   }
 }
 
@@ -486,10 +574,168 @@ void E3DB_ListRecordsResultIterator_Next(E3DB_ListRecordsResultIterator *it)
 
 E3DB_RecordMeta *E3DB_ListRecordsResultIterator_Get(E3DB_ListRecordsResultIterator *it)
 {
-  it->meta.record_id = cJSON_GetSafeObjectItemString(it->pos, "record_id");
-  it->meta.writer_id = cJSON_GetSafeObjectItemString(it->pos, "writer_id");
-  it->meta.user_id   = cJSON_GetSafeObjectItemString(it->pos, "user_id");
-  it->meta.type      = cJSON_GetSafeObjectItemString(it->pos, "type");
-
+  E3DB_GetRecordMetaFromJSON(it->pos, &it->meta);
   return &it->meta;
+}
+
+/*
+ * {Read Records}
+ *
+ * We export the most general interface: reading multiple records with an
+ * explicit set of fields.
+ */
+
+struct _E3DB_ReadRecordsResult {
+  cJSON *json;        // entire ciphertext response body
+};
+
+struct _E3DB_ReadRecordsResultIterator {
+  cJSON *pos;
+  E3DB_RecordMeta meta;
+  E3DB_Record record;
+};
+
+static void E3DB_ReadRecordsResult_Delete(void *p)
+{
+  E3DB_ReadRecordsResult *result = p;
+
+  if (result != NULL) {
+    if (result->json != NULL) {
+      cJSON_Delete(result->json);
+    }
+    xfree(result);
+  }
+}
+
+static int E3DB_ReadRecords_Response(
+  E3DB_Op *op, int response_code,
+  const char *body, E3DB_HttpHeaderList *headers, size_t num_headers)
+{
+  if (response_code != 200) {
+    // TODO: Handle non-successful responses.
+    fprintf(stderr, "Fatal: Error response from E3DB API: %d\n", response_code);
+    abort();
+  }
+
+  cJSON *json = cJSON_Parse(body);
+
+  if (json == NULL) {
+    // TODO: Figure out proper error handling here.
+    fprintf(stderr, "Fatal: Parsing ListRecords JSON failed.\n");
+    abort();
+  }
+
+  /* Wrap the result in an array if it is a single object. */
+  if (json->type == cJSON_Object) {
+    cJSON *array = cJSON_CreateArray();
+    cJSON_AddItemToArray(array, json);
+    json = array;
+  }
+
+  E3DB_ReadRecordsResult *result = op->result;
+  result->json = json;
+
+  E3DB_Op_Finish(op);
+  return 0;
+}
+
+E3DB_Op *E3DB_ReadRecords_Begin(
+  E3DB_Client *client, const char *record_ids[], size_t num_record_ids,
+  const char *fields[], size_t num_fields)
+{
+  E3DB_Op *op = E3DB_Op_New(E3DB_OP_READ_RECORDS);
+
+  // TODO: Make sure at least 1 record ID is specified.
+
+  sds url = sdsnew(client->options->api_url);
+  url = sdscat(url, "/records/");
+
+  for (size_t i = 0; i < num_record_ids; ++i) {
+    if (i != 0) url = sdscat(url, ",");
+    url = sdscat(url, record_ids[i]);
+  }
+
+  // TODO: Add fields to URL
+
+  op->state = E3DB_OP_STATE_HTTP;
+  op->request.http.url = url;
+  op->request.http.method = sdsnew("GET");
+  op->request.http.body = sdsnew("");
+  op->request.http.next_state = E3DB_ReadRecords_Response;
+  op->request.http.headers = E3DB_HttpHeaderList_New();
+
+  sds auth_header = E3DB_GetAuthHeader(client);
+  E3DB_HttpHeaderList_Add(op->request.http.headers, "Authorization", auth_header);
+  sdsfree(auth_header);
+
+  op->result = xmalloc(sizeof(E3DB_ReadRecordsResult));
+  op->free_result = E3DB_ReadRecordsResult_Delete;
+
+  return op;
+}
+
+/* Return the result of a successful "read records" operation. Returns
+ * NULL if the operation is not complete. The returned structure has the
+ * same lifetime as the containing operation and does not need to be freed. */
+E3DB_ReadRecordsResult *E3DB_ReadRecords_GetResult(E3DB_Op *op)
+{
+  return op->result;
+}
+
+/* Return an iterator over the records in a result set. */
+E3DB_ReadRecordsResultIterator *E3DB_ReadRecordsResult_GetIterator(E3DB_ReadRecordsResult *r)
+{
+  E3DB_ReadRecordsResultIterator *it = xmalloc(sizeof(*it));
+  it->pos = r->json->child;
+  return it;
+}
+
+/* Delete a record result iterator. */
+void E3DB_ReadRecordsResultIterator_Delete(E3DB_ReadRecordsResultIterator *it)
+{
+  assert(it != NULL);
+  xfree(it);
+}
+
+/* Returns true if a record result iterator is completed. */
+int E3DB_ReadRecordsResultIterator_IsDone(E3DB_ReadRecordsResultIterator *it)
+{
+  assert(it != NULL);
+  return (it->pos == NULL);
+}
+
+/* Move a record result iterator to the next value. */
+void E3DB_ReadRecordsResultIterator_Next(E3DB_ReadRecordsResultIterator *it)
+{
+  assert(it != NULL);
+  assert(it->pos != NULL);
+  it->pos = it->pos->next;
+}
+
+/* Return the metadata for the current record in the result set. */
+E3DB_RecordMeta *E3DB_ReadRecordsResultIterator_GetMeta(E3DB_ReadRecordsResultIterator *it)
+{
+  cJSON *meta = cJSON_GetObjectItem(it->pos, "meta");
+
+  if (meta == NULL || meta->type != cJSON_Object) {
+    fprintf(stderr, "Error: meta field doesn't exist.\n");
+    abort();
+  }
+
+  E3DB_GetRecordMetaFromJSON(meta, &it->meta);
+  return &it->meta;
+}
+
+/* Return the record record data for the current record in the result set. */
+E3DB_Record *E3DB_ReadRecordsResultIterator_GetData(E3DB_ReadRecordsResultIterator *it)
+{
+  cJSON *data = cJSON_GetObjectItem(it->pos, "data");
+
+  if (data == NULL || data->type != cJSON_Object) {
+    fprintf(stderr, "Error: data field doesn't exist.\n");
+    abort();
+  }
+
+  it->record.json = data;
+  return &it->record;
 }

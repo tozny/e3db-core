@@ -136,6 +136,36 @@ const char *E3DB_RecordMeta_GetUserId(E3DB_RecordMeta *meta);
 const char *E3DB_RecordMeta_GetType(E3DB_RecordMeta *meta);
 // TODO: creation and modification time
 
+typedef struct _E3DB_Record E3DB_Record;
+typedef struct _E3DB_RecordFieldIterator E3DB_RecordFieldIterator;
+
+// TODO: Create and delete record objects
+// TODO: Setters
+// TODO: Consider an adaptor to JSON?
+
+/* Return the value of a field in a record. Returns NULL if the field
+ * doesn't exist. The returned string lasts until the containing
+ * record is deleted. */
+const char *E3DB_Record_GetField(E3DB_Record *r, const char *field);
+
+/* Return an iterator over the fields of a record. */
+E3DB_RecordFieldIterator *E3DB_Record_GetFieldIterator(E3DB_Record *r);
+
+/* Delete a record field iterator. */
+void E3DB_RecordFieldIterator_Delete(E3DB_RecordFieldIterator *it);
+
+/* Returns true if a record field iterator is completed. */
+int E3DB_RecordFieldIterator_IsDone(E3DB_RecordFieldIterator *it);
+
+/* Move a record field iterator to the next value. */
+void E3DB_RecordFieldIterator_Next(E3DB_RecordFieldIterator *it);
+
+/* Return the name of the current field an iterator is pointing to. */
+const char *E3DB_RecordFieldIterator_GetName(E3DB_RecordFieldIterator *it);
+
+/* Return the value of the current field an iterator is pointing to. */
+const char *E3DB_RecordFieldIterator_GetValue(E3DB_RecordFieldIterator *it);
+
 /*
  * {List Records}
  */
@@ -156,5 +186,41 @@ void E3DB_ListRecordsResultIterator_Delete(E3DB_ListRecordsResultIterator *it);
 int E3DB_ListRecordsResultIterator_IsDone(E3DB_ListRecordsResultIterator *it);
 void E3DB_ListRecordsResultIterator_Next(E3DB_ListRecordsResultIterator *it);
 E3DB_RecordMeta *E3DB_ListRecordsResultIterator_Get(E3DB_ListRecordsResultIterator *it);
+
+/*
+ * {Read Records}
+ */
+
+// TODO: Consider making a "RecordSet" abstraction to use for writes
+
+typedef struct _E3DB_ReadRecordsResult E3DB_ReadRecordsResult;
+typedef struct _E3DB_ReadRecordsResultIterator E3DB_ReadRecordsResultIterator;
+
+E3DB_Op *E3DB_ReadRecords_Begin(
+  E3DB_Client *client, const char *record_ids[], size_t num_record_ids,
+  const char *fields[], size_t num_fields);
+
+/* Return the result of a successful "read records" operation. Returns
+ * NULL if the operation is not complete. The returned structure has the
+ * same lifetime as the containing operation and does not need to be freed. */
+E3DB_ReadRecordsResult *E3DB_ReadRecords_GetResult(E3DB_Op *op);
+
+/* Return an iterator over the records in a result set. */
+E3DB_ReadRecordsResultIterator *E3DB_ReadRecordsResult_GetIterator(E3DB_ReadRecordsResult *r);
+
+/* Delete a record result iterator. */
+void E3DB_ReadRecordsResultIterator_Delete(E3DB_ReadRecordsResultIterator *it);
+
+/* Returns true if a record result iterator is completed. */
+int E3DB_ReadRecordsResultIterator_IsDone(E3DB_ReadRecordsResultIterator *it);
+
+/* Move a record result iterator to the next value. */
+void E3DB_ReadRecordsResultIterator_Next(E3DB_ReadRecordsResultIterator *it);
+
+/* Return the metadata for the current record in the result set. */
+E3DB_RecordMeta *E3DB_ReadRecordsResultIterator_GetMeta(E3DB_ReadRecordsResultIterator *it);
+
+/* Return the record record data for the current record in the result set. */
+E3DB_Record *E3DB_ReadRecordsResultIterator_GetData(E3DB_ReadRecordsResultIterator *it);
 
 #endif   /* !defined E3DB_CORE_H_INCLUDED */
