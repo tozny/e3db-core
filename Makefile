@@ -14,6 +14,8 @@ SOURCES        := $(wildcard src/*.c)
 OBJECTS        := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SOURCES))
 HEADERS        := $(wildcard src/*.h)
 LIB            := $(BUILD_DIR)/libe3db.a
+CFLAGS         := -Wall -g
+LDFLAGS        :=
 
 CMD_SOURCES    := $(wildcard cmd/*.c)
 CMD_OBJECTS    := $(patsubst %.c,$(BUILD_DIR)/%.o,$(CMD_SOURCES))
@@ -24,6 +26,8 @@ UNAME := $(shell uname)
 
 ifeq ($(UNAME),Darwin)
 DIST_NAME := e3db-core-macosx-$(VERSION)
+CFLAGS    += -I/usr/local/opt/openssl/include
+LDFLAGS   += -L/usr/local/opt/openssl/lib
 else
 ifeq ($(UNAME),Linux)
 DIST_NAME := e3db-core-linux-$(VERSION)
@@ -57,12 +61,12 @@ $(LIB): $(OBJECTS)
 $(CMD): $(CMD_OBJECTS) $(CMD_HEADERS) $(LIB) $(HEADERS)
 	@printf "%-10s %s\n" "LINK" "$@"
 	@-mkdir -p $(dir $@)
-	@gcc -g -o $@ -Isrc $< $(LIB) -lcurl -lssl -lcrypto -lm
+	@gcc $(CFLAGS) $(LDFLAGS) -o $@ -Isrc $< $(LIB) -lcurl -lssl -lcrypto -lm
 
 $(BUILD_DIR)/%.o: %.c $(HEADERS)
 	@printf "%-10s %s\n" "CC" "$@"
 	@-mkdir -p $(dir $@)
-	@gcc -g -Wall -Isrc -c -o $@ $<
+	@gcc $(CFLAGS) -Isrc -c -o $@ $<
 
 clean:
 	rm -rf $(BUILD_DIR) $(DIST_ZIP)
