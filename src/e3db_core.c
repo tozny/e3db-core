@@ -24,6 +24,7 @@
  */
 
 #define DEFAULT_API_URL    "https://api.e3db.tozny.com/v1"
+#define DEFAULT_AUTH_URL   "https://api.tot.tozny.com/v1"
 #define DEFAULT_API_KEY    ""
 #define DEFAULT_API_SECRET ""
 
@@ -77,6 +78,7 @@ void E3DB_ClientOptions_SetApiSecret(E3DB_ClientOptions *opts, const char *api_s
 
 struct _E3DB_Client {
   E3DB_ClientOptions *options;
+  sds access_token;
   // TODO: Add cached JWT from auth service.
   // TODO: If we add mutable state (like the JWT above), also add a lock
   // so that concurrent access via multiple operations in flight is safe.
@@ -87,6 +89,7 @@ E3DB_Client *E3DB_Client_New(E3DB_ClientOptions *opts)
 {
   E3DB_Client *client = xmalloc(sizeof(E3DB_Client));
   client->options = opts;
+  client->access_token = NULL;
   return client;
 }
 
@@ -94,6 +97,9 @@ E3DB_Client *E3DB_Client_New(E3DB_ClientOptions *opts)
 void E3DB_Client_Delete(E3DB_Client *client)
 {
   E3DB_ClientOptions_Delete(client->options);
+  if (client->access_token) {
+    sdsfree(client->access_token);
+  }
   xfree(client);
 }
 
@@ -113,7 +119,11 @@ typedef enum {
   E3DB_OP_STATE_KEY,
 } E3DB_OpState;
 
+typedef int (*E3DB_Op_HttpNextStateFn)(E3DB_Op *op, int response_code,
+  const char *body, E3DB_HttpHeaderList *headers, size_t num_headers);
+
 struct _E3DB_Op {
+  E3DB_Client *client;
   E3DB_OpType type;
   E3DB_OpState state;
 
@@ -124,8 +134,7 @@ struct _E3DB_Op {
       sds url;
       sds body;
       E3DB_HttpHeaderList *headers;
-      int (*next_state)(E3DB_Op *op, int response_code, const char *body,
-                        E3DB_HttpHeaderList *headers, size_t num_headers);
+      E3DB_Op_HttpNextStateFn next_state;
     } http;
 
     struct {
@@ -145,9 +154,10 @@ struct _E3DB_Op {
 };
 
 /* Create a new operation of a specific type. */
-static E3DB_Op *E3DB_Op_New(E3DB_OpType type)
+static E3DB_Op *E3DB_Op_New(E3DB_Client *client, E3DB_OpType type)
 {
   E3DB_Op *op = xmalloc(sizeof(E3DB_Op));
+  op->client = client;
   op->type = type;
   op->state = E3DB_OP_STATE_DONE;
   return op;
@@ -471,8 +481,57 @@ static sds E3DB_GetAuthHeader(E3DB_Client *client)
   return auth_header;
 }
 
+/* Handle an HTTP response with an OAuth access token. The token is stored
+ * in the client and will be used to authenticate subsequent requests. */
+static void E3DB_HandleAuthResponse(E3DB_Op *op, int response_code, const char *body)
+{
+  if (response_code != 200) {
+    // TODO: Handle non-successful responses.
+    fprintf(stderr, "Fatal: Error response from E3DB API: %d\n", response_code);
+    abort();
+  }
+
+  // TODO: Factor this all out into a helper function.
+  // Parse the response body then extract and store the access token.
+  cJSON *json = cJSON_Parse(body);
+
+  if (json == NULL) {
+    // TODO: Error handling.
+    fprintf(stderr, "Fatal: Unable to parse JSON response.\n");
+    abort();
+  }
+
+  sdsfree(op->client->access_token);
+  op->client->access_token = sdsnew(cJSON_GetSafeObjectItemString(json, "access_token"));
+
+  E3DB_Op_Finish(op);
+}
+
+/**
+ * Initialize an E3DB operation to make a request to the authentication
+ * service to obtain an access token.
+ */
+static void E3DB_InitAuthOp(E3DB_Client *client, E3DB_Op *op, E3DB_Op_HttpNextStateFn next_state)
+{
+  op->state = E3DB_OP_STATE_HTTP;
+  // TODO: Allow overriding the auth URL.
+  op->request.http.url = sdscatprintf(sdsempty(), "%s/token", DEFAULT_AUTH_URL);
+
+  op->request.http.method = sdsnew("POST");
+  op->request.http.body = sdsnew("grant_type=client_credentials");
+  op->request.http.next_state = next_state;
+  op->request.http.headers = E3DB_HttpHeaderList_New();
+
+  sds auth_header = E3DB_GetAuthHeader(client);
+  E3DB_HttpHeaderList_Add(op->request.http.headers, "Authorization", auth_header);
+  E3DB_HttpHeaderList_Add(op->request.http.headers, "Content-Type", "application/x-www-form-urlencoded");
+  sdsfree(auth_header);
+}
+
 typedef struct _E3DB_ListRecordsResult {
   cJSON *json;
+  int limit;
+  int offset;
 } E3DB_ListRecordsResult;
 
 typedef struct _E3DB_ListRecordsResultIterator {
@@ -514,6 +573,37 @@ static int E3DB_ListRecords_Response(E3DB_Op *op, int response_code,
   result->json = json;
 
   E3DB_Op_Finish(op);
+
+  return 0;
+}
+
+static void E3DB_ListRecords_InitOp(E3DB_Op *op)
+{
+  E3DB_ListRecordsResult *result = op->result;
+
+  // TODO: Handle the `writer_id' and `types' parameters.
+  op->state = E3DB_OP_STATE_HTTP;
+  op->request.http.url = sdscatprintf(sdsempty(), "%s/records?limit=%d&offset=%d",
+                                      op->client->options->api_url,
+                                      result->limit, result->offset);
+
+  op->request.http.method = sdsnew("GET");
+  op->request.http.body = sdsnew("");
+  op->request.http.next_state = E3DB_ListRecords_Response;
+  op->request.http.headers = E3DB_HttpHeaderList_New();
+
+  sds auth_header = sdsnew("Bearer ");
+  auth_header = sdscat(auth_header, op->client->access_token);
+  E3DB_HttpHeaderList_Add(op->request.http.headers, "Authorization", auth_header);
+  sdsfree(auth_header);
+}
+
+static int E3DB_ListRecords_Request(E3DB_Op *op, int response_code,
+                                   const char *body, E3DB_HttpHeaderList *headers,
+                                   size_t num_headers)
+{
+  E3DB_HandleAuthResponse(op, response_code, body);
+  E3DB_ListRecords_InitOp(op);
   return 0;
 }
 
@@ -522,24 +612,21 @@ E3DB_Op *E3DB_ListRecords_Begin(E3DB_Client *client, int limit, int offset,
                                 UUID *writer_id, const char *types[],
                                 size_t num_types)
 {
-  E3DB_Op *op = E3DB_Op_New(E3DB_OP_LIST_RECORDS);
+  E3DB_Op *op = E3DB_Op_New(client, E3DB_OP_LIST_RECORDS);
+  E3DB_ListRecordsResult *result = xmalloc(sizeof(E3DB_ListRecordsResult));
 
-  // TODO: Handle the `writer_id' and `types' parameters.
-  op->state = E3DB_OP_STATE_HTTP;
-  op->request.http.url = sdscatprintf(sdsempty(), "%s/records?limit=%d&offset=%d",
-                                      client->options->api_url, limit, offset);
+  result->limit = limit;
+  result->offset = offset;
 
-  op->request.http.method = sdsnew("GET");
-  op->request.http.body = sdsnew("");
-  op->request.http.next_state = E3DB_ListRecords_Response;
-  op->request.http.headers = E3DB_HttpHeaderList_New();
-
-  sds auth_header = E3DB_GetAuthHeader(client);
-  E3DB_HttpHeaderList_Add(op->request.http.headers, "Authorization", auth_header);
-  sdsfree(auth_header);
-
-  op->result = xmalloc(sizeof(E3DB_ListRecordsResult));
+  op->result = result;
   op->free_result = E3DB_ListRecordsResult_Delete;
+
+  // TODO: Also fetch auth token if our access token is expired.
+  if (client->access_token == NULL) {
+    E3DB_InitAuthOp(client, op, E3DB_ListRecords_Request);
+  } else {
+    E3DB_ListRecords_InitOp(op);
+  }
 
   return op;
 }
@@ -586,7 +673,9 @@ E3DB_RecordMeta *E3DB_ListRecordsResultIterator_Get(E3DB_ListRecordsResultIterat
  */
 
 struct _E3DB_ReadRecordsResult {
-  cJSON *json;        // entire ciphertext response body
+  cJSON *json;              // entire ciphertext response body
+  size_t num_record_ids;
+  const char **record_ids;  // not owned but maybe should be?
 };
 
 struct _E3DB_ReadRecordsResultIterator {
@@ -639,20 +728,18 @@ static int E3DB_ReadRecords_Response(
   return 0;
 }
 
-E3DB_Op *E3DB_ReadRecords_Begin(
-  E3DB_Client *client, const char *record_ids[], size_t num_record_ids,
-  const char *fields[], size_t num_fields)
+static void E3DB_ReadRecords_InitOp(E3DB_Op *op)
 {
-  E3DB_Op *op = E3DB_Op_New(E3DB_OP_READ_RECORDS);
+  E3DB_ReadRecordsResult *result = op->result;
 
   // TODO: Make sure at least 1 record ID is specified.
 
-  sds url = sdsnew(client->options->api_url);
+  sds url = sdsnew(op->client->options->api_url);
   url = sdscat(url, "/records/");
 
-  for (size_t i = 0; i < num_record_ids; ++i) {
+  for (size_t i = 0; i < result->num_record_ids; ++i) {
     if (i != 0) url = sdscat(url, ",");
-    url = sdscat(url, record_ids[i]);
+    url = sdscat(url, result->record_ids[i]);
   }
 
   // TODO: Add fields to URL
@@ -664,12 +751,40 @@ E3DB_Op *E3DB_ReadRecords_Begin(
   op->request.http.next_state = E3DB_ReadRecords_Response;
   op->request.http.headers = E3DB_HttpHeaderList_New();
 
-  sds auth_header = E3DB_GetAuthHeader(client);
+  sds auth_header = sdsnew("Bearer ");
+  auth_header = sdscat(auth_header, op->client->access_token);
   E3DB_HttpHeaderList_Add(op->request.http.headers, "Authorization", auth_header);
   sdsfree(auth_header);
+}
 
-  op->result = xmalloc(sizeof(E3DB_ReadRecordsResult));
+static int E3DB_ReadRecords_Request(E3DB_Op *op, int response_code,
+                                    const char *body, E3DB_HttpHeaderList *headers,
+                                    size_t num_headers)
+{
+  E3DB_HandleAuthResponse(op, response_code, body);
+  E3DB_ReadRecords_InitOp(op);
+  return 0;
+}
+
+E3DB_Op *E3DB_ReadRecords_Begin(
+  E3DB_Client *client, const char **record_ids, size_t num_record_ids,
+  const char *fields[], size_t num_fields)
+{
+  E3DB_Op *op = E3DB_Op_New(client, E3DB_OP_READ_RECORDS);
+  E3DB_ReadRecordsResult *result = xmalloc(sizeof(*result));
+
+  result->record_ids = record_ids;
+  result->num_record_ids = num_record_ids;
+
+  op->result = result;
   op->free_result = E3DB_ReadRecordsResult_Delete;
+
+  // TODO: Also fetch auth token if our access token is expired.
+  if (client->access_token == NULL) {
+    E3DB_InitAuthOp(client, op, E3DB_ReadRecords_Request);
+  } else {
+    E3DB_ReadRecords_InitOp(op);
+  }
 
   return op;
 }

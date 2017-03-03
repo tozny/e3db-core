@@ -47,6 +47,22 @@ size_t write_body(void *ptr, size_t size, size_t nmemb, BIO *bio)
   return (size_t)result;
 }
 
+/* Callback function for libcurl to read data that should be supplied
+ * as the body in an HTTP POST/PUT/etc request, from an OpenSSL BIO.
+ * Returns the number of bytes read. */
+size_t read_body(void *ptr, size_t size, size_t nmemb, BIO *bio)
+{
+  size_t len = size * nmemb;
+  int result;
+
+  if ((result = BIO_read(bio, ptr, len)) < 0) {
+    fprintf(stderr, "read_body: BIO_read failed\n");
+    abort();
+  }
+
+  return (size_t)result;
+}
+
 /* Complete an E3DB operation using libcurl for HTTP requests. */
 int curl_run_op(E3DB_Op *op)
 {
@@ -59,8 +75,11 @@ int curl_run_op(E3DB_Op *op)
 
   while (!E3DB_Op_IsDone(op)) {
     if (E3DB_Op_IsHttpState(op)) {
+      curl_easy_reset(curl);
+
+      const char *method = E3DB_Op_GetHttpMethod(op);
       E3DB_HttpHeaderList *headers = E3DB_Op_GetHttpHeaders(op);
-      BIO *bio = BIO_new(BIO_s_mem());
+      BIO *write_bio = BIO_new(BIO_s_mem());
 
       struct curl_slist *chunk = NULL;
       E3DB_HttpHeader *header = E3DB_HttpHeaderList_GetFirst(headers);
@@ -74,12 +93,22 @@ int curl_run_op(E3DB_Op *op)
         header = E3DB_HttpHeader_GetNext(header);
       }
 
-      curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, E3DB_Op_GetHttpMethod(op));
+      if (!strcmp(method, "POST")) {
+        const char *post_body = E3DB_Op_GetHttpBody(op);
+        curl_easy_setopt(curl, CURLOPT_POST, 1L);
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_body);
+      } else if (!strcmp(method, "GET")) {
+        // nothing special for GET
+      } else {
+        fprintf(stderr, "Unsupported method: %s\n", method);
+        abort();
+      }
+
       curl_easy_setopt(curl, CURLOPT_URL, E3DB_Op_GetHttpUrl(op));
-      curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
+      curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
       curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
       curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_body);
-      curl_easy_setopt(curl, CURLOPT_WRITEDATA, bio);
+      curl_easy_setopt(curl, CURLOPT_WRITEDATA, write_bio);
 
       CURLcode res = curl_easy_perform(curl);
       if (res != CURLE_OK) {
@@ -90,11 +119,11 @@ int curl_run_op(E3DB_Op *op)
       curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
 
       char *body;
-      BIO_write(bio, "\0", 1);
-      BIO_get_mem_data(bio, &body);
+      BIO_write(write_bio, "\0", 1);
+      BIO_get_mem_data(write_bio, &body);
       E3DB_Op_FinishHttpState(op, response_code, body, NULL, 0);
 
-      BIO_free_all(bio);
+      BIO_free_all(write_bio);
       curl_slist_free_all(chunk);
     }
   }
@@ -179,13 +208,12 @@ E3DB_ClientOptions *load_config(void)
   return opts;
 }
 
-int do_list_records(int argc, char **argv)
+int do_list_records(E3DB_Client *client, int argc, char **argv)
 {
   // TODO: Parse command-specific options.
 
   curl_global_init(CURL_GLOBAL_DEFAULT);
 
-  E3DB_Client *client = E3DB_Client_New(load_config());
   E3DB_Op *op = E3DB_ListRecords_Begin(client, 100, 0, NULL, NULL, 0);
 
   curl_run_op(op);
@@ -209,13 +237,12 @@ int do_list_records(int argc, char **argv)
 
   E3DB_ListRecordsResultIterator_Delete(it);
   E3DB_Op_Delete(op);
-  E3DB_Client_Delete(client);
   curl_global_cleanup();
 
   return 0;
 }
 
-int do_read_records(int argc, char **argv)
+int do_read_records(E3DB_Client *client, int argc, char **argv)
 {
   if (argc < 2) {
     fputs(
@@ -232,7 +259,6 @@ int do_read_records(int argc, char **argv)
 
   curl_global_init(CURL_GLOBAL_DEFAULT);
 
-  E3DB_Client *client = E3DB_Client_New(load_config());
   const char **record_ids = (const char **)&argv[1];
   E3DB_Op *op = E3DB_ReadRecords_Begin(client, record_ids, argc - 1, NULL, 0);
 
@@ -262,7 +288,6 @@ int do_read_records(int argc, char **argv)
 
   E3DB_ReadRecordsResultIterator_Delete(it);
   E3DB_Op_Delete(op);
-  E3DB_Client_Delete(client);
   curl_global_cleanup();
 
   return 0;
@@ -270,19 +295,23 @@ int do_read_records(int argc, char **argv)
 
 int main(int argc, char **argv)
 {
-  // TODO: Parse global options.
-
   if (argc < 2) {
     fputs(usage, stderr);
     return 1;
   }
 
+  // TODO: Parse global options.
+
+  E3DB_Client *client = E3DB_Client_New(load_config());
+
   if (!strcmp(argv[1], "ls")) {
-    return do_list_records(argc - 1, &argv[1]);
+    return do_list_records(client, argc - 1, &argv[1]);
   } else if (!strcmp(argv[1], "read")) {
-    return do_read_records(argc - 1, &argv[1]);
+    return do_read_records(client, argc - 1, &argv[1]);
   } else {
     fputs(usage, stderr);
     return 1;
   }
+
+  E3DB_Client_Delete(client);
 }
