@@ -8,6 +8,10 @@
 #ifndef E3DB_BASE64_H_INCLUDED
 #define E3DB_BASE64_H_INCLUDED
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "sds.h"
 
 /* Base64 encode a string, returning a freshly allocated result. The result
@@ -19,5 +23,9 @@ sds base64_encode(const char *s);
  *
  * TODO: How do we handle decode errors? */
 sds base64_decode(const char *s);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif   /* !defined E3DB_BASE64_H_INCLUDED */

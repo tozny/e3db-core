@@ -8,6 +8,10 @@
 #ifndef E3DB_CORE_H_INCLUDED
 #define E3DB_CORE_H_INCLUDED
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdlib.h>          // for size_t
 
 // TODO: Add error handling machinery to this library.
@@ -222,5 +226,9 @@ E3DB_RecordMeta *E3DB_ReadRecordsResultIterator_GetMeta(E3DB_ReadRecordsResultIt
 
 /* Return the record record data for the current record in the result set. */
 E3DB_Record *E3DB_ReadRecordsResultIterator_GetData(E3DB_ReadRecordsResultIterator *it);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif   /* !defined E3DB_CORE_H_INCLUDED */

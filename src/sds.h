@@ -33,6 +33,10 @@
 #ifndef __SDS_H
 #define __SDS_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define SDS_MAX_PREALLOC (1024*1024)
 
 #include <sys/types.h>
@@ -268,6 +272,10 @@ void sds_free(void *ptr);
 
 #ifdef REDIS_TEST
 int sdsTest(int argc, char *argv[]);
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif
