@@ -56,7 +56,7 @@ $(DIST_ZIP): $(LIB) $(CMD) $(PUBLIC_HEADERS)
 
 $(LIB): $(OBJECTS)
 	@printf "%-10s %s\n" "AR" "$@"
-	@ar cru $(LIB) $(OBJECTS)
+	@ar cr $(LIB) $(OBJECTS)
 
 $(CMD): $(CMD_OBJECTS) $(CMD_HEADERS) $(LIB) $(HEADERS)
 	@printf "%-10s %s\n" "LINK" "$@"
