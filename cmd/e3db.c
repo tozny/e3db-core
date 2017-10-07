@@ -105,7 +105,7 @@ int curl_run_op(E3DB_Op *op)
       }
 
       curl_easy_setopt(curl, CURLOPT_URL, E3DB_Op_GetHttpUrl(op));
-      curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+      curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);      // change to '1L' for debug logging
       curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
       curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_body);
       curl_easy_setopt(curl, CURLOPT_WRITEDATA, write_bio);
