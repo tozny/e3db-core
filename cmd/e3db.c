@@ -214,28 +214,44 @@ int do_list_records(E3DB_Client *client, int argc, char **argv)
 
   curl_global_init(CURL_GLOBAL_DEFAULT);
 
-  E3DB_Op *op = E3DB_ListRecords_Begin(client, 100, 0, NULL, NULL, 0);
+  E3DB_QueryOptions options;
+  E3DB_QueryOptions_SetDefault(&options);
 
-  curl_run_op(op);
+  options.include_all_writers = 1;
+  options.include_data = 0;
 
-  E3DB_ListRecordsResult *result = E3DB_ListRecords_GetResult(op);
-  E3DB_ListRecordsResultIterator *it = E3DB_ListRecordsResult_GetIterator(result);
+  E3DB_Op *op;
 
-  printf("%-40s %-40s %s\n", "Record ID", "Writer ID", "Type");
+  printf("%-40s %s\n", "Record ID", "Type");
   printf("--------------------------------------------------------------------------------------------------------\n");
 
-  while (!E3DB_ListRecordsResultIterator_IsDone(it)) {
-    E3DB_RecordMeta *meta = E3DB_ListRecordsResultIterator_Get(it);
+  for (;;) {
+    op = E3DB_Query_Begin(client, &options);
+    curl_run_op(op);
 
-    printf("%-40s %-40s %s\n",
-      E3DB_RecordMeta_GetRecordId(meta),
-      E3DB_RecordMeta_GetWriterId(meta),
-      E3DB_RecordMeta_GetType(meta));
+    E3DB_QueryResult *result = E3DB_Query_GetResult(op);
 
-    E3DB_ListRecordsResultIterator_Next(it);
+    int count      = E3DB_QueryResult_GetCount(result);
+    int last_index = E3DB_QueryResult_GetLastIndex(result);
+
+    if (count != 0) {
+      E3DB_QueryResultIterator *it = E3DB_QueryResult_GetIterator(result);
+
+      while (!E3DB_QueryResultIterator_IsDone(it)) {
+        E3DB_RecordMeta *meta = E3DB_QueryResultIterator_GetMeta(it);
+        printf("%-40s %s\n", E3DB_RecordMeta_GetRecordId(meta), E3DB_RecordMeta_GetType(meta));
+        E3DB_QueryResultIterator_Next(it);
+      }
+
+      E3DB_QueryResultIterator_Delete(it);
+    }
+
+    if (count < options.page_size)
+      break;
+
+    options.after_index = last_index;   // get next page
   }
 
-  E3DB_ListRecordsResultIterator_Delete(it);
   E3DB_Op_Delete(op);
   curl_global_cleanup();
 
@@ -259,34 +275,56 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
 
   curl_global_init(CURL_GLOBAL_DEFAULT);
 
-  const char **record_ids = (const char **)&argv[1];
-  E3DB_Op *op = E3DB_ReadRecords_Begin(client, record_ids, argc - 1, NULL, 0);
+  E3DB_QueryOptions options;
+  E3DB_QueryOptions_SetDefault(&options);
 
-  curl_run_op(op);
+  options.include_all_writers = 0;
+  options.include_data = 1;
+  options.record_ids = (const char **)&argv[1];
+  options.num_record_ids = argc - 1;
 
-  E3DB_ReadRecordsResult *result = E3DB_ReadRecords_GetResult(op);
-  E3DB_ReadRecordsResultIterator *it = E3DB_ReadRecordsResult_GetIterator(result);
+  E3DB_Op *op;
 
-  while (!E3DB_ReadRecordsResultIterator_IsDone(it)) {
-    E3DB_RecordMeta *meta = E3DB_ReadRecordsResultIterator_GetMeta(it);
-    E3DB_Record *record   = E3DB_ReadRecordsResultIterator_GetData(it);
+  for (;;) {
+    op = E3DB_Query_Begin(client, &options);
+    curl_run_op(op);
 
-    printf("\n%-20s %s\n", "record_id", E3DB_RecordMeta_GetRecordId(meta));
+    E3DB_QueryResult *result = E3DB_Query_GetResult(op);
 
-    E3DB_RecordFieldIterator *f_it = E3DB_Record_GetFieldIterator(record);
+    int count      = E3DB_QueryResult_GetCount(result);
+    int last_index = E3DB_QueryResult_GetLastIndex(result);
 
-    while (!E3DB_RecordFieldIterator_IsDone(f_it)) {
-      printf("%-20s %s\n",
-        E3DB_RecordFieldIterator_GetName(f_it),
-        E3DB_RecordFieldIterator_GetValue(f_it));
-      E3DB_RecordFieldIterator_Next(f_it);
+    if (count != 0) {
+      E3DB_QueryResultIterator *it = E3DB_QueryResult_GetIterator(result);
+
+      while (!E3DB_QueryResultIterator_IsDone(it)) {
+        E3DB_RecordMeta *meta = E3DB_QueryResultIterator_GetMeta(it);
+        E3DB_Record *record   = E3DB_QueryResultIterator_GetData(it);
+
+        printf("\n%-20s %s\n", "record_id", E3DB_RecordMeta_GetRecordId(meta));
+
+        E3DB_RecordFieldIterator *f_it = E3DB_Record_GetFieldIterator(record);
+
+        while (!E3DB_RecordFieldIterator_IsDone(f_it)) {
+          printf("%-20s %s\n",
+            E3DB_RecordFieldIterator_GetName(f_it),
+            E3DB_RecordFieldIterator_GetValue(f_it));
+          E3DB_RecordFieldIterator_Next(f_it);
+        }
+
+        E3DB_RecordFieldIterator_Delete(f_it);
+        E3DB_QueryResultIterator_Next(it);
+      }
+
+      E3DB_QueryResultIterator_Delete(it);
     }
 
-    E3DB_RecordFieldIterator_Delete(f_it);
-    E3DB_ReadRecordsResultIterator_Next(it);
+    if (count < options.page_size)
+      break;
+
+    options.after_index = last_index;   // get next page
   }
 
-  E3DB_ReadRecordsResultIterator_Delete(it);
   E3DB_Op_Delete(op);
   curl_global_cleanup();
 

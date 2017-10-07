@@ -171,61 +171,73 @@ const char *E3DB_RecordFieldIterator_GetName(E3DB_RecordFieldIterator *it);
 const char *E3DB_RecordFieldIterator_GetValue(E3DB_RecordFieldIterator *it);
 
 /*
- * {List Records}
+ * {Query}
+ *
+ * We use a single "query" interface for both listing and reading
+ * records.
  */
 
-typedef struct _E3DB_ListRecordsResult E3DB_ListRecordsResult;
-typedef struct _E3DB_ListRecordsResultIterator E3DB_ListRecordsResultIterator;
+typedef struct _E3DB_QueryResult E3DB_QueryResult;
+typedef struct _E3DB_QueryResultIterator E3DB_QueryResultIterator;
 
-E3DB_Op *E3DB_ListRecords_Begin(E3DB_Client *client, int limit, int offset,
-                                UUID *writer_id, const char *types[],
-                                size_t num_types);
+typedef struct {
+  const char  **writer_ids;
+  size_t      num_writer_ids;
 
-/* has same lifetime as operation, doesn't need freeing */
-E3DB_ListRecordsResult *E3DB_ListRecords_GetResult(E3DB_Op *op);
+  const char  **record_ids;
+  size_t      num_record_ids;
 
-E3DB_ListRecordsResultIterator *E3DB_ListRecordsResult_GetIterator(E3DB_ListRecordsResult *result);
-void E3DB_ListRecordsResultIterator_Delete(E3DB_ListRecordsResultIterator *it);
+  const char  **types;
+  size_t      num_types;
 
-int E3DB_ListRecordsResultIterator_IsDone(E3DB_ListRecordsResultIterator *it);
-void E3DB_ListRecordsResultIterator_Next(E3DB_ListRecordsResultIterator *it);
-E3DB_RecordMeta *E3DB_ListRecordsResultIterator_Get(E3DB_ListRecordsResultIterator *it);
+  int         include_data;
+  int         include_all_writers;
+  int         page_size;
+  int         after_index;
+  int         raw;
+} E3DB_QueryOptions;
 
-/*
- * {Read Records}
- */
+/* Initialize a query options structure with default values (contains
+ * data, page size of 50 starting the beginning, all writers, records,
+ * and types). */
+void E3DB_QueryOptions_SetDefault(E3DB_QueryOptions *options);
 
-// TODO: Consider making a "RecordSet" abstraction to use for writes
+/* Begin a query operation given a set of options. */
+E3DB_Op *E3DB_Query_Begin(E3DB_Client *client, E3DB_QueryOptions *options);
 
-typedef struct _E3DB_ReadRecordsResult E3DB_ReadRecordsResult;
-typedef struct _E3DB_ReadRecordsResultIterator E3DB_ReadRecordsResultIterator;
-
-E3DB_Op *E3DB_ReadRecords_Begin(
-  E3DB_Client *client, const char *record_ids[], size_t num_record_ids,
-  const char *fields[], size_t num_fields);
-
-/* Return the result of a successful "read records" operation. Returns
- * NULL if the operation is not complete. The returned structure has the
+/* Return the result of a successful query operation. Returns NULL if
+ * the operation is not yet complete. The returned structure has the
  * same lifetime as the containing operation and does not need to be freed. */
-E3DB_ReadRecordsResult *E3DB_ReadRecords_GetResult(E3DB_Op *op);
+E3DB_QueryResult *E3DB_Query_GetResult(E3DB_Op *op);
 
-/* Return an iterator over the records in a result set. */
-E3DB_ReadRecordsResultIterator *E3DB_ReadRecordsResult_GetIterator(E3DB_ReadRecordsResult *r);
+/* Return the number of results from a completed query operation. If
+ * this returns zero, then a paginated operation has completed. */
+int E3DB_QueryResult_GetCount(E3DB_QueryResult *result);
 
-/* Delete a record result iterator. */
-void E3DB_ReadRecordsResultIterator_Delete(E3DB_ReadRecordsResultIterator *it);
+/* Return the last index reported by the server for a result set. This
+ * is used during pagination and passed as "after_index" for the next
+ * search operation. */
+int E3DB_QueryResult_GetLastIndex(E3DB_QueryResult *result);
 
-/* Returns true if a record result iterator is completed. */
-int E3DB_ReadRecordsResultIterator_IsDone(E3DB_ReadRecordsResultIterator *it);
+/* Return an iterator to the set of record metadata (and optionally data)
+ * returned from a query result set. This must be freed with
+ * "E3DB_QueryResultIterator_Delete". */
+E3DB_QueryResultIterator *E3DB_QueryResult_GetIterator(E3DB_QueryResult *result);
 
-/* Move a record result iterator to the next value. */
-void E3DB_ReadRecordsResultIterator_Next(E3DB_ReadRecordsResultIterator *it);
+/* Delete a query result iterator. */
+void E3DB_QueryResultIterator_Delete(E3DB_QueryResultIterator *it);
+
+/* Returns true if a query result iterator is completed. */
+int E3DB_QueryResultIterator_IsDone(E3DB_QueryResultIterator *it);
+
+/* Move a query result iterator to the next value. */
+void E3DB_QueryResultIterator_Next(E3DB_QueryResultIterator *it);
 
 /* Return the metadata for the current record in the result set. */
-E3DB_RecordMeta *E3DB_ReadRecordsResultIterator_GetMeta(E3DB_ReadRecordsResultIterator *it);
+E3DB_RecordMeta *E3DB_QueryResultIterator_GetMeta(E3DB_QueryResultIterator *it);
 
-/* Return the record record data for the current record in the result set. */
-E3DB_Record *E3DB_ReadRecordsResultIterator_GetData(E3DB_ReadRecordsResultIterator *it);
+/* Return the record data for the current record in the result set. */
+E3DB_Record *E3DB_QueryResultIterator_GetData(E3DB_QueryResultIterator *it);
 
 #ifdef __cplusplus
 }
