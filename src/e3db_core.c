@@ -23,8 +23,8 @@
  * {Client Options}
  */
 
-#define DEFAULT_API_URL    "https://api.e3db.tozny.com/v1"
-#define DEFAULT_AUTH_URL   "https://api.tot.tozny.com/v1"
+#define DEFAULT_API_URL    "https://api.e3db.com/v1/storage"
+#define DEFAULT_AUTH_URL   "https://api.e3db.com/v1/auth"
 #define DEFAULT_API_KEY    ""
 #define DEFAULT_API_SECRET ""
 
