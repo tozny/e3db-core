@@ -125,6 +125,9 @@ int curl_run_op(E3DB_Op *op)
 
       BIO_free_all(write_bio);
       curl_slist_free_all(chunk);
+    } else {
+      fprintf(stderr, "Error: Unexpected op state\n");
+      abort();
     }
   }
 
@@ -152,6 +155,18 @@ sds get_home_dir(void)
   }
 
   return sdsnew(pw->pw_dir);
+}
+
+/* Read a required string value from a JSON object. */
+cJSON *get_config_value(cJSON *json, const char *name)
+{
+  cJSON *val = cJSON_GetObjectItem(json, name);
+  if (val == NULL || val->type != cJSON_String) {
+    fprintf(stderr, "Error: Missing field '%s' in configuration file.\n", name);
+    exit(1);
+  }
+
+  return val;
 }
 
 /* Load the user's e3db configuration into an E3DB_ClientOptions. */
@@ -185,22 +200,12 @@ E3DB_ClientOptions *load_config(void)
   }
 
   E3DB_ClientOptions *opts = E3DB_ClientOptions_New();
-  cJSON *api_key, *api_secret;
 
-  api_key = cJSON_GetObjectItem(json, "api_key_id");
-  if (api_key == NULL || api_key->type != cJSON_String) {
-    fprintf(stderr, "Error: Missing 'api_key_id' key in configuration file.\n");
-    exit(1);
-  }
-
-  api_secret = cJSON_GetObjectItem(json, "api_secret");
-  if (api_secret == NULL || api_secret->type != cJSON_String) {
-    fprintf(stderr, "Error: Missing 'api_secret' key in configuration file.\n");
-    exit(1);
-  }
-
-  E3DB_ClientOptions_SetApiKey(opts, api_key->valuestring);
-  E3DB_ClientOptions_SetApiSecret(opts, api_secret->valuestring);
+  E3DB_ClientOptions_SetApiKey    (opts, get_config_value(json, "api_key_id" )->valuestring);
+  E3DB_ClientOptions_SetApiSecret (opts, get_config_value(json, "api_secret" )->valuestring);
+  E3DB_ClientOptions_SetClientId  (opts, get_config_value(json, "client_id"  )->valuestring);
+  E3DB_ClientOptions_SetPublicKey (opts, get_config_value(json, "public_key" )->valuestring);
+  E3DB_ClientOptions_SetPrivateKey(opts, get_config_value(json, "private_key")->valuestring);
 
   sdsfree(config);
   cJSON_Delete(json);
@@ -218,7 +223,7 @@ int do_list_records(E3DB_Client *client, int argc, char **argv)
   E3DB_QueryOptions_SetDefault(&options);
 
   options.include_all_writers = 1;
-  options.include_data = 0;
+  options.include_data = 1;
 
   E3DB_Op *op;
 
@@ -278,7 +283,7 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
   E3DB_QueryOptions options;
   E3DB_QueryOptions_SetDefault(&options);
 
-  options.include_all_writers = 0;
+  options.include_all_writers = 1;
   options.include_data = 1;
   options.record_ids = (const char **)&argv[1];
   options.num_record_ids = argc - 1;

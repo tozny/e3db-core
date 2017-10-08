@@ -28,6 +28,9 @@ void E3DB_ClientOptions_Delete(E3DB_ClientOptions *opts);
 void E3DB_ClientOptions_SetApiUrl(E3DB_ClientOptions *opts, const char *url);
 void E3DB_ClientOptions_SetApiKey(E3DB_ClientOptions *opts, const char *api_key);
 void E3DB_ClientOptions_SetApiSecret(E3DB_ClientOptions *opts, const char *api_secret);
+void E3DB_ClientOptions_SetClientId(E3DB_ClientOptions *opts, const char *client_id);
+void E3DB_ClientOptions_SetPublicKey(E3DB_ClientOptions *opts, const char *public_key);
+void E3DB_ClientOptions_SetPrivateKey(E3DB_ClientOptions *opts, const char *private_key);
 
 // TODO: Other ways to authenticate---Tozny, OIDC, etc.
 

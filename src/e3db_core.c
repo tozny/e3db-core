@@ -7,9 +7,12 @@
 
 #include <assert.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include <sodium.h>
 
 #include "cJSON.h"
 #include "utlist.h"
@@ -18,6 +21,37 @@
 #include "e3db_core.h"
 #include "e3db_mem.h"
 #include "e3db_base64.h"
+
+/*
+ * {JSON Utilities}
+ */
+
+/* Utility function to safely get the string value of a JSON object field,
+ * returning an empty string if not present. */
+static char *cJSON_GetSafeObjectItemString(cJSON *json, const char *name)
+{
+  cJSON *obj = cJSON_GetObjectItem(json, name);
+
+  if (obj == NULL || obj->type != cJSON_String) {
+    fprintf(stderr, "Warning: Field '%s' missing or not a string.\n", name);
+    return "";
+  } else {
+    return obj->valuestring;
+  }
+}
+
+/* Utility function to get a required JSON object field. */
+static cJSON *cJSON_GetRequiredObjectItem(cJSON *json, const char *name, int type)
+{
+  cJSON *obj = cJSON_GetObjectItem(json, name);
+
+  if (obj == NULL || obj->type != type) {
+    fprintf(stderr, "Missing required JSON field '%s'\n", name);
+    abort();
+  }
+
+  return obj;
+}
 
 /*
  * {Client Options}
@@ -32,7 +66,9 @@ struct _E3DB_ClientOptions {
   sds api_url;
   sds api_key;
   sds api_secret;
-  // TODO: Add other forms of authentication.
+  sds client_id;
+  uint8_t public_key[crypto_box_PUBLICKEYBYTES];
+  uint8_t private_key[crypto_box_SECRETKEYBYTES];
 };
 
 E3DB_ClientOptions *E3DB_ClientOptions_New(void)
@@ -42,6 +78,7 @@ E3DB_ClientOptions *E3DB_ClientOptions_New(void)
   opts->api_url    = sdsnew(DEFAULT_API_URL);
   opts->api_key    = sdsnew(DEFAULT_API_KEY);
   opts->api_secret = sdsnew(DEFAULT_API_SECRET);
+  opts->client_id  = sdsnew("");
 
   return opts;
 }
@@ -51,6 +88,7 @@ void E3DB_ClientOptions_Delete(E3DB_ClientOptions *opts)
   sdsfree(opts->api_url);
   sdsfree(opts->api_key);
   sdsfree(opts->api_secret);
+  sdsfree(opts->client_id);
   xfree(opts);
 }
 
@@ -72,6 +110,24 @@ void E3DB_ClientOptions_SetApiSecret(E3DB_ClientOptions *opts, const char *api_s
   opts->api_secret = sdsnew(api_secret);
 }
 
+void E3DB_ClientOptions_SetClientId(E3DB_ClientOptions *opts, const char *client_id)
+{
+  sdsfree(opts->client_id);
+  opts->client_id = sdsnew(client_id);
+}
+
+void E3DB_ClientOptions_SetPublicKey(E3DB_ClientOptions *opts, const char *public_key)
+{
+	sodium_base642bin(opts->public_key, crypto_box_PUBLICKEYBYTES, public_key, strlen(public_key),
+                    "", NULL, NULL, sodium_base64_VARIANT_URLSAFE_NO_PADDING);
+}
+
+void E3DB_ClientOptions_SetPrivateKey(E3DB_ClientOptions *opts, const char *private_key)
+{
+  sodium_base642bin(opts->private_key, crypto_box_SECRETKEYBYTES, private_key, strlen(private_key),
+                    "", NULL, NULL, sodium_base64_VARIANT_URLSAFE_NO_PADDING);
+}
+
 /*
  * {Clients}
  */
@@ -79,9 +135,6 @@ void E3DB_ClientOptions_SetApiSecret(E3DB_ClientOptions *opts, const char *api_s
 struct _E3DB_Client {
   E3DB_ClientOptions *options;
   sds access_token;
-  // TODO: Add cached JWT from auth service.
-  // TODO: If we add mutable state (like the JWT above), also add a lock
-  // so that concurrent access via multiple operations in flight is safe.
 };
 
 /* Create an E3DB client object. */
@@ -330,6 +383,128 @@ int E3DB_Op_FinishHttpState(E3DB_Op *op, int response_code, const char *body,
 }
 
 /*
+ * {Crypto Operations}
+ */
+
+#if 0
+static void print_hex(const uint8_t *bytes, size_t len)
+{
+  for (size_t i = 0; i < len; ++i) {
+    printf("%02x", bytes[i]);
+  }
+
+  printf("\n");
+}
+#endif
+
+static void base64url_decode_with_len(uint8_t *dest, size_t dest_len, const char *src, size_t *len_out)
+{
+  sodium_base642bin(dest, dest_len, src, strlen(src), "", len_out, NULL, sodium_base64_VARIANT_URLSAFE_NO_PADDING);
+}
+
+static void base64url_decode(uint8_t *dest, size_t dest_len, const char *src)
+{
+  sodium_base642bin(dest, dest_len, src, strlen(src), "", NULL, NULL, sodium_base64_VARIANT_URLSAFE_NO_PADDING);
+}
+
+static int E3DB_DecryptEAK(E3DB_Client *client, uint8_t *ak_out, const char *eak,
+                           const char *authorizer_pubK)
+{
+  uint8_t pubK_bytes[crypto_box_PUBLICKEYBYTES];
+  uint8_t eak_bytes[crypto_secretbox_KEYBYTES + crypto_box_MACBYTES];
+  uint8_t eakN_bytes[crypto_box_NONCEBYTES];
+
+  int count;
+  sds *tokens = sdssplitlen(eak, strlen(eak), ".", 1, &count);
+  if (count != 2) {
+    fprintf(stderr, "Fatal: Malformed EAK in encrypted record.\n");
+    abort();
+  }
+
+  base64url_decode(pubK_bytes, sizeof(pubK_bytes), authorizer_pubK);
+  base64url_decode(eak_bytes,  sizeof(eak_bytes),  tokens[0]);
+  base64url_decode(eakN_bytes, sizeof(eakN_bytes), tokens[1]);
+
+  sdsfreesplitres(tokens, count);
+
+  return crypto_box_open_easy(ak_out, eak_bytes, sizeof(eak_bytes),
+                              eakN_bytes, pubK_bytes,
+                              client->options->private_key);
+}
+
+static int E3DB_DecryptField(E3DB_Client *client, uint8_t *field_out,
+                             const char *c, size_t c_len, const uint8_t *ak)
+{
+  uint8_t edk[crypto_secretbox_KEYBYTES + crypto_secretbox_MACBYTES];
+  uint8_t edkN[crypto_secretbox_NONCEBYTES];
+  uint8_t ef[c_len];    // larger than needed but reasonable upper bound
+  uint8_t efN[crypto_secretbox_NONCEBYTES];
+  uint8_t dk[crypto_secretbox_KEYBYTES];
+
+  size_t ef_len;
+  int count;
+  sds *tokens;
+
+  tokens = sdssplitlen(c, strlen(c), ".", 1, &count);
+  if (count != 4) {
+    fprintf(stderr, "Fatal: Malformed encrypted field in record.\n");
+    abort();
+  }
+
+  base64url_decode         (edk,  sizeof(edk),  tokens[0]);
+  base64url_decode         (edkN, sizeof(edkN), tokens[1]);
+  base64url_decode_with_len(ef,   sizeof(ef),   tokens[2], &ef_len);
+  base64url_decode         (efN,  sizeof(efN),  tokens[3]);
+
+  sdsfreesplitres(tokens, count);
+
+  if (crypto_secretbox_open_easy(dk, edk, sizeof(edk), edkN, ak) < 0) {
+    fprintf(stderr, "Error: Decryption of EDK failed.\n");
+    return -1;
+  }
+
+  if (crypto_secretbox_open_easy(field_out, ef, ef_len, efN, dk) < 0) {
+    fprintf(stderr, "Error: Decryption of field failed.\n");
+    return -1;
+  }
+
+  field_out[ef_len - crypto_secretbox_MACBYTES] = '\0';
+  return 0;
+}
+
+static int E3DB_DecryptRecord(E3DB_Client *client, cJSON *record)
+{
+  cJSON *access_key = cJSON_GetRequiredObjectItem(record, "access_key", cJSON_Object);
+  cJSON *data = cJSON_GetRequiredObjectItem(record, "record_data", cJSON_Object);
+  cJSON *eak = cJSON_GetRequiredObjectItem(access_key, "eak", cJSON_String);
+  cJSON *apk = cJSON_GetRequiredObjectItem(access_key, "authorizer_public_key", cJSON_Object);
+  cJSON *pubK = cJSON_GetRequiredObjectItem(apk, "curve25519", cJSON_String);
+
+  uint8_t ak[crypto_secretbox_KEYBYTES];
+
+  if (E3DB_DecryptEAK(client, ak, eak->valuestring, pubK->valuestring) < 0) {
+    fprintf(stderr, "Fatal: Decryption of record EAK failed authentication.\n");
+    abort();
+  }
+
+  cJSON *f;
+  cJSON_ArrayForEach(f, data) {
+    char *field = xmalloc(strlen(f->valuestring));
+    if (E3DB_DecryptField(client, (void *)field, f->valuestring, strlen(f->valuestring), ak) < 0) {
+      fprintf(stderr, "Fatal: Decryption of record field '%s' failed.\n", f->string);
+      abort();
+    }
+
+    // Poke the new value directly into the JSON. This relies a little bit
+    // on knowing how cJSON implements string values, but should be safe.
+    xfree(f->valuestring);
+    f->valuestring = field;
+  }
+
+  return 0;
+}
+
+/*
  * {Records and Metadata}
  */
 
@@ -362,20 +537,6 @@ const char *E3DB_RecordMeta_GetType(E3DB_RecordMeta *meta)
   return meta->type;
 }
 
-/* Utility function to safely get the string value of a JSON object field,
- * returning an empty string if not present. */
-static char *cJSON_GetSafeObjectItemString(cJSON *json, const char *name)
-{
-  cJSON *obj = cJSON_GetObjectItem(json, name);
-
-  if (obj == NULL || obj->type != cJSON_String) {
-    fprintf(stderr, "Warning: Field '%s' missing or not a string.\n", name);
-    return "";
-  } else {
-    return obj->valuestring;
-  }
-}
-
 static void E3DB_GetRecordMetaFromJSON(cJSON *json, E3DB_RecordMeta *meta)
 {
   meta->record_id = cJSON_GetSafeObjectItemString(json, "record_id");
@@ -384,7 +545,6 @@ static void E3DB_GetRecordMetaFromJSON(cJSON *json, E3DB_RecordMeta *meta)
   meta->type      = cJSON_GetSafeObjectItemString(json, "type");
 }
 
-// TODO: How to reconcile this with decryption?
 struct _E3DB_Record {
   cJSON *json;        // "data" field within record
 };
@@ -588,7 +748,22 @@ static int E3DB_Query_Response(E3DB_Op *op, int response_code, const char *body,
 
   E3DB_QueryResult *result = op->result;
   result->json = json;
-  // TODO: Decrypt JSON fields unless raw option is set.
+
+  // If data is present and the raw option isn't set, decrypt
+  // the results in-place.
+  if (result->options->include_data && !result->options->raw) {
+    cJSON *results = cJSON_GetObjectItem(result->json, "results");
+    cJSON *record;
+
+    if (results == NULL || results->type != cJSON_Array) {
+      fprintf(stderr, "Fatal: Missing results in query response.\n");
+      abort();
+    }
+
+    cJSON_ArrayForEach(record, results) {
+      E3DB_DecryptRecord(op->client, record);
+    }
+  }
 
   E3DB_Op_Finish(op);
   return 0;
@@ -640,8 +815,6 @@ static int E3DB_Query_InitOp(E3DB_Op *op)
 {
   E3DB_QueryResult *result = op->result;
 
-  // TODO: If we're paging through a large result set, this will get called
-  // multiple times...
   op->state = E3DB_OP_STATE_HTTP;
   op->request.http.url = sdscatprintf(sdsempty(), "%s/search", op->client->options->api_url);
   op->request.http.method = sdsnew("POST");
