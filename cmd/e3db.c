@@ -13,8 +13,6 @@
 #include <unistd.h>
 
 #include <curl/curl.h>
-#include <openssl/bio.h>
-#include <openssl/buffer.h>
 
 #include "e3db_core.h"
 #include "sds.h"
@@ -33,34 +31,27 @@ const char usage[] =
   "  read                 read records\n";
 
 /* Callback function for libcurl to write data received from an HTTP
- * request to an OpenSSL BIO. Returns the number of bytes written. */
-size_t write_body(void *ptr, size_t size, size_t nmemb, BIO *bio)
+ * request to a dynamic string. Returns the number of bytes written. */
+size_t write_body(void *ptr, size_t size, size_t nmemb, sds *buf)
 {
   size_t len = size * nmemb;
-  int result;
-
-  if ((result = BIO_write(bio, ptr, len)) < 0) {
-    fprintf(stderr, "write_body: BIO_write failed\n");
-    abort();
-  }
-
-  return (size_t)result;
+  *buf = sdscatlen(*buf, ptr, len);
+  return len;
 }
 
 /* Callback function for libcurl to read data that should be supplied
- * as the body in an HTTP POST/PUT/etc request, from an OpenSSL BIO.
+ * as the body in an HTTP POST/PUT/etc request, from a dynamic string.
  * Returns the number of bytes read. */
-size_t read_body(void *ptr, size_t size, size_t nmemb, BIO *bio)
+size_t read_body(void *ptr, size_t size, size_t nmemb, sds *buf)
 {
   size_t len = size * nmemb;
-  int result;
 
-  if ((result = BIO_read(bio, ptr, len)) < 0) {
-    fprintf(stderr, "read_body: BIO_read failed\n");
-    abort();
-  }
+  if (len > sdslen(*buf))
+    len = sdslen(*buf);
 
-  return (size_t)result;
+  memcpy(ptr, *buf, len);
+  sdsrange(*buf, len, -1);
+  return len;
 }
 
 /* Complete an E3DB operation using libcurl for HTTP requests. */
@@ -79,7 +70,7 @@ int curl_run_op(E3DB_Op *op)
 
       const char *method = E3DB_Op_GetHttpMethod(op);
       E3DB_HttpHeaderList *headers = E3DB_Op_GetHttpHeaders(op);
-      BIO *write_bio = BIO_new(BIO_s_mem());
+      sds write_buf = sdsempty();
 
       struct curl_slist *chunk = NULL;
       E3DB_HttpHeader *header = E3DB_HttpHeaderList_GetFirst(headers);
@@ -108,7 +99,7 @@ int curl_run_op(E3DB_Op *op)
       curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);      // change to '1L' for debug logging
       curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
       curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_body);
-      curl_easy_setopt(curl, CURLOPT_WRITEDATA, write_bio);
+      curl_easy_setopt(curl, CURLOPT_WRITEDATA, &write_buf);
 
       CURLcode res = curl_easy_perform(curl);
       if (res != CURLE_OK) {
@@ -118,12 +109,7 @@ int curl_run_op(E3DB_Op *op)
       long response_code;
       curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
 
-      char *body;
-      BIO_write(write_bio, "\0", 1);
-      BIO_get_mem_data(write_bio, &body);
-      E3DB_Op_FinishHttpState(op, response_code, body, NULL, 0);
-
-      BIO_free_all(write_bio);
+      E3DB_Op_FinishHttpState(op, response_code, write_buf, NULL, 0);
       curl_slist_free_all(chunk);
     } else {
       fprintf(stderr, "Error: Unexpected op state\n");

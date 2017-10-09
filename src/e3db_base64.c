@@ -6,31 +6,16 @@
  */
 
 #include <string.h>
-
-#include <openssl/bio.h>
-#include <openssl/evp.h>
-#include <openssl/buffer.h>
+#include <sodium.h>
 
 #include "sds.h"
 
 sds base64_encode(const char *s)
 {
-  BIO *bio, *b64;
-  char *buf;
-  sds result;
+  size_t len = strlen(s);
+  char buf[sodium_base64_ENCODED_LEN(len, sodium_base64_VARIANT_URLSAFE_NO_PADDING)];
 
-  b64 = BIO_new(BIO_f_base64());
-  bio = BIO_new(BIO_s_mem());
-  bio = BIO_push(b64, bio);
-
-  BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
-  BIO_write(bio, s, strlen(s));
-  BIO_write(bio, "\0", 1);
-  BIO_flush(bio);
-
-  BIO_get_mem_data(bio, &buf);
-  result = sdsnew(buf);
-
-  BIO_free_all(bio);
-  return result;
+  sodium_bin2base64(buf, sizeof(buf), (void *)s, len, sodium_base64_VARIANT_URLSAFE_NO_PADDING);
+  return sdsnew(buf);
 }
+

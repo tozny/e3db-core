@@ -16,7 +16,7 @@ HEADERS        := $(wildcard src/*.h)
 LIB            := $(BUILD_DIR)/libe3db.a
 CFLAGS         := -Wall -g
 LDFLAGS        :=
-LIBS           := -lcurl -lssl -lcrypto -lm -lsodium
+LIBS           := -lcurl -lm -lsodium
 
 CMD_SOURCES    := $(wildcard cmd/*.c)
 CMD_OBJECTS    := $(patsubst %.c,$(BUILD_DIR)/%.o,$(CMD_SOURCES))
@@ -27,8 +27,6 @@ UNAME := $(shell uname)
 
 ifeq ($(UNAME),Darwin)
 DIST_NAME := e3db-core-macosx-$(VERSION)
-CFLAGS    += -I/usr/local/opt/openssl/include
-LDFLAGS   += -L/usr/local/opt/openssl/lib
 else
 ifeq ($(UNAME),Linux)
 DIST_NAME := e3db-core-linux-$(VERSION)
