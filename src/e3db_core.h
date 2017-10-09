@@ -99,8 +99,6 @@ const char *E3DB_HttpHeader_GetValue(E3DB_HttpHeader *header);
  * {Operations}
  */
 
-typedef int UUID;   // XXX temporary
-
 typedef struct _E3DB_Op E3DB_Op;
 
 /* Return true if an operation has completed. */
@@ -146,14 +144,20 @@ const char *E3DB_RecordMeta_GetType(E3DB_RecordMeta *meta);
 typedef struct _E3DB_Record E3DB_Record;
 typedef struct _E3DB_RecordFieldIterator E3DB_RecordFieldIterator;
 
-// TODO: Create and delete record objects
-// TODO: Setters
-// TODO: Consider an adaptor to JSON?
+/* Create a new record object with no fields. The returned record
+ * must be freed with "E3DB_Record_Delete". */
+E3DB_Record *E3DB_Record_New(void);
+
+/* Delete a record object allocated by "E3DB_Record_New". */
+void E3DB_Record_Delete(E3DB_Record *record);
 
 /* Return the value of a field in a record. Returns NULL if the field
  * doesn't exist. The returned string lasts until the containing
  * record is deleted. */
 const char *E3DB_Record_GetField(E3DB_Record *r, const char *field);
+
+/* Set (or update) the value of a field in a record. */
+void E3DB_Record_SetField(E3DB_Record *r, const char *field, const char *value);
 
 /* Return an iterator over the fields of a record. */
 E3DB_RecordFieldIterator *E3DB_Record_GetFieldIterator(E3DB_Record *r);
@@ -172,6 +176,13 @@ const char *E3DB_RecordFieldIterator_GetName(E3DB_RecordFieldIterator *it);
 
 /* Return the value of the current field an iterator is pointing to. */
 const char *E3DB_RecordFieldIterator_GetValue(E3DB_RecordFieldIterator *it);
+
+/*
+ * {Write}
+ */
+
+/* Begin an operation to write a record to the database. */
+E3DB_Op *E3DB_Write_Begin(E3DB_Client *client, const char *type, E3DB_Record *rec);
 
 /*
  * {Query}

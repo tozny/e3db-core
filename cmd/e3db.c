@@ -28,7 +28,8 @@ const char usage[] =
   "\n"
   "Available commands:\n"
   "  ls                   list my records\n"
-  "  read                 read records\n";
+  "  read                 read records\n"
+  "  write                write a record\n";
 
 /* Callback function for libcurl to write data received from an HTTP
  * request to a dynamic string. Returns the number of bytes written. */
@@ -86,6 +87,7 @@ int curl_run_op(E3DB_Op *op)
 
       if (!strcmp(method, "POST")) {
         const char *post_body = E3DB_Op_GetHttpBody(op);
+        fprintf(stderr, "< POST: %s\n", post_body);
         curl_easy_setopt(curl, CURLOPT_POST, 1L);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_body);
       } else if (!strcmp(method, "GET")) {
@@ -96,7 +98,7 @@ int curl_run_op(E3DB_Op *op)
       }
 
       curl_easy_setopt(curl, CURLOPT_URL, E3DB_Op_GetHttpUrl(op));
-      curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);      // change to '1L' for debug logging
+      curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);      // change to '1L' for debug logging
       curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
       curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_body);
       curl_easy_setopt(curl, CURLOPT_WRITEDATA, &write_buf);
@@ -249,6 +251,32 @@ int do_list_records(E3DB_Client *client, int argc, char **argv)
   return 0;
 }
 
+int do_write_record(E3DB_Client *client, int argc, char **argv)
+{
+  if (argc < 3) {
+    fputs(
+      "Usage: e3db write TYPE JSON\n"
+      "Write a record to E3DB.\n"
+      "\n"
+      "Available options:\n"
+      "  -h, --help           print this help and exit\n",
+      stderr);
+    return 1;
+  }
+
+  curl_global_init(CURL_GLOBAL_DEFAULT);
+
+  E3DB_Record *rec = E3DB_Record_New();
+  // TODO: Parse argument into JSON instead.
+  E3DB_Record_SetField(rec, "message", "hello world");
+  E3DB_Record_SetField(rec, "author", "jamesjb");
+
+  E3DB_Op *op = E3DB_Write_Begin(client, argv[1], rec);
+  curl_run_op(op);
+  E3DB_Op_Delete(op);
+  return 0;
+}
+
 int do_read_records(E3DB_Client *client, int argc, char **argv)
 {
   if (argc < 2) {
@@ -337,6 +365,8 @@ int main(int argc, char **argv)
     return do_list_records(client, argc - 1, &argv[1]);
   } else if (!strcmp(argv[1], "read")) {
     return do_read_records(client, argc - 1, &argv[1]);
+  } else if (!strcmp(argv[1], "write")) {
+    return do_write_record(client, argc - 1, &argv[1]);
   } else {
     fputs(usage, stderr);
     return 1;

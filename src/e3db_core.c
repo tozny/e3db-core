@@ -162,6 +162,7 @@ void E3DB_Client_Delete(E3DB_Client *client)
 
 typedef enum {
   E3DB_OP_QUERY,
+  E3DB_OP_WRITE,
 } E3DB_OpType;
 
 typedef enum {
@@ -509,40 +510,27 @@ static int E3DB_DecryptRecord(E3DB_Client *client, cJSON *record)
  */
 
 struct _E3DB_RecordMeta {
-  char *record_id;
-  char *writer_id;
-  char *user_id;
-  char *type;
-  // TODO: Add creation/modification time.
-  // TODO: Support custom plaintext metadata.
+  cJSON *json;
 };
 
 const char *E3DB_RecordMeta_GetRecordId(E3DB_RecordMeta *meta)
 {
-  return meta->record_id;
+  return cJSON_GetSafeObjectItemString(meta->json, "record_id");
 }
 
 const char *E3DB_RecordMeta_GetWriterId(E3DB_RecordMeta *meta)
 {
-  return meta->writer_id;
+  return cJSON_GetSafeObjectItemString(meta->json, "writer_id");
 }
 
 const char *E3DB_RecordMeta_GetUserId(E3DB_RecordMeta *meta)
 {
-  return meta->user_id;
+  return cJSON_GetSafeObjectItemString(meta->json, "user_id");
 }
 
 const char *E3DB_RecordMeta_GetType(E3DB_RecordMeta *meta)
 {
-  return meta->type;
-}
-
-static void E3DB_GetRecordMetaFromJSON(cJSON *json, E3DB_RecordMeta *meta)
-{
-  meta->record_id = cJSON_GetSafeObjectItemString(json, "record_id");
-  meta->writer_id = cJSON_GetSafeObjectItemString(json, "writer_id");
-  meta->user_id   = cJSON_GetSafeObjectItemString(json, "user_id");
-  meta->type      = cJSON_GetSafeObjectItemString(json, "type");
+  return cJSON_GetSafeObjectItemString(meta->json, "type");
 }
 
 struct _E3DB_Record {
@@ -552,6 +540,25 @@ struct _E3DB_Record {
 struct _E3DB_RecordFieldIterator {
   cJSON *pos;
 };
+
+/* Create a new record object with no fields. The returned record
+ * must be freed with "E3DB_Record_Delete". */
+E3DB_Record *E3DB_Record_New(void)
+{
+  E3DB_Record *rec = xmalloc(sizeof(E3DB_Record));
+  rec->json = cJSON_CreateObject();
+  return rec;
+}
+
+/* Delete a record object allocated by "E3DB_Record_New". */
+void E3DB_Record_Delete(E3DB_Record *rec)
+{
+  assert(rec != NULL);
+  assert(rec->json != NULL);
+
+  cJSON_Delete(rec->json);
+  xfree(rec);
+}
 
 /* Return the value of a field in a record. Returns NULL if the field
  * doesn't exist. The returned string lasts until the containing
@@ -573,6 +580,15 @@ const char *E3DB_Record_GetField(E3DB_Record *r, const char *field)
   }
 
   return j->valuestring;
+}
+
+/* Set (or update) the value of a field in a record. */
+void E3DB_Record_SetField(E3DB_Record *r, const char *field, const char *value)
+{
+  assert(r != NULL);
+  assert(r->json != NULL);
+
+  cJSON_AddStringToObject(r->json, field, value);
 }
 
 /* Return an iterator over the fields of a record. */
@@ -688,6 +704,119 @@ static void E3DB_InitAuthOp(E3DB_Client *client, E3DB_Op *op, E3DB_Op_HttpNextSt
 }
 
 /*
+ * {Write}
+ */
+
+typedef struct _E3DB_WriteResult {
+  E3DB_RecordMeta meta;
+  E3DB_Record *record;      // not owned
+  sds type;                 // owned
+} E3DB_WriteResult;
+
+static void E3DB_WriteResult_Delete(void *p)
+{
+  E3DB_WriteResult *result = p;
+
+  cJSON_Delete(result->meta.json);
+  sdsfree(result->type);
+  xfree(result);
+}
+
+/* State function called to handle a response to a write operation. */
+static int E3DB_Write_Response(E3DB_Op *op, int response_code, const char *body,
+                               E3DB_HttpHeaderList *headers, size_t num_headers)
+{
+  if (response_code != 201) {
+    // TODO: Handle non-successful responses.
+    fprintf(stderr, "Fatal: Error response from E3DB API: %d\n", response_code);
+    abort();
+  }
+
+  cJSON *json = cJSON_Parse(body);
+
+  if (json == NULL) {
+    fprintf(stderr, "Fatal: Parsing Query JSON response failed.\n");
+    abort();
+  }
+
+  puts(cJSON_Print(json));
+  E3DB_Op_Finish(op);
+  return 0;
+}
+
+// TODO: We need an intermediate state here to write the access key
+// unless we already know it (and we don't currently have an AK
+// cache).
+
+/* Initialize an operation to perform an HTTP POST of a new record. */
+static int E3DB_Write_InitOp(E3DB_Op *op)
+{
+  E3DB_WriteResult *result = op->result;
+
+  cJSON *meta = cJSON_CreateObject();
+  cJSON_AddItemToObject  (meta, "record_id", cJSON_CreateNull());
+  cJSON_AddStringToObject(meta, "writer_id", op->client->options->client_id);
+  cJSON_AddStringToObject(meta, "user_id",   op->client->options->client_id);
+  cJSON_AddStringToObject(meta, "type",      result->type);
+  cJSON_AddItemToObject  (meta, "plain",     cJSON_CreateObject());
+  cJSON_AddItemToObject  (meta, "created",   cJSON_CreateNull());
+
+  // TODO: Encrypt the record before writing it to the JSON body.
+
+  cJSON *json = cJSON_CreateObject();
+  cJSON_AddItemToObject(json, "meta", meta);
+  cJSON_AddItemToObject(json, "data", result->record->json);
+
+  char *body = cJSON_PrintUnformatted(json);
+  sds body_sds = sdsnew(body);
+  xfree(body);
+  cJSON_Delete(json);
+
+  op->state = E3DB_OP_STATE_HTTP;
+  op->request.http.url = sdscatprintf(sdsempty(), "%s/records", op->client->options->api_url);
+  op->request.http.method = sdsnew("POST");
+  op->request.http.body = body_sds;
+  op->request.http.next_state = E3DB_Write_Response;
+  op->request.http.headers = E3DB_HttpHeaderList_New();
+
+  sds auth_header = sdsnew("Bearer ");
+  auth_header = sdscat(auth_header, op->client->access_token);
+  E3DB_HttpHeaderList_Add(op->request.http.headers, "Authorization", auth_header);
+  sdsfree(auth_header);
+  return 0;
+}
+
+/* State function called to build a write request after an authentication
+ * response has completed. */
+static int E3DB_Write_Request(E3DB_Op *op, int response_code, const char *body,
+                              E3DB_HttpHeaderList *headers, size_t num_headers)
+{
+  E3DB_HandleAuthResponse(op, response_code, body);
+  E3DB_Write_InitOp(op);
+  return 0;
+}
+
+/* Begin an operation to write a record to the database. */
+E3DB_Op *E3DB_Write_Begin(E3DB_Client *client, const char *type, E3DB_Record *rec)
+{
+  E3DB_Op *op = E3DB_Op_New(client, E3DB_OP_WRITE);
+  E3DB_WriteResult *result = xmalloc(sizeof(E3DB_WriteResult));
+
+  result->record = rec;
+  result->type   = sdsnew(type);
+
+  op->result = result;
+  op->free_result = E3DB_WriteResult_Delete;
+
+  if (client->access_token == NULL)
+    E3DB_InitAuthOp(client, op, E3DB_Write_Request);
+  else
+    E3DB_Write_InitOp(op);
+
+  return op;
+}
+
+/*
  * {Query}
  */
 
@@ -743,8 +872,6 @@ static int E3DB_Query_Response(E3DB_Op *op, int response_code, const char *body,
     fprintf(stderr, "Fatal: Parsing Query JSON response failed.\n");
     abort();
   }
-
-  //puts(cJSON_Print(json));
 
   E3DB_QueryResult *result = op->result;
   result->json = json;
@@ -926,7 +1053,7 @@ E3DB_RecordMeta *E3DB_QueryResultIterator_GetMeta(E3DB_QueryResultIterator *it)
     abort();
   }
 
-  E3DB_GetRecordMetaFromJSON(meta, &it->meta);
+  it->meta.json = meta;
   return &it->meta;
 }
 
