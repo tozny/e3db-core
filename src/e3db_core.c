@@ -114,6 +114,7 @@ typedef enum
 {
   E3DB_OP_LIST_RECORDS,
   E3DB_OP_READ_RECORDS,
+  E3DB_OP_ENCRYPTED_ACCESS_KEYS_RECORDS,
 } E3DB_OpType;
 
 typedef enum
@@ -900,4 +901,62 @@ E3DB_Record *E3DB_ReadRecordsResultIterator_GetData(E3DB_ReadRecordsResultIterat
 
   it->record.json = data;
   return &it->record;
+}
+
+E3DB_Op *E3DB_GetEncryptedAccessKeys_Begin(
+    E3DB_Client *client, const char **writer_id, const char **user_id, const char **client_id, const char **record_type, size_t num_record_ids,
+    const char *fields[], size_t num_fields)
+{
+
+  E3DB_Op *op = E3DB_Op_New(client, E3DB_OP_ENCRYPTED_ACCESS_KEYS_RECORDS);
+  E3DB_ReadRecordsResult *result = xmalloc(sizeof(*result));
+
+  result->record_ids = record_ids;
+  result->num_record_ids = num_record_ids;
+
+  op->result = result;
+  op->free_result = E3DB_ReadRecordsResult_Delete;
+
+  // TODO: Also fetch auth token if our access token is expired.
+  if (client->access_token == NULL)
+  {
+    E3DB_InitAuthOp(client, op, E3DB_ReadRecords_Request);
+  }
+  else
+  {
+    E3DB_ENCRYPTEDACCESSKEYS_InitOp(op);
+  }
+
+  return op;
+}
+
+static void E3DB_ENCRYPTEDACCESSKEYS_InitOp(E3DB_Op *op)
+{
+  E3DB_ReadRecordsResult *result = op->result;
+
+  // TODO: Make sure at least 1 record ID is specified.
+
+  sds url = sdsnew(op->client->options->api_url);
+  url = sdscat(url, "/v1/storage/records/");
+
+  for (size_t i = 0; i < result->num_record_ids; ++i)
+  {
+    if (i != 0)
+      url = sdscat(url, ",");
+    url = sdscat(url, result->record_ids[i]);
+  }
+
+  // TODO: Add fields to URL
+
+  op->state = E3DB_OP_STATE_HTTP;
+  op->request.http.url = url;
+  op->request.http.method = sdsnew("GET");
+  op->request.http.body = sdsnew("");
+  op->request.http.next_state = E3DB_ReadRecords_Response;
+  op->request.http.headers = E3DB_HttpHeaderList_New();
+
+  sds auth_header = sdsnew("Bearer ");
+  auth_header = sdscat(auth_header, op->client->access_token);
+  E3DB_HttpHeaderList_Add(op->request.http.headers, "Authorization", auth_header);
+  sdsfree(auth_header);
 }

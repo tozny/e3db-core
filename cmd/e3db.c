@@ -292,10 +292,14 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
 
   while (!E3DB_ReadRecordsResultIterator_IsDone(it))
   {
-    // need to decrypt
-
+    // At this point we have encrypted data
     E3DB_RecordMeta *meta = E3DB_ReadRecordsResultIterator_GetMeta(it);
     E3DB_Record *record = E3DB_ReadRecordsResultIterator_GetData(it);
+
+    // Set up Access Keys Fetch
+    E3DB_Op *op = E3DB_GetEncryptedAccessKeys_Begin(client, E3DB_RecordMeta_GetWriterId(meta), E3DB_RecordMeta_GetUserId(meta), E3DB_RecordMeta_GetUserId(meta), E3DB_RecordMeta_GetType(meta), argc - 1, NULL, 0);
+    // Run access keys fetch
+    curl_run_op(op);
 
     printf("\n%-20s %s\n", "record_id", E3DB_RecordMeta_GetRecordId(meta));
 
