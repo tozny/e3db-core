@@ -23,12 +23,13 @@
  * {Client Options}
  */
 
-#define DEFAULT_API_URL    "https://api.e3db.tozny.com/v1"
-#define DEFAULT_AUTH_URL   "https://api.tot.tozny.com/v1"
-#define DEFAULT_API_KEY    ""
+#define DEFAULT_API_URL "https://api.e3db.com"
+#define DEFAULT_AUTH_URL "https://api.e3db.com/v1/auth"
+#define DEFAULT_API_KEY ""
 #define DEFAULT_API_SECRET ""
 
-struct _E3DB_ClientOptions {
+struct _E3DB_ClientOptions
+{
   sds api_url;
   sds api_key;
   sds api_secret;
@@ -39,8 +40,8 @@ E3DB_ClientOptions *E3DB_ClientOptions_New(void)
 {
   E3DB_ClientOptions *opts = xmalloc(sizeof(E3DB_ClientOptions));
 
-  opts->api_url    = sdsnew(DEFAULT_API_URL);
-  opts->api_key    = sdsnew(DEFAULT_API_KEY);
+  opts->api_url = sdsnew(DEFAULT_API_URL);
+  opts->api_key = sdsnew(DEFAULT_API_KEY);
   opts->api_secret = sdsnew(DEFAULT_API_SECRET);
 
   return opts;
@@ -76,7 +77,8 @@ void E3DB_ClientOptions_SetApiSecret(E3DB_ClientOptions *opts, const char *api_s
  * {Clients}
  */
 
-struct _E3DB_Client {
+struct _E3DB_Client
+{
   E3DB_ClientOptions *options;
   sds access_token;
   // TODO: Add cached JWT from auth service.
@@ -97,7 +99,8 @@ E3DB_Client *E3DB_Client_New(E3DB_ClientOptions *opts)
 void E3DB_Client_Delete(E3DB_Client *client)
 {
   E3DB_ClientOptions_Delete(client->options);
-  if (client->access_token) {
+  if (client->access_token)
+  {
     sdsfree(client->access_token);
   }
   xfree(client);
@@ -107,12 +110,14 @@ void E3DB_Client_Delete(E3DB_Client *client)
  * {Operations and Events}
  */
 
-typedef enum {
+typedef enum
+{
   E3DB_OP_LIST_RECORDS,
   E3DB_OP_READ_RECORDS,
 } E3DB_OpType;
 
-typedef enum {
+typedef enum
+{
   E3DB_OP_STATE_DONE,
   E3DB_OP_STATE_HTTP,
   E3DB_OP_STATE_CONFIG,
@@ -120,16 +125,19 @@ typedef enum {
 } E3DB_OpState;
 
 typedef int (*E3DB_Op_HttpNextStateFn)(E3DB_Op *op, int response_code,
-  const char *body, E3DB_HttpHeaderList *headers, size_t num_headers);
+                                       const char *body, E3DB_HttpHeaderList *headers, size_t num_headers);
 
-struct _E3DB_Op {
+struct _E3DB_Op
+{
   E3DB_Client *client;
   E3DB_OpType type;
   E3DB_OpState state;
 
   /* Information for the caller about the current state. */
-  union {
-    struct {
+  union
+  {
+    struct
+    {
       sds method;
       sds url;
       sds body;
@@ -137,11 +145,13 @@ struct _E3DB_Op {
       E3DB_Op_HttpNextStateFn next_state;
     } http;
 
-    struct {
+    struct
+    {
       int dummy;
     } config;
 
-    struct {
+    struct
+    {
       char *writer_id;
     } key;
   } request;
@@ -171,20 +181,21 @@ static E3DB_Op *E3DB_Op_New(E3DB_Client *client, E3DB_OpType type)
  * `E3DB_OpDelete' to both finish and delete the operation. */
 static void E3DB_Op_Finish(E3DB_Op *op)
 {
-  switch (op->state) {
-    case E3DB_OP_STATE_HTTP:
-      sdsfree(op->request.http.url);
-      sdsfree(op->request.http.body);
-      sdsfree(op->request.http.method);
-      E3DB_HttpHeaderList_Delete(op->request.http.headers);
-      break;
-    case E3DB_OP_STATE_KEY:
-      xfree(op->request.key.writer_id);
-      break;
-    case E3DB_OP_STATE_CONFIG:
-      break;
-    case E3DB_OP_STATE_DONE:
-      break;
+  switch (op->state)
+  {
+  case E3DB_OP_STATE_HTTP:
+    sdsfree(op->request.http.url);
+    sdsfree(op->request.http.body);
+    sdsfree(op->request.http.method);
+    E3DB_HttpHeaderList_Delete(op->request.http.headers);
+    break;
+  case E3DB_OP_STATE_KEY:
+    xfree(op->request.key.writer_id);
+    break;
+  case E3DB_OP_STATE_CONFIG:
+    break;
+  case E3DB_OP_STATE_DONE:
+    break;
   }
 
   op->state = E3DB_OP_STATE_DONE;
@@ -192,7 +203,8 @@ static void E3DB_Op_Finish(E3DB_Op *op)
 
 void E3DB_Op_Delete(E3DB_Op *op)
 {
-  if (op->free_result) {
+  if (op->free_result)
+  {
     op->free_result(op->result);
   }
 
@@ -211,13 +223,15 @@ int E3DB_Op_IsDone(E3DB_Op *op)
 
 typedef struct _E3DB_HttpHeader E3DB_HttpHeader;
 
-struct _E3DB_HttpHeader {
+struct _E3DB_HttpHeader
+{
   char *name;
   char *value;
   E3DB_HttpHeader *next;
 };
 
-struct _E3DB_HttpHeaderList {
+struct _E3DB_HttpHeaderList
+{
   E3DB_HttpHeader *header_list;
 };
 
@@ -234,7 +248,8 @@ void E3DB_HttpHeaderList_Delete(E3DB_HttpHeaderList *hdrs)
 {
   E3DB_HttpHeader *hdr, *tmp;
 
-  LL_FOREACH_SAFE(hdrs->header_list, hdr, tmp) {
+  LL_FOREACH_SAFE(hdrs->header_list, hdr, tmp)
+  {
     LL_DELETE(hdrs->header_list, hdr);
     sdsfree(hdr->name);
     sdsfree(hdr->value);
@@ -248,7 +263,7 @@ void E3DB_HttpHeaderList_Delete(E3DB_HttpHeaderList *hdrs)
 void E3DB_HttpHeaderList_Add(E3DB_HttpHeaderList *hdrs, const char *name, const char *value)
 {
   E3DB_HttpHeader *hdr = xmalloc(sizeof(E3DB_HttpHeader));
-  hdr->name  = sdsnew(name);
+  hdr->name = sdsnew(name);
   hdr->value = sdsnew(value);
   LL_PREPEND(hdrs->header_list, hdr);
 }
@@ -324,7 +339,7 @@ const char *E3DB_Op_GetHttpBody(E3DB_Op *op)
 }
 
 int E3DB_Op_FinishHttpState(E3DB_Op *op, int response_code, const char *body,
-                         E3DB_HttpHeaderList *headers, size_t num_headers)
+                            E3DB_HttpHeaderList *headers, size_t num_headers)
 {
   assert(op->state == E3DB_OP_STATE_HTTP);
   return (*op->request.http.next_state)(op, response_code, body, headers, num_headers);
@@ -334,7 +349,8 @@ int E3DB_Op_FinishHttpState(E3DB_Op *op, int response_code, const char *body,
  * {Records and Metadata}
  */
 
-struct _E3DB_RecordMeta {
+struct _E3DB_RecordMeta
+{
   char *record_id;
   char *writer_id;
   char *user_id;
@@ -369,10 +385,13 @@ static char *cJSON_GetSafeObjectItemString(cJSON *json, const char *name)
 {
   cJSON *obj = cJSON_GetObjectItem(json, name);
 
-  if (obj == NULL || obj->type != cJSON_String) {
+  if (obj == NULL || obj->type != cJSON_String)
+  {
     fprintf(stderr, "Warning: Field '%s' missing or not a string.\n", name);
     return "";
-  } else {
+  }
+  else
+  {
     return obj->valuestring;
   }
 }
@@ -381,16 +400,18 @@ static void E3DB_GetRecordMetaFromJSON(cJSON *json, E3DB_RecordMeta *meta)
 {
   meta->record_id = cJSON_GetSafeObjectItemString(json, "record_id");
   meta->writer_id = cJSON_GetSafeObjectItemString(json, "writer_id");
-  meta->user_id   = cJSON_GetSafeObjectItemString(json, "user_id");
-  meta->type      = cJSON_GetSafeObjectItemString(json, "type");
+  meta->user_id = cJSON_GetSafeObjectItemString(json, "user_id");
+  meta->type = cJSON_GetSafeObjectItemString(json, "type");
 }
 
 // TODO: How to reconcile this with decryption?
-struct _E3DB_Record {
-  cJSON *json;        // "data" field within record
+struct _E3DB_Record
+{
+  cJSON *json; // "data" field within record
 };
 
-struct _E3DB_RecordFieldIterator {
+struct _E3DB_RecordFieldIterator
+{
   cJSON *pos;
 };
 
@@ -403,12 +424,14 @@ const char *E3DB_Record_GetField(E3DB_Record *r, const char *field)
   assert(r->json != NULL);
 
   cJSON *j = cJSON_GetObjectItem(r->json, field);
-  if (j == NULL) {
+  if (j == NULL)
+  {
     fprintf(stderr, "Error: Field '%s' doesn't exist.\n", field);
     return NULL;
   }
 
-  if (j->type != cJSON_String) {
+  if (j->type != cJSON_String)
+  {
     fprintf(stderr, "Error: Field '%s' has unexpected type.\n", field);
     return NULL;
   }
@@ -485,7 +508,8 @@ static sds E3DB_GetAuthHeader(E3DB_Client *client)
  * in the client and will be used to authenticate subsequent requests. */
 static void E3DB_HandleAuthResponse(E3DB_Op *op, int response_code, const char *body)
 {
-  if (response_code != 200) {
+  if (response_code != 200)
+  {
     // TODO: Handle non-successful responses.
     fprintf(stderr, "Fatal: Error response from E3DB API: %d\n", response_code);
     abort();
@@ -495,7 +519,8 @@ static void E3DB_HandleAuthResponse(E3DB_Op *op, int response_code, const char *
   // Parse the response body then extract and store the access token.
   cJSON *json = cJSON_Parse(body);
 
-  if (json == NULL) {
+  if (json == NULL)
+  {
     // TODO: Error handling.
     fprintf(stderr, "Fatal: Unable to parse JSON response.\n");
     abort();
@@ -514,7 +539,6 @@ static void E3DB_HandleAuthResponse(E3DB_Op *op, int response_code, const char *
 static void E3DB_InitAuthOp(E3DB_Client *client, E3DB_Op *op, E3DB_Op_HttpNextStateFn next_state)
 {
   op->state = E3DB_OP_STATE_HTTP;
-  // TODO: Allow overriding the auth URL.
   op->request.http.url = sdscatprintf(sdsempty(), "%s/token", DEFAULT_AUTH_URL);
 
   op->request.http.method = sdsnew("POST");
@@ -528,23 +552,27 @@ static void E3DB_InitAuthOp(E3DB_Client *client, E3DB_Op *op, E3DB_Op_HttpNextSt
   sdsfree(auth_header);
 }
 
-typedef struct _E3DB_ListRecordsResult {
+typedef struct _E3DB_ListRecordsResult
+{
   cJSON *json;
   int limit;
   int offset;
 } E3DB_ListRecordsResult;
 
-typedef struct _E3DB_ListRecordsResultIterator {
-  cJSON *pos;               // never needs freeing
-  E3DB_RecordMeta meta;     // reused to avoid allocations on iteration
+typedef struct _E3DB_ListRecordsResultIterator
+{
+  cJSON *pos;           // never needs freeing
+  E3DB_RecordMeta meta; // reused to avoid allocations on iteration
 } E3DB_ListRecordsResultIterator;
 
 static void E3DB_ListRecordsResult_Delete(void *p)
 {
   E3DB_ListRecordsResult *result = p;
 
-  if (result != NULL) {
-    if (result->json != NULL) {
+  if (result != NULL)
+  {
+    if (result->json != NULL)
+    {
       cJSON_Delete(result->json);
     }
     xfree(result);
@@ -552,10 +580,11 @@ static void E3DB_ListRecordsResult_Delete(void *p)
 }
 
 static int E3DB_ListRecords_Response(E3DB_Op *op, int response_code,
-                                    const char *body, E3DB_HttpHeaderList *headers,
-                                    size_t num_headers)
+                                     const char *body, E3DB_HttpHeaderList *headers,
+                                     size_t num_headers)
 {
-  if (response_code != 200) {
+  if (response_code != 200)
+  {
     // TODO: Handle non-successful responses.
     fprintf(stderr, "Fatal: Error response from E3DB API: %d\n", response_code);
     abort();
@@ -563,7 +592,8 @@ static int E3DB_ListRecords_Response(E3DB_Op *op, int response_code,
 
   cJSON *json = cJSON_Parse(body);
 
-  if (json == NULL) {
+  if (json == NULL)
+  {
     // TODO: Figure out proper error handling here.
     fprintf(stderr, "Fatal: Parsing ListRecords JSON failed.\n");
     abort();
@@ -583,11 +613,10 @@ static void E3DB_ListRecords_InitOp(E3DB_Op *op)
 
   // TODO: Handle the `writer_id' and `types' parameters.
   op->state = E3DB_OP_STATE_HTTP;
-  op->request.http.url = sdscatprintf(sdsempty(), "%s/records?limit=%d&offset=%d",
-                                      op->client->options->api_url,
-                                      result->limit, result->offset);
+  op->request.http.url = sdscatprintf(sdsempty(), "%s/v1/storage/search",
+                                      op->client->options->api_url);
 
-  op->request.http.method = sdsnew("GET");
+  op->request.http.method = sdsnew("POST");
   op->request.http.body = sdsnew("");
   op->request.http.next_state = E3DB_ListRecords_Response;
   op->request.http.headers = E3DB_HttpHeaderList_New();
@@ -599,8 +628,8 @@ static void E3DB_ListRecords_InitOp(E3DB_Op *op)
 }
 
 static int E3DB_ListRecords_Request(E3DB_Op *op, int response_code,
-                                   const char *body, E3DB_HttpHeaderList *headers,
-                                   size_t num_headers)
+                                    const char *body, E3DB_HttpHeaderList *headers,
+                                    size_t num_headers)
 {
   E3DB_HandleAuthResponse(op, response_code, body);
   E3DB_ListRecords_InitOp(op);
@@ -622,11 +651,15 @@ E3DB_Op *E3DB_ListRecords_Begin(E3DB_Client *client, int limit, int offset,
   op->free_result = E3DB_ListRecordsResult_Delete;
 
   // TODO: Also fetch auth token if our access token is expired.
-  if (client->access_token == NULL) {
+  if (client->access_token == NULL)
+  {
     E3DB_InitAuthOp(client, op, E3DB_ListRecords_Request);
-  } else {
+  }
+  else
+  {
     E3DB_ListRecords_InitOp(op);
   }
+  printf("AFTR INIT OP");
 
   return op;
 }
@@ -672,13 +705,15 @@ E3DB_RecordMeta *E3DB_ListRecordsResultIterator_Get(E3DB_ListRecordsResultIterat
  * explicit set of fields.
  */
 
-struct _E3DB_ReadRecordsResult {
-  cJSON *json;              // entire ciphertext response body
+struct _E3DB_ReadRecordsResult
+{
+  cJSON *json; // entire ciphertext response body
   size_t num_record_ids;
-  const char **record_ids;  // not owned but maybe should be?
+  const char **record_ids; // not owned but maybe should be?
 };
 
-struct _E3DB_ReadRecordsResultIterator {
+struct _E3DB_ReadRecordsResultIterator
+{
   cJSON *pos;
   E3DB_RecordMeta meta;
   E3DB_Record record;
@@ -688,8 +723,10 @@ static void E3DB_ReadRecordsResult_Delete(void *p)
 {
   E3DB_ReadRecordsResult *result = p;
 
-  if (result != NULL) {
-    if (result->json != NULL) {
+  if (result != NULL)
+  {
+    if (result->json != NULL)
+    {
       cJSON_Delete(result->json);
     }
     xfree(result);
@@ -697,10 +734,11 @@ static void E3DB_ReadRecordsResult_Delete(void *p)
 }
 
 static int E3DB_ReadRecords_Response(
-  E3DB_Op *op, int response_code,
-  const char *body, E3DB_HttpHeaderList *headers, size_t num_headers)
+    E3DB_Op *op, int response_code,
+    const char *body, E3DB_HttpHeaderList *headers, size_t num_headers)
 {
-  if (response_code != 200) {
+  if (response_code != 200)
+  {
     // TODO: Handle non-successful responses.
     fprintf(stderr, "Fatal: Error response from E3DB API: %d\n", response_code);
     abort();
@@ -708,14 +746,16 @@ static int E3DB_ReadRecords_Response(
 
   cJSON *json = cJSON_Parse(body);
 
-  if (json == NULL) {
+  if (json == NULL)
+  {
     // TODO: Figure out proper error handling here.
     fprintf(stderr, "Fatal: Parsing ListRecords JSON failed.\n");
     abort();
   }
 
   /* Wrap the result in an array if it is a single object. */
-  if (json->type == cJSON_Object) {
+  if (json->type == cJSON_Object)
+  {
     cJSON *array = cJSON_CreateArray();
     cJSON_AddItemToArray(array, json);
     json = array;
@@ -735,10 +775,12 @@ static void E3DB_ReadRecords_InitOp(E3DB_Op *op)
   // TODO: Make sure at least 1 record ID is specified.
 
   sds url = sdsnew(op->client->options->api_url);
-  url = sdscat(url, "/records/");
+  url = sdscat(url, "/v1/storage/records/");
 
-  for (size_t i = 0; i < result->num_record_ids; ++i) {
-    if (i != 0) url = sdscat(url, ",");
+  for (size_t i = 0; i < result->num_record_ids; ++i)
+  {
+    if (i != 0)
+      url = sdscat(url, ",");
     url = sdscat(url, result->record_ids[i]);
   }
 
@@ -767,8 +809,8 @@ static int E3DB_ReadRecords_Request(E3DB_Op *op, int response_code,
 }
 
 E3DB_Op *E3DB_ReadRecords_Begin(
-  E3DB_Client *client, const char **record_ids, size_t num_record_ids,
-  const char *fields[], size_t num_fields)
+    E3DB_Client *client, const char **record_ids, size_t num_record_ids,
+    const char *fields[], size_t num_fields)
 {
   E3DB_Op *op = E3DB_Op_New(client, E3DB_OP_READ_RECORDS);
   E3DB_ReadRecordsResult *result = xmalloc(sizeof(*result));
@@ -780,9 +822,12 @@ E3DB_Op *E3DB_ReadRecords_Begin(
   op->free_result = E3DB_ReadRecordsResult_Delete;
 
   // TODO: Also fetch auth token if our access token is expired.
-  if (client->access_token == NULL) {
+  if (client->access_token == NULL)
+  {
     E3DB_InitAuthOp(client, op, E3DB_ReadRecords_Request);
-  } else {
+  }
+  else
+  {
     E3DB_ReadRecords_InitOp(op);
   }
 
@@ -832,7 +877,8 @@ E3DB_RecordMeta *E3DB_ReadRecordsResultIterator_GetMeta(E3DB_ReadRecordsResultIt
 {
   cJSON *meta = cJSON_GetObjectItem(it->pos, "meta");
 
-  if (meta == NULL || meta->type != cJSON_Object) {
+  if (meta == NULL || meta->type != cJSON_Object)
+  {
     fprintf(stderr, "Error: meta field doesn't exist.\n");
     abort();
   }
@@ -846,7 +892,8 @@ E3DB_Record *E3DB_ReadRecordsResultIterator_GetData(E3DB_ReadRecordsResultIterat
 {
   cJSON *data = cJSON_GetObjectItem(it->pos, "data");
 
-  if (data == NULL || data->type != cJSON_Object) {
+  if (data == NULL || data->type != cJSON_Object)
+  {
     fprintf(stderr, "Error: data field doesn't exist.\n");
     abort();
   }

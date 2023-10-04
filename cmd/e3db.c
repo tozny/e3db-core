@@ -21,16 +21,17 @@
 #include "cJSON.h"
 
 const char usage[] =
-  "Usage: e3db [OPTIONS] COMMAND [ARGS...]\n"
-  "Tozny E3DB Command Line Interface\n"
-  "\n"
-  "Available options:\n"
-  "  -h, --help           print this help and exit\n"
-  "      --version        output version info and exit\n"
-  "\n"
-  "Available commands:\n"
-  "  ls                   list my records\n"
-  "  read                 read records\n";
+    "Usage: e3db [OPTIONS] COMMAND [ARGS...]\n"
+    "Tozny E3DB Command Line Interface\n"
+    "\n"
+    "Available options:\n"
+    "  -h, --help           print this help and exit\n"
+    "      --version        output version info and exit\n"
+    "\n"
+    "Available commands:\n"
+    " read-record          read records\n"
+    " write                write record\n"
+    " writeFile            write file\n";
 
 /* Callback function for libcurl to write data received from an HTTP
  * request to an OpenSSL BIO. Returns the number of bytes written. */
@@ -39,7 +40,8 @@ size_t write_body(void *ptr, size_t size, size_t nmemb, BIO *bio)
   size_t len = size * nmemb;
   int result;
 
-  if ((result = BIO_write(bio, ptr, len)) < 0) {
+  if ((result = BIO_write(bio, ptr, len)) < 0)
+  {
     fprintf(stderr, "write_body: BIO_write failed\n");
     abort();
   }
@@ -55,7 +57,8 @@ size_t read_body(void *ptr, size_t size, size_t nmemb, BIO *bio)
   size_t len = size * nmemb;
   int result;
 
-  if ((result = BIO_read(bio, ptr, len)) < 0) {
+  if ((result = BIO_read(bio, ptr, len)) < 0)
+  {
     fprintf(stderr, "read_body: BIO_read failed\n");
     abort();
   }
@@ -68,13 +71,16 @@ int curl_run_op(E3DB_Op *op)
 {
   CURL *curl;
 
-  if ((curl = curl_easy_init()) == NULL) {
+  if ((curl = curl_easy_init()) == NULL)
+  {
     fprintf(stderr, "Fatal: Curl initialization failed.\n");
     exit(1);
   }
 
-  while (!E3DB_Op_IsDone(op)) {
-    if (E3DB_Op_IsHttpState(op)) {
+  while (!E3DB_Op_IsDone(op))
+  {
+    if (E3DB_Op_IsHttpState(op))
+    {
       curl_easy_reset(curl);
 
       const char *method = E3DB_Op_GetHttpMethod(op);
@@ -84,22 +90,28 @@ int curl_run_op(E3DB_Op *op)
       struct curl_slist *chunk = NULL;
       E3DB_HttpHeader *header = E3DB_HttpHeaderList_GetFirst(headers);
 
-      while (header != NULL) {
+      while (header != NULL)
+      {
         sds header_text = sdscatprintf(sdsempty(), "%s: %s",
-          E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
+                                       E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
         chunk = curl_slist_append(chunk, header_text);
         sdsfree(header_text);
 
         header = E3DB_HttpHeader_GetNext(header);
       }
 
-      if (!strcmp(method, "POST")) {
+      if (!strcmp(method, "POST"))
+      {
         const char *post_body = E3DB_Op_GetHttpBody(op);
         curl_easy_setopt(curl, CURLOPT_POST, 1L);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_body);
-      } else if (!strcmp(method, "GET")) {
+      }
+      else if (!strcmp(method, "GET"))
+      {
         // nothing special for GET
-      } else {
+      }
+      else
+      {
         fprintf(stderr, "Unsupported method: %s\n", method);
         abort();
       }
@@ -111,7 +123,8 @@ int curl_run_op(E3DB_Op *op)
       curl_easy_setopt(curl, CURLOPT_WRITEDATA, write_bio);
 
       CURLcode res = curl_easy_perform(curl);
-      if (res != CURLE_OK) {
+      if (res != CURLE_OK)
+      {
         fprintf(stderr, "curl_easy_perform: %s\n", curl_easy_strerror(res));
       }
 
@@ -122,7 +135,7 @@ int curl_run_op(E3DB_Op *op)
       BIO_write(write_bio, "\0", 1);
       BIO_get_mem_data(write_bio, &body);
       E3DB_Op_FinishHttpState(op, response_code, body, NULL, 0);
-
+      printf("HELLOO %s", body);
       BIO_free_all(write_bio);
       curl_slist_free_all(chunk);
     }
@@ -139,14 +152,18 @@ sds get_home_dir(void)
 {
   char *home;
 
-  if ((home = getenv("HOME")) != NULL) {
+  printf(getenv("HOME"));
+
+  if ((home = getenv("HOME")) != NULL)
+  {
     return sdsnew(home);
   }
 
   uid_t uid = getuid();
   struct passwd *pw = getpwuid(uid);
 
-  if (pw == NULL) {
+  if (pw == NULL)
+  {
     fprintf(stderr, "Error: Unable to get user home directory.\n");
     exit(1);
   }
@@ -157,10 +174,12 @@ sds get_home_dir(void)
 /* Load the user's e3db configuration into an E3DB_ClientOptions. */
 E3DB_ClientOptions *load_config(void)
 {
+
   sds config_file = sdscat(get_home_dir(), "/.tozny/e3db.json");
   FILE *in;
 
-  if ((in = fopen(config_file, "r")) == NULL) {
+  if ((in = fopen(config_file, "r")) == NULL)
+  {
     fprintf(stderr, "Error: Unable to open E3DB configuration file.\n");
     // TODO: Point the user to a registration flow.
     exit(1);
@@ -168,7 +187,8 @@ E3DB_ClientOptions *load_config(void)
 
   sds config = sdsempty();
 
-  while (!feof(in)) {
+  while (!feof(in))
+  {
     char buf[4096];
     size_t len;
 
@@ -177,9 +197,9 @@ E3DB_ClientOptions *load_config(void)
   }
 
   fclose(in);
-
   cJSON *json = cJSON_Parse(config);
-  if (json == NULL) {
+  if (json == NULL)
+  {
     fprintf(stderr, "Error: Unable to parse E3DB configuration file.\n");
     exit(1);
   }
@@ -188,13 +208,15 @@ E3DB_ClientOptions *load_config(void)
   cJSON *api_key, *api_secret;
 
   api_key = cJSON_GetObjectItem(json, "api_key_id");
-  if (api_key == NULL || api_key->type != cJSON_String) {
+  if (api_key == NULL || api_key->type != cJSON_String)
+  {
     fprintf(stderr, "Error: Missing 'api_key_id' key in configuration file.\n");
     exit(1);
   }
 
   api_secret = cJSON_GetObjectItem(json, "api_secret");
-  if (api_secret == NULL || api_secret->type != cJSON_String) {
+  if (api_secret == NULL || api_secret->type != cJSON_String)
+  {
     fprintf(stderr, "Error: Missing 'api_secret' key in configuration file.\n");
     exit(1);
   }
@@ -212,7 +234,7 @@ int do_list_records(E3DB_Client *client, int argc, char **argv)
 {
   // TODO: Parse command-specific options.
 
-  curl_global_init(CURL_GLOBAL_DEFAULT);
+  // curl_global_init(CURL_GLOBAL_DEFAULT);
 
   E3DB_Op *op = E3DB_ListRecords_Begin(client, 100, 0, NULL, NULL, 0);
 
@@ -224,13 +246,14 @@ int do_list_records(E3DB_Client *client, int argc, char **argv)
   printf("%-40s %-40s %s\n", "Record ID", "Writer ID", "Type");
   printf("--------------------------------------------------------------------------------------------------------\n");
 
-  while (!E3DB_ListRecordsResultIterator_IsDone(it)) {
+  while (!E3DB_ListRecordsResultIterator_IsDone(it))
+  {
     E3DB_RecordMeta *meta = E3DB_ListRecordsResultIterator_Get(it);
 
     printf("%-40s %-40s %s\n",
-      E3DB_RecordMeta_GetRecordId(meta),
-      E3DB_RecordMeta_GetWriterId(meta),
-      E3DB_RecordMeta_GetType(meta));
+           E3DB_RecordMeta_GetRecordId(meta),
+           E3DB_RecordMeta_GetWriterId(meta),
+           E3DB_RecordMeta_GetType(meta));
 
     E3DB_ListRecordsResultIterator_Next(it);
   }
@@ -244,14 +267,70 @@ int do_list_records(E3DB_Client *client, int argc, char **argv)
 
 int do_read_records(E3DB_Client *client, int argc, char **argv)
 {
-  if (argc < 2) {
+  if (argc < 2)
+  {
     fputs(
-      "Usage: e3db read [OPTIONS] RECORD_ID...\n"
-      "Read one or more records from E3DB.\n"
-      "\n"
-      "Available options:\n"
-      "  -h, --help           print this help and exit\n",
-      stderr);
+        "Usage: e3db read [OPTIONS] RECORD_ID...\n"
+        "Read one or more records from E3DB.\n"
+        "\n"
+        "Available options:\n"
+        "  -h, --help           print this help and exit\n",
+        stderr);
+    return 1;
+  }
+
+  // TODO: Parse command-specific options.
+
+  curl_global_init(CURL_GLOBAL_DEFAULT);
+
+  const char **record_ids = (const char **)&argv[1];
+  E3DB_Op *op = E3DB_ReadRecords_Begin(client, record_ids, argc - 1, NULL, 0);
+  curl_run_op(op);
+
+  E3DB_ReadRecordsResult *result = E3DB_ReadRecords_GetResult(op);
+  E3DB_ReadRecordsResultIterator *it = E3DB_ReadRecordsResult_GetIterator(result);
+
+  while (!E3DB_ReadRecordsResultIterator_IsDone(it))
+  {
+    // need to decrypt
+
+    E3DB_RecordMeta *meta = E3DB_ReadRecordsResultIterator_GetMeta(it);
+    E3DB_Record *record = E3DB_ReadRecordsResultIterator_GetData(it);
+
+    printf("\n%-20s %s\n", "record_id", E3DB_RecordMeta_GetRecordId(meta));
+
+    E3DB_RecordFieldIterator *f_it = E3DB_Record_GetFieldIterator(record);
+
+    while (!E3DB_RecordFieldIterator_IsDone(f_it))
+    {
+      printf("%-20s %s\n",
+             E3DB_RecordFieldIterator_GetName(f_it),
+             E3DB_RecordFieldIterator_GetValue(f_it));
+      E3DB_RecordFieldIterator_Next(f_it);
+    }
+
+    E3DB_RecordFieldIterator_Delete(f_it);
+    E3DB_ReadRecordsResultIterator_Next(it);
+  }
+
+  E3DB_ReadRecordsResultIterator_Delete(it);
+  E3DB_Op_Delete(op);
+  curl_global_cleanup();
+
+  return 0;
+}
+
+int do_write_record(E3DB_Client *client, int argc, char **argv)
+{
+  if (argc < 2)
+  {
+    fputs(
+        "Usage: e3db write [OPTIONS] ...\n"
+        "Write a record to E3DB.\n"
+        "\n"
+        "Available options:\n"
+        "  -h, --help           print this help and exit\n",
+        stderr);
     return 1;
   }
 
@@ -267,18 +346,20 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
   E3DB_ReadRecordsResult *result = E3DB_ReadRecords_GetResult(op);
   E3DB_ReadRecordsResultIterator *it = E3DB_ReadRecordsResult_GetIterator(result);
 
-  while (!E3DB_ReadRecordsResultIterator_IsDone(it)) {
+  while (!E3DB_ReadRecordsResultIterator_IsDone(it))
+  {
     E3DB_RecordMeta *meta = E3DB_ReadRecordsResultIterator_GetMeta(it);
-    E3DB_Record *record   = E3DB_ReadRecordsResultIterator_GetData(it);
+    E3DB_Record *record = E3DB_ReadRecordsResultIterator_GetData(it);
 
     printf("\n%-20s %s\n", "record_id", E3DB_RecordMeta_GetRecordId(meta));
 
     E3DB_RecordFieldIterator *f_it = E3DB_Record_GetFieldIterator(record);
 
-    while (!E3DB_RecordFieldIterator_IsDone(f_it)) {
+    while (!E3DB_RecordFieldIterator_IsDone(f_it))
+    {
       printf("%-20s %s\n",
-        E3DB_RecordFieldIterator_GetName(f_it),
-        E3DB_RecordFieldIterator_GetValue(f_it));
+             E3DB_RecordFieldIterator_GetName(f_it),
+             E3DB_RecordFieldIterator_GetValue(f_it));
       E3DB_RecordFieldIterator_Next(f_it);
     }
 
@@ -295,20 +376,31 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
 
 int main(int argc, char **argv)
 {
-  if (argc < 2) {
+
+  printf("e3db-cli\n");
+  printf("E3DB Command Line Interface\n");
+  printf("Instructions: \n");
+  printf("You must have a configuration file here: /.tozny/e3db.json\n");
+
+  // Catches the help option
+  if (argc < 2)
+  {
     fputs(usage, stderr);
     return 1;
   }
 
-  // TODO: Parse global options.
-
   E3DB_Client *client = E3DB_Client_New(load_config());
 
-  if (!strcmp(argv[1], "ls")) {
-    return do_list_records(client, argc - 1, &argv[1]);
-  } else if (!strcmp(argv[1], "read")) {
+  if (!strcmp(argv[1], "read-record"))
+  {
     return do_read_records(client, argc - 1, &argv[1]);
-  } else {
+  }
+  else if (!strcmp(argv[1], "write"))
+  {
+    return do_write_record(client, argc - 1, &argv[1]);
+  }
+  else
+  {
     fputs(usage, stderr);
     return 1;
   }
