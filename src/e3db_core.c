@@ -903,60 +903,102 @@ E3DB_Record *E3DB_ReadRecordsResultIterator_GetData(E3DB_ReadRecordsResultIterat
   return &it->record;
 }
 
-// E3DB_Op *E3DB_GetEncryptedAccessKeys_Begin(
-//     E3DB_Client *client, const char **writer_id, const char **user_id, const char **client_id, const char **record_type, size_t num_record_ids,
-//     const char *fields[], size_t num_fields)
-// {
+E3DB_Op *E3DB_GetEncryptedAccessKeys_Begin(
+    E3DB_Client *client, const char **writer_id, const char **user_id, const char **client_id, const char **record_type, size_t num_record_ids,
+    const char *fields[], size_t num_fields)
+{
 
-//   E3DB_Op *op = E3DB_Op_New(client, E3DB_OP_ENCRYPTED_ACCESS_KEYS_RECORDS);
-//   E3DB_ReadRecordsResult *result = xmalloc(sizeof(*result));
+  E3DB_Op *op = E3DB_Op_New(client, E3DB_OP_ENCRYPTED_ACCESS_KEYS_RECORDS);
+  E3DB_EncryptedAccessKeyResult *result = xmalloc(sizeof(*result));
 
-//   result->record_ids = record_ids;
-//   result->num_record_ids = num_record_ids;
+  // Set up neeeded params for call to get encrypted access keys
+  result->writer_id = writer_id;
+  result->user_id = user_id;
+  result->user_id = client_id;
+  result->type = record_type;
 
-//   op->result = result;
-//   op->free_result = E3DB_ReadRecordsResult_Delete;
+  op->result = result;
+  op->free_result = E3DB_EncryptedAccessKeyResult_Delete;
 
-//   // TODO: Also fetch auth token if our access token is expired.
-//   if (client->access_token == NULL)
-//   {
-//     E3DB_InitAuthOp(client, op, E3DB_ReadRecords_Request);
-//   }
-//   else
-//   {
-//     E3DB_ENCRYPTEDACCESSKEYS_InitOp(op);
-//   }
+  // TODO: Also fetch auth token if our access token is expired.
+  if (client->access_token == NULL)
+  {
+    E3DB_InitAuthOp(client, op, E3DB_ReadRecords_Request);
+  }
+  else
+  {
+    E3DB_EncryptedAccessKeys_InitOp(op);
+  }
 
-//   return op;
-// }
+  return op;
+}
 
-// static void E3DB_ENCRYPTEDACCESSKEYS_InitOp(E3DB_Op *op)
-// {
-//   E3DB_ReadRecordsResult *result = op->result;
+static void E3DB_EncryptedAccessKeys_InitOp(E3DB_Op *op)
+{
+  E3DB_EncryptedAccessKeyResult *result = op->result;
 
-//   // TODO: Make sure at least 1 record ID is specified.
+  // TODO: Make sure at least 1 record ID is specified.
 
-//   sds url = sdsnew(op->client->options->api_url);
-//   url = sdscat(url, "/v1/storage/records/");
+  sds url = sdsnew(op->client->options->api_url);
+  url = sdscat(url, "/v1/storage/access_keys/");
+  url = sdscat(url, result->writer_id);
 
-//   for (size_t i = 0; i < result->num_record_ids; ++i)
-//   {
-//     if (i != 0)
-//       url = sdscat(url, ",");
-//     url = sdscat(url, result->record_ids[i]);
-//   }
+  for (size_t i = 0; i < result->num_record_ids; ++i)
+  {
+    if (i != 0)
+      url = sdscat(url, ",");
+    url = sdscat(url, result->record_ids[i]);
+  }
 
-//   // TODO: Add fields to URL
+  // TODO: Add fields to URL
 
-//   op->state = E3DB_OP_STATE_HTTP;
-//   op->request.http.url = url;
-//   op->request.http.method = sdsnew("GET");
-//   op->request.http.body = sdsnew("");
-//   op->request.http.next_state = E3DB_ReadRecords_Response;
-//   op->request.http.headers = E3DB_HttpHeaderList_New();
+  op->state = E3DB_OP_STATE_HTTP;
+  op->request.http.url = url;
+  op->request.http.method = sdsnew("GET");
+  op->request.http.body = sdsnew("");
+  op->request.http.next_state = E3DB_ReadRecords_Response;
+  op->request.http.headers = E3DB_HttpHeaderList_New();
 
-//   sds auth_header = sdsnew("Bearer ");
-//   auth_header = sdscat(auth_header, op->client->access_token);
-//   E3DB_HttpHeaderList_Add(op->request.http.headers, "Authorization", auth_header);
-//   sdsfree(auth_header);
-// }
+  sds auth_header = sdsnew("Bearer ");
+  auth_header = sdscat(auth_header, op->client->access_token);
+  E3DB_HttpHeaderList_Add(op->request.http.headers, "Authorization", auth_header);
+  sdsfree(auth_header);
+}
+
+/*
+ * {Get Encrypted Access Keys}
+ *
+ *
+ */
+
+struct _E3DB_EncryptedAccessKeyResult
+{
+  cJSON *json; // entire ciphertext response body
+  const char **writer_id;
+  const char **user_id;
+  const char **reader_id;
+  const char **type;
+};
+
+static void E3DB_EncryptedAccessKeyResult_Delete(void *p)
+{
+  E3DB_EncryptedAccessKeyResult *result = p;
+
+  if (result != NULL)
+  {
+    if (result->json != NULL)
+    {
+      cJSON_Delete(result->json);
+    }
+    xfree(result);
+  }
+}
+
+static int E3DB_EncryptedAccessKey_Request(E3DB_Op *op, int response_code,
+                                           const char *body, E3DB_HttpHeaderList *headers,
+                                           size_t num_headers)
+{
+  E3DB_HandleAuthResponse(op, response_code, body);
+  E3DB_EncryptedAccessKeys_InitOp(op);
+  return 0;
+}

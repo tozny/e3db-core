@@ -200,6 +200,7 @@ extern "C"
 
   typedef struct _E3DB_ReadRecordsResult E3DB_ReadRecordsResult;
   typedef struct _E3DB_ReadRecordsResultIterator E3DB_ReadRecordsResultIterator;
+  typedef struct _E3DB_EncryptedAccessKeyResult E3DB_EncryptedAccessKeyResult;
 
   E3DB_Op *E3DB_ReadRecords_Begin(
       E3DB_Client *client, const char *record_ids[], size_t num_record_ids,
