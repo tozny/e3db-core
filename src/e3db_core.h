@@ -176,6 +176,7 @@ extern "C"
    */
 
   typedef struct _E3DB_ListRecordsResult E3DB_ListRecordsResult;
+  typedef struct _E3DB_EncryptedAccessKeyResult E3DB_EncryptedAccessKeyResult;
   typedef struct _E3DB_ListRecordsResultIterator E3DB_ListRecordsResultIterator;
 
   E3DB_Op *E3DB_ListRecords_Begin(E3DB_Client *client, int limit, int offset,
@@ -207,8 +208,7 @@ extern "C"
       const char *fields[], size_t num_fields);
 
   E3DB_Op *E3DB_GetEncryptedAccessKeys_Begin(
-      E3DB_Client *client, const char **writer_id, const char **user_id, const char **client_id, const char **record_type, size_t num_record_ids,
-      const char *fields[], size_t num_fields);
+      E3DB_Client *client, const char **writer_id, const char **user_id, const char **client_id, const char **record_type, size_t num_record_ids, const char **record_ids, const char *fields[], size_t num_fields);
 
   /* Return the result of a successful "read records" operation. Returns
    * NULL if the operation is not complete. The returned structure has the

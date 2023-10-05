@@ -284,6 +284,7 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
   curl_global_init(CURL_GLOBAL_DEFAULT);
 
   const char **record_ids = (const char **)&argv[1];
+  printf("\nRECORDS = %s\n", *record_ids);
   E3DB_Op *op = E3DB_ReadRecords_Begin(client, record_ids, argc - 1, NULL, 0);
   curl_run_op(op);
 
@@ -297,7 +298,7 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
     E3DB_Record *record = E3DB_ReadRecordsResultIterator_GetData(it);
 
     // Set up Access Keys Fetch
-    E3DB_Op *op = E3DB_GetEncryptedAccessKeys_Begin(client, E3DB_RecordMeta_GetWriterId(meta), E3DB_RecordMeta_GetUserId(meta), E3DB_RecordMeta_GetUserId(meta), E3DB_RecordMeta_GetType(meta), argc - 1, NULL, 0);
+    E3DB_Op *op = E3DB_GetEncryptedAccessKeys_Begin(client, E3DB_RecordMeta_GetWriterId(meta), E3DB_RecordMeta_GetUserId(meta), E3DB_RecordMeta_GetUserId(meta), E3DB_RecordMeta_GetType(meta), argc - 1, record_ids, NULL, 0);
     // Run access keys fetch
     curl_run_op(op);
 
