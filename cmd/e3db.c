@@ -298,9 +298,16 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
     E3DB_Record *record = E3DB_ReadRecordsResultIterator_GetData(it);
 
     // Set up Access Keys Fetch
-    E3DB_Op *op = E3DB_GetEncryptedAccessKeys_Begin(client, E3DB_RecordMeta_GetWriterId(meta), E3DB_RecordMeta_GetUserId(meta), E3DB_RecordMeta_GetUserId(meta), E3DB_RecordMeta_GetType(meta), argc - 1, record_ids, NULL, 0);
+    E3DB_Op *op = E3DB_GetEncryptedAccessKeys_Begin(client, E3DB_RecordMeta_GetWriterId(meta), E3DB_RecordMeta_GetUserId(meta), E3DB_RecordMeta_GetUserId(meta), E3DB_RecordMeta_GetType(meta), NULL, 0);
+
     // Run access keys fetch
     curl_run_op(op);
+
+    E3DB_EncryptedAccessKeyResult *EAKResult = E3DB_EAK_GetResult(op);
+    E3DB_GetEAKResultIterator *EAKIt = E3DB_GetEAKResultIterator_GetIterator(EAKResult);
+    E3DB_EAK *eak = E3DB_ReadRecordsResultIterator_GetEAK(EAKIt);
+
+    printf("\nEAK GET EAK\n", E3DB_EAK_GetEAK(eak));
 
     printf("\n%-20s %s\n", "record_id", E3DB_RecordMeta_GetRecordId(meta));
 

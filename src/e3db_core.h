@@ -132,6 +132,14 @@ extern "C"
 
   typedef struct _E3DB_RecordMeta E3DB_RecordMeta;
 
+  /*
+   * Encrypted Access Key
+   */
+  typedef struct _E3DB_SignerSigningKey E3DB_SignerSigningKey;
+  typedef struct _E3DB_AuthPubKey E3DB_AuthPubKey;
+
+  typedef struct _E3DB_EAK E3DB_EAK;
+
   // TODO: Create and delete record meta objects.
   // TODO: Setters
 
@@ -139,6 +147,7 @@ extern "C"
   const char *E3DB_RecordMeta_GetWriterId(E3DB_RecordMeta *meta);
   const char *E3DB_RecordMeta_GetUserId(E3DB_RecordMeta *meta);
   const char *E3DB_RecordMeta_GetType(E3DB_RecordMeta *meta);
+  const char *E3DB_EAK_GetEAK(E3DB_EAK *eak);
   // TODO: creation and modification time
 
   typedef struct _E3DB_Record E3DB_Record;
@@ -177,7 +186,9 @@ extern "C"
 
   typedef struct _E3DB_ListRecordsResult E3DB_ListRecordsResult;
   typedef struct _E3DB_EncryptedAccessKeyResult E3DB_EncryptedAccessKeyResult;
+  typedef struct _E3DB_EncryptedAccessKeyJSON E3DB_EncryptedAccessKeyJSON;
   typedef struct _E3DB_ListRecordsResultIterator E3DB_ListRecordsResultIterator;
+  typedef struct _E3DB_GetEAKResultIterator E3DB_GetEAKResultIterator;
 
   E3DB_Op *E3DB_ListRecords_Begin(E3DB_Client *client, int limit, int offset,
                                   UUID *writer_id, const char *types[],
@@ -187,6 +198,8 @@ extern "C"
   E3DB_ListRecordsResult *E3DB_ListRecords_GetResult(E3DB_Op *op);
 
   E3DB_ListRecordsResultIterator *E3DB_ListRecordsResult_GetIterator(E3DB_ListRecordsResult *result);
+  E3DB_GetEAKResultIterator *E3DB_GetEAKResultIterator_GetIterator(E3DB_EncryptedAccessKeyResult *result);
+
   void E3DB_ListRecordsResultIterator_Delete(E3DB_ListRecordsResultIterator *it);
 
   int E3DB_ListRecordsResultIterator_IsDone(E3DB_ListRecordsResultIterator *it);
@@ -208,7 +221,7 @@ extern "C"
       const char *fields[], size_t num_fields);
 
   E3DB_Op *E3DB_GetEncryptedAccessKeys_Begin(
-      E3DB_Client *client, const char **writer_id, const char **user_id, const char **client_id, const char **record_type, size_t num_record_ids, const char **record_ids, const char *fields[], size_t num_fields);
+      E3DB_Client *client, const char **writer_id, const char **user_id, const char **client_id, const char **record_type, const char *fields[], size_t num_fields);
 
   /* Return the result of a successful "read records" operation. Returns
    * NULL if the operation is not complete. The returned structure has the
@@ -217,6 +230,14 @@ extern "C"
 
   /* Return an iterator over the records in a result set. */
   E3DB_ReadRecordsResultIterator *E3DB_ReadRecordsResult_GetIterator(E3DB_ReadRecordsResult *r);
+
+  /* Return the result of a successful "get encrypted access key" operation. Returns
+   * NULL if the operation is not complete. The returned structure has the
+   * same lifetime as the containing operation and does not need to be freed. */
+  E3DB_EncryptedAccessKeyResult *E3DB_EAK_GetResult(E3DB_Op *op);
+
+  // /* Get the JSON object for an EAK */
+  // cJSON *E3DB_EAK_GetJSON(E3DB_EncryptedAccessKeyResult *op);
 
   /* Delete a record result iterator. */
   void E3DB_ReadRecordsResultIterator_Delete(E3DB_ReadRecordsResultIterator *it);
@@ -232,6 +253,9 @@ extern "C"
 
   /* Return the record record data for the current record in the result set. */
   E3DB_Record *E3DB_ReadRecordsResultIterator_GetData(E3DB_ReadRecordsResultIterator *it);
+
+  /* Return the EAK. */
+  E3DB_EAK *E3DB_ReadRecordsResultIterator_GetEAK(E3DB_GetEAKResultIterator *it);
 
 #ifdef __cplusplus
 }
