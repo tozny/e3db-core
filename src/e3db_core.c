@@ -19,6 +19,8 @@
 #include "e3db_mem.h"
 #include "e3db_base64.h"
 
+#include "sodium.h"
+
 /*
  * {Client Options}
  */
@@ -370,6 +372,37 @@ struct _E3DB_RecordMeta
   // TODO: Support custom plaintext metadata.
 };
 
+/*
+ * Authorizer signing key
+ */
+
+struct _E3DB_SignerSigningKey
+{
+  char *ed25519;
+};
+
+/*
+ * Authorizer public key
+ */
+
+struct _E3DB_AuthPubKey
+{
+  char *curve25519;
+};
+
+/*
+ * Encrypted access key
+ */
+
+struct _E3DB_EAK
+{
+  char *eak;
+  char *signer_id;
+  char *authorizer_id;
+  E3DB_SignerSigningKey signer_signing_key;
+  E3DB_AuthPubKey auth_pub_key;
+};
+
 const char *E3DB_RecordMeta_GetRecordId(E3DB_RecordMeta *meta)
 {
   return meta->record_id;
@@ -388,6 +421,11 @@ const char *E3DB_RecordMeta_GetUserId(E3DB_RecordMeta *meta)
 const char *E3DB_RecordMeta_GetType(E3DB_RecordMeta *meta)
 {
   return meta->type;
+}
+
+const char *E3DB_EAK_GetEAK(E3DB_EAK *eak)
+{
+  return eak->eak;
 }
 
 /* Utility function to safely get the string value of a JSON object field,
@@ -413,6 +451,16 @@ static void E3DB_GetRecordMetaFromJSON(cJSON *json, E3DB_RecordMeta *meta)
   meta->writer_id = cJSON_GetSafeObjectItemString(json, "writer_id");
   meta->user_id = cJSON_GetSafeObjectItemString(json, "user_id");
   meta->type = cJSON_GetSafeObjectItemString(json, "type");
+}
+
+static void E3DB_GetSignerSigningKeyFromJSON(cJSON *json, E3DB_SignerSigningKey *signer_signing_key)
+{
+  signer_signing_key->ed25519 = cJSON_GetSafeObjectItemString(json, "ed25519");
+}
+
+static void E3DB_GetAuthPubKeyFromJSON(cJSON *json, E3DB_AuthPubKey *auth_pub_key)
+{
+  auth_pub_key->curve25519 = cJSON_GetSafeObjectItemString(json, "curve25519");
 }
 
 // TODO: How to reconcile this with decryption?
@@ -570,15 +618,45 @@ typedef struct _E3DB_ListRecordsResult
   int offset;
 } E3DB_ListRecordsResult;
 
+typedef struct _E3DB_EncryptedAccessKeyResult
+{
+  cJSON *json; // entire ciphertext response body
+  const char **writer_id;
+  const char **user_id;
+  const char **reader_id;
+  const char **type;
+} E3DB_EncryptedAccessKeyResult;
+
 typedef struct _E3DB_ListRecordsResultIterator
 {
   cJSON *pos;           // never needs freeing
   E3DB_RecordMeta meta; // reused to avoid allocations on iteration
 } E3DB_ListRecordsResultIterator;
 
+typedef struct _E3DB_GetEAKResultIterator
+{
+  cJSON *pos; // never needs freeing
+  E3DB_EAK EAK;
+
+} E3DB_GetEAKResultIterator;
+
 static void E3DB_ListRecordsResult_Delete(void *p)
 {
   E3DB_ListRecordsResult *result = p;
+
+  if (result != NULL)
+  {
+    if (result->json != NULL)
+    {
+      cJSON_Delete(result->json);
+    }
+    xfree(result);
+  }
+}
+
+static void E3DB_EncryptedAccessKeyResult_Delete(void *p)
+{
+  E3DB_EncryptedAccessKeyResult *result = p;
 
   if (result != NULL)
   {
@@ -683,6 +761,13 @@ E3DB_ListRecordsResult *E3DB_ListRecords_GetResult(E3DB_Op *op)
 E3DB_ListRecordsResultIterator *E3DB_ListRecordsResult_GetIterator(E3DB_ListRecordsResult *result)
 {
   E3DB_ListRecordsResultIterator *it = xmalloc(sizeof(*it));
+  it->pos = result->json->child;
+  return it;
+}
+
+E3DB_GetEAKResultIterator *E3DB_GetEAKResultIterator_GetIterator(E3DB_EncryptedAccessKeyResult *result)
+{
+  E3DB_GetEAKResultIterator *it = xmalloc(sizeof(*it));
   it->pos = result->json->child;
   return it;
 }
@@ -841,7 +926,6 @@ E3DB_Op *E3DB_ReadRecords_Begin(
   {
     E3DB_ReadRecords_InitOp(op);
   }
-
   return op;
 }
 
@@ -860,6 +944,22 @@ E3DB_ReadRecordsResultIterator *E3DB_ReadRecordsResult_GetIterator(E3DB_ReadReco
   it->pos = r->json->child;
   return it;
 }
+
+/* Return the result of a successful "get encrypted access key" operation. Returns
+ * NULL if the operation is not complete. The returned structure has the
+ * same lifetime as the containing operation and does not need to be freed. */
+E3DB_EncryptedAccessKeyResult *E3DB_EAK_GetResult(E3DB_Op *op)
+{
+  return op->result;
+}
+
+// /* Return the result of a successful "get encrypted access key" operation. Returns
+//  * NULL if the operation is not complete. The returned structure has the
+//  * same lifetime as the containing operation and does not need to be freed. */
+// cJSON *E3DB_EAK_GetJSON(E3DB_EncryptedAccessKeyResult *op)
+// {
+//   return op->json;
+// }
 
 /* Delete a record result iterator. */
 void E3DB_ReadRecordsResultIterator_Delete(E3DB_ReadRecordsResultIterator *it)
@@ -886,7 +986,10 @@ void E3DB_ReadRecordsResultIterator_Next(E3DB_ReadRecordsResultIterator *it)
 /* Return the metadata for the current record in the result set. */
 E3DB_RecordMeta *E3DB_ReadRecordsResultIterator_GetMeta(E3DB_ReadRecordsResultIterator *it)
 {
+  printf("it->pos from E3DB_ReadRecordsResultIterator_GetMeta:\n%s\n", it->pos);
+
   cJSON *meta = cJSON_GetObjectItem(it->pos, "meta");
+  printf("cJSON *meta from E3DB_ReadRecordsResultIterator_GetMeta:\n%s\n", *meta);
 
   if (meta == NULL || meta->type != cJSON_Object)
   {
@@ -913,38 +1016,61 @@ E3DB_Record *E3DB_ReadRecordsResultIterator_GetData(E3DB_ReadRecordsResultIterat
   return &it->record;
 }
 
-E3DB_Op *E3DB_GetEncryptedAccessKeys_Begin(
-    E3DB_Client *client, const char **writer_id, const char **user_id, const char **client_id, const char **record_type, size_t num_record_ids,
-    const char *fields[], size_t num_fields)
+E3DB_EAK *E3DB_ReadRecordsResultIterator_GetEAK(E3DB_GetEAKResultIterator *it)
 {
-
-  E3DB_Op *op = E3DB_Op_New(client, E3DB_OP_ENCRYPTED_ACCESS_KEYS_RECORDS);
-  E3DB_EncryptedAccessKeyResult *result = xmalloc(sizeof(*result));
-
-  // Set up neeeded params for call to get encrypted access keys
-  result->writer_id = writer_id;
-  result->user_id = user_id;
-  result->user_id = client_id;
-  result->type = record_type;
-
-  op->result = result;
-  op->free_result = E3DB_EncryptedAccessKeyResult_Delete;
-
-  // TODO: Also fetch auth token if our access token is expired.
-  if (client->access_token == NULL)
+  cJSON *EAK = cJSON_GetObjectItem(it->pos, "eak");
+  if (EAK == NULL)
   {
-    E3DB_InitAuthOp(client, op, E3DB_ReadRecords_Request);
-  }
-  else
-  {
-    E3DB_EncryptedAccessKeys_InitOp(op);
+    fprintf(stderr, "Error: eak field doesn't exist.\n");
+    abort();
   }
 
-  return op;
+  cJSON *signer_id = cJSON_GetObjectItem(it->pos, "signer_id");
+  if (signer_id == NULL)
+  {
+    fprintf(stderr, "Error: signer_id field doesn't exist.\n");
+    abort();
+  }
+
+  cJSON *authorizer_id = cJSON_GetObjectItem(it->pos, "authorizer_id");
+  if (authorizer_id == NULL)
+  {
+    fprintf(stderr, "Error: authorizer_id field doesn't exist.\n");
+    abort();
+  }
+
+  cJSON *signer_signing_key = cJSON_GetObjectItem(it->pos, "signer_signing_key");
+  if (signer_signing_key == NULL)
+  {
+    fprintf(stderr, "Error: signer_signing_key field doesn't exist.\n");
+    abort();
+  }
+
+  cJSON *authorizer_public_key = cJSON_GetObjectItem(it->pos, "authorizer_public_key");
+  if (authorizer_public_key == NULL)
+  {
+    fprintf(stderr, "Error: signer_signing_key field doesn't exist.\n");
+    abort();
+  }
+
+  it->EAK.eak = cJSON_Print(EAK);
+  it->EAK.signer_id = cJSON_Print(signer_id);
+  it->EAK.authorizer_id = cJSON_Print(authorizer_id);
+  E3DB_GetSignerSigningKeyFromJSON(signer_signing_key, &it->EAK.signer_signing_key);
+  E3DB_GetAuthPubKeyFromJSON(authorizer_public_key, &it->EAK.auth_pub_key);
+
+  printf("\nit->EAK.eak: %s\n", it->EAK.eak);
+  printf("it->EAK.signer_id: %s\n", it->EAK.signer_id);
+  printf("it->EAK.authorizer_id: %s\n", it->EAK.authorizer_id);
+  printf("it->EAK.signer_signing_key.ed25519: %s\n", it->EAK.signer_signing_key.ed25519);
+  printf("it->EAK.auth_pub_key.curve25519: %s\n", it->EAK.auth_pub_key.curve25519);
+
+  return &it->EAK;
 }
 
 static void E3DB_EncryptedAccessKeys_InitOp(E3DB_Op *op)
 {
+  printf("\nHELLO from E3DB_EncryptedAccessKeys_InitOp\n");
   E3DB_EncryptedAccessKeyResult *result = op->result;
 
   // TODO: Make sure at least 1 record ID is specified.
@@ -952,13 +1078,14 @@ static void E3DB_EncryptedAccessKeys_InitOp(E3DB_Op *op)
   sds url = sdsnew(op->client->options->api_url);
   url = sdscat(url, "/v1/storage/access_keys/");
   url = sdscat(url, result->writer_id);
+  url = sdscat(url, "/");
+  url = sdscat(url, result->writer_id);
+  url = sdscat(url, "/");
+  url = sdscat(url, result->writer_id);
+  url = sdscat(url, "/");
+  url = sdscat(url, result->type);
 
-  for (size_t i = 0; i < result->num_record_ids; ++i)
-  {
-    if (i != 0)
-      url = sdscat(url, ",");
-    url = sdscat(url, result->record_ids[i]);
-  }
+  printf("\nURL: %s\n", url);
 
   // TODO: Add fields to URL
 
@@ -975,33 +1102,35 @@ static void E3DB_EncryptedAccessKeys_InitOp(E3DB_Op *op)
   sdsfree(auth_header);
 }
 
-/*
- * {Get Encrypted Access Keys}
- *
- *
- */
-
-struct _E3DB_EncryptedAccessKeyResult
+E3DB_Op *E3DB_GetEncryptedAccessKeys_Begin(
+    E3DB_Client *client, const char **writer_id, const char **user_id, const char **client_id, const char **record_type, const char *fields[], size_t num_fields)
 {
-  cJSON *json; // entire ciphertext response body
-  const char **writer_id;
-  const char **user_id;
-  const char **reader_id;
-  const char **type;
-};
 
-static void E3DB_EncryptedAccessKeyResult_Delete(void *p)
-{
-  E3DB_EncryptedAccessKeyResult *result = p;
+  E3DB_Op *op = E3DB_Op_New(client, E3DB_OP_ENCRYPTED_ACCESS_KEYS_RECORDS);
+  E3DB_EncryptedAccessKeyResult *result = xmalloc(sizeof(*result));
 
-  if (result != NULL)
+  // Set up needed params for call to get encrypted access keys
+  result->writer_id = writer_id;
+  result->user_id = user_id;
+  result->user_id = client_id;
+  result->type = record_type;
+
+  op->result = result;
+  op->free_result = E3DB_EncryptedAccessKeyResult_Delete;
+
+  // TODO: Also fetch auth token if our access token is expired.
+  if (client->access_token == NULL)
   {
-    if (result->json != NULL)
-    {
-      cJSON_Delete(result->json);
-    }
-    xfree(result);
+    printf("\nFrom E3DB_GetEncryptedAccessKeys_Begin, access key IS null\n");
+    E3DB_InitAuthOp(client, op, E3DB_ReadRecords_Request);
   }
+  else
+  {
+    printf("\nFrom E3DB_GetEncryptedAccessKeys_Begin, access key is NOT null\n");
+    E3DB_EncryptedAccessKeys_InitOp(op);
+  }
+
+  return op;
 }
 
 static int E3DB_EncryptedAccessKey_Request(E3DB_Op *op, int response_code,
