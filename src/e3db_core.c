@@ -19,6 +19,8 @@
 #include "e3db_mem.h"
 #include "e3db_base64.h"
 
+#include "sodium.h"
+
 /*
  * {Client Options}
  */

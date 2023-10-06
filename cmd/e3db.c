@@ -307,7 +307,35 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
     E3DB_GetEAKResultIterator *EAKIt = E3DB_GetEAKResultIterator_GetIterator(EAKResult);
     E3DB_EAK *eak = E3DB_ReadRecordsResultIterator_GetEAK(EAKIt);
 
-    printf("\nEAK GET EAK\n", E3DB_EAK_GetEAK(eak));
+    char *encryptedKey = E3DB_EAK_GetEAK(eak);
+
+    // Split the EAK into the key and nonce
+    // Strip first character if it is double quotes.
+    if (encryptedKey[0] == '"')
+    {
+      encryptedKey = encryptedKey + 1;
+    }
+    // Strip last character if it is double quotes.
+    if (encryptedKey[strlen(encryptedKey) - 1] == '"')
+    {
+      encryptedKey[strlen(encryptedKey) - 1] = '\0';
+    }
+    int i = 0;
+    char *p = strtok(encryptedKey, ".");
+    char *array[2];
+
+    while (p != NULL)
+    {
+      array[i++] = p;
+      p = strtok(NULL, ".");
+    }
+
+    printf("\n Key Part: %s\n", array[0]);
+    printf("\n Nonce Part: %s\n", array[1]);
+
+    // Turn key and nonce into bytes
+    char *ciphertextBytes = base64Decode(array[0]);
+    char *ciphertextBytes = base64Decode(array[0]);
 
     printf("\n%-20s %s\n", "record_id", E3DB_RecordMeta_GetRecordId(meta));
 
