@@ -15,6 +15,7 @@
 #include <curl/curl.h>
 #include <openssl/bio.h>
 #include <openssl/buffer.h>
+#include <openssl/evp.h>
 
 #include "e3db_core.h"
 #include "sds.h"
@@ -32,6 +33,58 @@ const char usage[] =
     " read-record          read records\n"
     " write                write record\n"
     " writeFile            write file\n";
+
+int calcDecodeLength(const char *b64input)
+{ // Calculates the length of a decoded base64 string
+  int len = strlen(b64input);
+  int padding = 0;
+
+  if (b64input[len - 1] == '=' && b64input[len - 2] == '=') // last two chars are =
+    padding = 2;
+  else if (b64input[len - 1] == '=') // last char is =
+    padding = 1;
+
+  return (int)len * 0.75 - padding;
+}
+
+char *base64_decode(const char *s)
+{
+  BIO *bio, *b64;
+  int decodeLen = (strlen(s) / 4) * 3;
+  char *buffer = (char *)malloc(decodeLen + 1); // +1 for the null terminator
+  if (buffer == NULL)
+  {
+    fprintf(stderr, "Memory allocation failed\n");
+    return NULL;
+  }
+
+  memset(buffer, 0, decodeLen + 1); // Initialize buffer to zeros
+
+  b64 = BIO_new(BIO_f_base64());
+  bio = BIO_new_mem_buf(s, -1); // -1 indicates string is null terminated
+  bio = BIO_push(b64, bio);
+
+  BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL); // Don't require newlines
+
+  int bytesRead = BIO_read(bio, buffer, decodeLen);
+  if (bytesRead < 0)
+  {
+    fprintf(stderr, "BIO_read failed\n");
+    free(buffer);
+    BIO_free_all(bio);
+    return NULL;
+  }
+
+  buffer[bytesRead] = '\0'; // Null-terminate the result
+
+  return buffer;
+  // sds result = sdsnewlen(buffer, bytesRead); // Create sds string with the correct length
+
+  // free(buffer);
+  // BIO_free_all(bio);
+
+  // return result;
+}
 
 /* Callback function for libcurl to write data received from an HTTP
  * request to an OpenSSL BIO. Returns the number of bytes written. */
@@ -332,12 +385,15 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
 
     printf("\n Key Part: %s\n", array[0]);
     printf("\n Nonce Part: %s\n", array[1]);
-
+    char *test = "cvW4MgliRgkMSr3vzz7eKM2M8nVpbj3PbJjdaY8ZQMgyJ3HySkwmuFd4c03Xpz";
     // Turn key and nonce into bytes
-    char *ciphertextBytes = base64Decode(array[0]);
-    char *ciphertextBytes = base64Decode(array[0]);
+    char *decodeKeyRet = base64_decode(test);
+    // int decodeNonceRet = Base64Decode(array[0], &nonceBuffer);
+    printf("\n Decoded Key!! %s\n", decodeKeyRet);
+    // printf("\n Decoded Nonce %s\n", nonceBuffer);
 
     printf("\n%-20s %s\n", "record_id", E3DB_RecordMeta_GetRecordId(meta));
+    printf("\n%-20s %s\n", "record_type", E3DB_RecordMeta_GetType(meta));
 
     E3DB_RecordFieldIterator *f_it = E3DB_Record_GetFieldIterator(record);
 
