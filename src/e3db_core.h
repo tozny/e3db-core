@@ -29,6 +29,7 @@ extern "C"
   void E3DB_ClientOptions_SetApiUrl(E3DB_ClientOptions *opts, const char *url);
   void E3DB_ClientOptions_SetApiKey(E3DB_ClientOptions *opts, const char *api_key);
   void E3DB_ClientOptions_SetApiSecret(E3DB_ClientOptions *opts, const char *api_secret);
+  void E3DB_ClientOptions_SetClientID(E3DB_ClientOptions *opts, const char *client_id);
 
   // TODO: Other ways to authenticate---Tozny, OIDC, etc.
 
@@ -199,6 +200,7 @@ extern "C"
   // TODO: Consider making a "RecordSet" abstraction to use for writes
 
   typedef struct _E3DB_ReadRecordsResult E3DB_ReadRecordsResult;
+  typedef struct _E3DB_WriteRecordsResult E3DB_WriteRecordsResult;
   typedef struct _E3DB_ReadRecordsResultIterator E3DB_ReadRecordsResultIterator;
   typedef struct _E3DB_EncryptedAccessKeyResult E3DB_EncryptedAccessKeyResult;
 
@@ -209,6 +211,9 @@ extern "C"
   E3DB_Op *E3DB_GetEncryptedAccessKeys_Begin(
       E3DB_Client *client, const char **writer_id, const char **user_id, const char **client_id, const char **record_type, size_t num_record_ids,
       const char *fields[], size_t num_fields);
+
+  E3DB_Op *E3DB_WriteRecord_Begin(
+      E3DB_Client *client, const char **record_type, const char **data, const char **meta);
 
   /* Return the result of a successful "read records" operation. Returns
    * NULL if the operation is not complete. The returned structure has the

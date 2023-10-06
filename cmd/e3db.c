@@ -152,8 +152,6 @@ sds get_home_dir(void)
 {
   char *home;
 
-  printf(getenv("HOME"));
-
   if ((home = getenv("HOME")) != NULL)
   {
     return sdsnew(home);
@@ -205,7 +203,7 @@ E3DB_ClientOptions *load_config(void)
   }
 
   E3DB_ClientOptions *opts = E3DB_ClientOptions_New();
-  cJSON *api_key, *api_secret;
+  cJSON *api_key, *api_secret, *client_id;
 
   api_key = cJSON_GetObjectItem(json, "api_key_id");
   if (api_key == NULL || api_key->type != cJSON_String)
@@ -221,8 +219,16 @@ E3DB_ClientOptions *load_config(void)
     exit(1);
   }
 
+  client_id = cJSON_GetObjectItem(json, "client_id");
+  if (client_id == NULL || client_id->type != cJSON_String)
+  {
+    fprintf(stderr, "Error: Missing 'client_id' key in configuration file.\n");
+    exit(1);
+  }
+
   E3DB_ClientOptions_SetApiKey(opts, api_key->valuestring);
   E3DB_ClientOptions_SetApiSecret(opts, api_secret->valuestring);
+  E3DB_ClientOptions_SetClientID(opts, client_id->valuestring);
 
   sdsfree(config);
   cJSON_Delete(json);
@@ -329,8 +335,9 @@ int do_write_record(E3DB_Client *client, int argc, char **argv)
   if (argc < 2)
   {
     fputs(
-        "Usage: e3db write [OPTIONS] ...\n"
+        "Usage: e3db write [OPTIONS] -t TYPE -d  DATA -m META \n"
         "Write a record to E3DB.\n"
+        "Pass in as JSON"
         "\n"
         "Available options:\n"
         "  -h, --help           print this help and exit\n",
@@ -338,12 +345,19 @@ int do_write_record(E3DB_Client *client, int argc, char **argv)
     return 1;
   }
 
-  // TODO: Parse command-specific options.
+  // printf("%s", argv);
+  // ./build/e3db write -t record-type -d "data" -m "meta"
+
+  // Get Type
+  const char **record_type = (const char **)&argv[2];
+  // Get Data
+  const char **data = (const char **)&argv[4];
+  // Get Meta Data
+  const char **meta = (const char **)&argv[6];
 
   curl_global_init(CURL_GLOBAL_DEFAULT);
 
-  const char **record_ids = (const char **)&argv[1];
-  E3DB_Op *op = E3DB_ReadRecords_Begin(client, record_ids, argc - 1, NULL, 0);
+  E3DB_Op *op = E3DB_WriteRecord_Begin(client, argc - 1, NULL, 0);
 
   curl_run_op(op);
 

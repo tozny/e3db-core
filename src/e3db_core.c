@@ -27,12 +27,14 @@
 #define DEFAULT_AUTH_URL "https://api.e3db.com/v1/auth"
 #define DEFAULT_API_KEY ""
 #define DEFAULT_API_SECRET ""
+#define DEFAULT_CLIENT_ID ""
 
 struct _E3DB_ClientOptions
 {
   sds api_url;
   sds api_key;
   sds api_secret;
+  sds client_id;
   // TODO: Add other forms of authentication.
 };
 
@@ -43,6 +45,7 @@ E3DB_ClientOptions *E3DB_ClientOptions_New(void)
   opts->api_url = sdsnew(DEFAULT_API_URL);
   opts->api_key = sdsnew(DEFAULT_API_KEY);
   opts->api_secret = sdsnew(DEFAULT_API_SECRET);
+  opts->client_id = sdsnew(DEFAULT_CLIENT_ID);
 
   return opts;
 }
@@ -52,6 +55,7 @@ void E3DB_ClientOptions_Delete(E3DB_ClientOptions *opts)
   sdsfree(opts->api_url);
   sdsfree(opts->api_key);
   sdsfree(opts->api_secret);
+  sdsfree(opts->client_id);
   xfree(opts);
 }
 
@@ -71,6 +75,11 @@ void E3DB_ClientOptions_SetApiSecret(E3DB_ClientOptions *opts, const char *api_s
 {
   sdsfree(opts->api_secret);
   opts->api_secret = sdsnew(api_secret);
+}
+void E3DB_ClientOptions_SetClientID(E3DB_ClientOptions *opts, const char *client_id)
+{
+  sdsfree(opts->client_id);
+  opts->client_id = sdsnew(client_id);
 }
 
 /*
@@ -115,6 +124,7 @@ typedef enum
   E3DB_OP_LIST_RECORDS,
   E3DB_OP_READ_RECORDS,
   E3DB_OP_ENCRYPTED_ACCESS_KEYS_RECORDS,
+  E3DB_OP_WRITE_RECORD,
 } E3DB_OpType;
 
 typedef enum
@@ -1001,4 +1011,113 @@ static int E3DB_EncryptedAccessKey_Request(E3DB_Op *op, int response_code,
   E3DB_HandleAuthResponse(op, response_code, body);
   E3DB_EncryptedAccessKeys_InitOp(op);
   return 0;
+}
+
+// Write Data
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+struct _E3DB_WriteRecordsResult
+{
+  cJSON *json; // entire ciphertext response body
+  const char **record_type;
+  const char **data;
+  const char **meta;
+};
+
+struct RecordMetaData
+{
+  cJSON *json; // entire ciphertext response body
+  const char **record_id;
+  const char **writer_id;
+  const char **user_id;
+  const char **type;
+  const char **version;
+  const char **plain;
+  const time_t **created;
+  const time_t *last_modified;
+};
+
+struct Record
+{
+  const char **data;
+  const struct RecordMetaData *meta;
+};
+
+static void E3DB_WriteRecordsResult_Delete(void *p)
+{
+  E3DB_WriteRecordsResult *result = p;
+
+  if (result != NULL)
+  {
+    if (result->json != NULL)
+    {
+      cJSON_Delete(result->json);
+    }
+    xfree(result);
+  }
+}
+
+static void E3DB_WriteRecords_InitOp(E3DB_Op *op)
+{
+  E3DB_WriteRecordsResult *result = op->result;
+
+  sds url = sdsnew(op->client->options->api_url);
+  url = sdscat(url, "/v1/storage/records/");
+
+  struct Record record;
+  sizeof(record);
+
+  strcpy(record.meta->writer_id, op->client->options->client_id);
+  strcpy(record.meta->user_id, op->client->options->client_id);
+  strcpy(record.meta->type, result->record_type);
+  strcpy(record.meta->plain, result->meta);
+  strcpy(record.data, result->data);
+
+  // TODO: Add fields to URL
+
+  op->state = E3DB_OP_STATE_HTTP;
+  op->request.http.url = url;
+  op->request.http.method = sdsnew("POST");
+  op->request.http.body = sdsnew("grant_type=client_credentials");
+  op->request.http.next_state = E3DB_ReadRecords_Response;
+  op->request.http.headers = E3DB_HttpHeaderList_New();
+
+  sds auth_header = sdsnew("Bearer ");
+  auth_header = sdscat(auth_header, op->client->access_token);
+  E3DB_HttpHeaderList_Add(op->request.http.headers, "Authorization", auth_header);
+  sdsfree(auth_header);
+}
+
+static int E3DB_WriteRecords_Request(E3DB_Op *op, int response_code,
+                                     const char *body, E3DB_HttpHeaderList *headers,
+                                     size_t num_headers)
+{
+  E3DB_HandleAuthResponse(op, response_code, body);
+  E3DB_WriteRecords_InitOp(op);
+  return 0;
+}
+
+E3DB_Op *E3DB_WriteRecord_Begin(
+    E3DB_Client *client, const char **record_type, const char **data, const char **meta)
+{
+  E3DB_Op *op = E3DB_Op_New(client, E3DB_OP_WRITE_RECORD);
+  E3DB_WriteRecordsResult *result = xmalloc(sizeof(*result));
+
+  result->record_type = record_type;
+  result->data = data;
+  result->meta = meta;
+
+  op->result = result;
+  op->free_result = E3DB_WriteRecordsResult_Delete;
+
+  // TODO: Also fetch auth token if our access token is expired.
+  if (client->access_token == NULL)
+  {
+    E3DB_InitAuthOp(client, op, E3DB_WriteRecords_Request);
+  }
+  else
+  {
+    E3DB_WriteRecords_InitOp(op);
+  }
+  return op;
 }
