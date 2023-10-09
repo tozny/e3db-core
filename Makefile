@@ -61,7 +61,7 @@ $(LIB): $(OBJECTS)
 $(CMD): $(CMD_OBJECTS) $(CMD_HEADERS) $(LIB) $(HEADERS)
 	@printf "%-10s %s\n" "LINK" "$@"
 	@-mkdir -p $(dir $@)
-	@gcc $(CFLAGS) $(LDFLAGS) -o $@ -Isrc $< $(LIB) -lcurl -lssl -lcrypto -lm
+	@gcc $(CFLAGS) $(LDFLAGS) -o $@ -Isrc $< $(LIB) -lcurl -lssl -lcrypto -lm -lsodium
 
 $(BUILD_DIR)/%.o: %.c $(HEADERS)
 	@printf "%-10s %s\n" "CC" "$@"

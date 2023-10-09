@@ -47,7 +47,7 @@ int calcDecodeLength(const char *b64input)
   return (int)len * 0.75 - padding;
 }
 
-char *base64_decode(const char *s)
+char *base64_decode1(const char *s)
 {
   BIO *bio, *b64;
   int decodeLen = (strlen(s) / 4) * 3;
@@ -365,38 +365,45 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
     E3DB_EncryptedAccessKeyResult *EAKResult = E3DB_EAK_GetResult(op);
     E3DB_GetEAKResultIterator *EAKIt = E3DB_GetEAKResultIterator_GetIterator(EAKResult);
     E3DB_EAK *eak = E3DB_ReadRecordsResultIterator_GetEAK(EAKIt);
+    char *rawEAK = E3DB_EAK_GetEAK(eak);
+    char *authPublicKey = E3DB_EAK_GetAuthPubKey(eak);
 
-    char *encryptedKey = E3DB_EAK_GetEAK(eak);
+    char* ak = E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, "e4Yj6iGbUrJGy3mrxuXXXqmeybyskuxAU48Cx5iFevo");
 
-    // Split the EAK into the key and nonce
-    // Strip first character if it is double quotes.
-    if (encryptedKey[0] == '"')
-    {
-      encryptedKey = encryptedKey + 1;
-    }
-    // Strip last character if it is double quotes.
-    if (encryptedKey[strlen(encryptedKey) - 1] == '"')
-    {
-      encryptedKey[strlen(encryptedKey) - 1] = '\0';
-    }
-    int i = 0;
-    char *p = strtok(encryptedKey, ".");
-    char *array[2];
+    printf("\n Decoded Access Key: %s\n", ak);
 
-    while (p != NULL)
-    {
-      array[i++] = p;
-      p = strtok(NULL, ".");
-    }
+    // // Split the EAK into the key and nonce
+    // // Strip first character if it is double quotes.
+    // if (encryptedKey[0] == '"')
+    // {
+    //   encryptedKey = encryptedKey + 1;
+    // }
+    // // Strip last character if it is double quotes.
+    // if (encryptedKey[strlen(encryptedKey) - 1] == '"')
+    // {
+    //   encryptedKey[strlen(encryptedKey) - 1] = '\0';
+    // }
+    // int i = 0;
+    // char *p = strtok(encryptedKey, ".");
+    // char *array[2];
 
-    printf("\n Key Part: %s\n", array[0]);
-    printf("\n Nonce Part: %s\n", array[1]);
-    char *test = "cvW4MgliRgkMSr3vzz7eKM2M8nVpbj3PbJjdaY8ZQMgyJ3HySkwmuFd4c03Xpz";
-    // Turn key and nonce into bytes
-    char *decodeKeyRet = base64_decode(test);
-    // int decodeNonceRet = Base64Decode(array[0], &nonceBuffer);
-    printf("\n Decoded Key!! %s\n", decodeKeyRet);
-    // printf("\n Decoded Nonce %s\n", nonceBuffer);
+    // while (p != NULL)
+    // {
+    //   array[i++] = p;
+    //   p = strtok(NULL, ".");
+    // }
+
+    // printf("\n Key Part: %s\n", array[0]);
+    // printf("\n Nonce Part: %s\n", array[1]);
+    // char *test = "cvW4Mgl/iRgkMSr3vzz7eKM2M8nVpbj3PbJjdaY8ZQMgyJ3HySkwmuFd4c/03Xpz";
+    // // Turn key and nonce into bytes
+    // char *decodeKeyRet = base64_decode1(test);
+    // // int decodeNonceRet = Base64Decode(array[0], &nonceBuffer);
+    // printf("\n Decoded Key!! %s\n", decodeKeyRet);
+    // for(int i=0; i<50; i++) {
+    //   printf("%d ", decodeKeyRet[i]);
+    // }
+    // // printf("\n Decoded Nonce %s\n", nonceBuffer);
 
     printf("\n%-20s %s\n", "record_id", E3DB_RecordMeta_GetRecordId(meta));
     printf("\n%-20s %s\n", "record_type", E3DB_RecordMeta_GetType(meta));

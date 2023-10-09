@@ -428,6 +428,11 @@ const char *E3DB_EAK_GetEAK(E3DB_EAK *eak)
   return eak->eak;
 }
 
+const char *E3DB_EAK_GetAuthPubKey(E3DB_EAK *eak)
+{
+  return eak->auth_pub_key.curve25519;
+}
+
 /* Utility function to safely get the string value of a JSON object field,
  * returning an empty string if not present. */
 static char *cJSON_GetSafeObjectItemString(cJSON *json, const char *name)
@@ -1066,6 +1071,36 @@ E3DB_EAK *E3DB_ReadRecordsResultIterator_GetEAK(E3DB_GetEAKResultIterator *it)
   printf("it->EAK.auth_pub_key.curve25519: %s\n", it->EAK.auth_pub_key.curve25519);
 
   return &it->EAK;
+}
+
+const char *E3DB_EAK_DecryptEAK(char *eak, char *pubKey, char *privKey)
+{
+  unsigned char *ak;
+
+  int i = 0;
+  char *p = strtok(eak, ".");
+  char *array[2];
+
+  while (p != NULL)
+  {
+    array[i++] = p;
+    p = strtok(NULL, ".");
+  }
+  unsigned char *decodedKey = base64_decode(array[0]);
+  unsigned char *decodedNonce = base64_decode(array[1]);
+
+  unsigned char *decodedPubKey = base64_decode(pubKey);
+  unsigned char *decodedPrivKey = base64_decode(privKey);
+
+  int status = crypto_box_open(ak, decodedKey, 1000, decodedNonce, decodedPubKey, decodedPrivKey);
+  
+  printf("\n Decode status: %d \n", status);
+
+  for(int i=0; i<50; i++) {
+    printf("%d ", ak[i]);
+  } 
+
+  return ak;
 }
 
 static void E3DB_EncryptedAccessKeys_InitOp(E3DB_Op *op)
