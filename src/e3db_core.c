@@ -1122,7 +1122,7 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
 
   unsigned long long clen = strlen((const char *)decodedDataKey);
   unsigned char *dk;
-  
+
   int status = crypto_secretbox_open_easy(dk, decodedDataKey, clen, decodedDataKeyNonce, ak);
   printf("Data data key Decryption Status: %d \n", status);
 
@@ -1137,7 +1137,6 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
   // }
 
   return data;
-
 }
 
 static void E3DB_EncryptedAccessKeys_InitOp(E3DB_Op *op)
