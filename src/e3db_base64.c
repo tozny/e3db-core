@@ -38,10 +38,12 @@ sds base64_encode(const char *s)
 
 sds base64_decode(const char* base64)
 {
+	printf("Received base64 length: %d \n", strlen(base64));
 	char *input;
-	input = (char *)malloc(strlen(base64) * sizeof(char));
+	input = (char *)malloc(strlen(base64) * sizeof(char) + 1);
 	// Remove double quotes, replace url encoded chars _ with / and - with +.
 	int count = 0;
+	int quotes = 0;
 	for(int i=0; i<strlen(base64); i++) {
 		if (base64[i] == '_'){
 			input[count] = '/';
@@ -52,11 +54,16 @@ sds base64_decode(const char* base64)
 		} else if (base64[i] != '"') {
 			input[count] = base64[i];
 			count ++;
-		} 
+		} else {
+			quotes++;
+		}
+		input = (char *)realloc(input, (strlen(base64) - quotes)*sizeof(char)+1);
 	}
+	input[strlen(input)-1] = '\0';
+	printf("URL Decoded Count: %d \n", count);
 	printf("URL Decoded base64: %s \n", input);
 	/* set up a destination buffer large enough to hold the encoded data */
-	unsigned char* output = (char*)malloc(strlen(input));
+	unsigned char* output = (char*)malloc(strlen(input)+1);
 	/* keep track of our decoded position */
 	unsigned char* c = output;
 	/* store the number of bytes decoded by a single call */
@@ -76,5 +83,6 @@ sds base64_decode(const char* base64)
 	/* we want to print the decoded data, so null-terminate it: */
 	*c = 0;
 	free(input);
+	output[strlen(input)-1] = '\0';
 	return output;
 }
