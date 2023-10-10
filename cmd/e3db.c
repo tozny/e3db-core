@@ -368,43 +368,8 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
     char *rawEAK = E3DB_EAK_GetEAK(eak);
     char *authPublicKey = E3DB_EAK_GetAuthPubKey(eak);
 
-    char* ak = E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, "e4Yj6iGbUrJGy3mrxuXXXqmeybyskuxAU48Cx5iFevo");
-
-    printf("\n Decoded Access Key: %s\n", ak);
-
-    // // Split the EAK into the key and nonce
-    // // Strip first character if it is double quotes.
-    // if (encryptedKey[0] == '"')
-    // {
-    //   encryptedKey = encryptedKey + 1;
-    // }
-    // // Strip last character if it is double quotes.
-    // if (encryptedKey[strlen(encryptedKey) - 1] == '"')
-    // {
-    //   encryptedKey[strlen(encryptedKey) - 1] = '\0';
-    // }
-    // int i = 0;
-    // char *p = strtok(encryptedKey, ".");
-    // char *array[2];
-
-    // while (p != NULL)
-    // {
-    //   array[i++] = p;
-    //   p = strtok(NULL, ".");
-    // }
-
-    // printf("\n Key Part: %s\n", array[0]);
-    // printf("\n Nonce Part: %s\n", array[1]);
-    // char *test = "cvW4Mgl/iRgkMSr3vzz7eKM2M8nVpbj3PbJjdaY8ZQMgyJ3HySkwmuFd4c/03Xpz";
-    // // Turn key and nonce into bytes
-    // char *decodeKeyRet = base64_decode1(test);
-    // // int decodeNonceRet = Base64Decode(array[0], &nonceBuffer);
-    // printf("\n Decoded Key!! %s\n", decodeKeyRet);
-    // for(int i=0; i<50; i++) {
-    //   printf("%d ", decodeKeyRet[i]);
-    // }
-    // // printf("\n Decoded Nonce %s\n", nonceBuffer);
-
+    unsigned char *ak = E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, "e4Yj6iGbUrJGy3mrxuXXXqmeybyskuxAU48Cx5iFevo");
+    
     printf("\n%-20s %s\n", "record_id", E3DB_RecordMeta_GetRecordId(meta));
     printf("\n%-20s %s\n", "record_type", E3DB_RecordMeta_GetType(meta));
 
@@ -412,7 +377,10 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
 
     while (!E3DB_RecordFieldIterator_IsDone(f_it))
     {
-      printf("%-20s %s\n",
+      char *edata = E3DB_RecordFieldIterator_GetValue(f_it);
+      E3DB_RecordFieldIterator_DecryptValue(edata, ak);
+      
+      printf("\n %-20s %s\n",
              E3DB_RecordFieldIterator_GetName(f_it),
              E3DB_RecordFieldIterator_GetValue(f_it));
       E3DB_RecordFieldIterator_Next(f_it);
@@ -425,7 +393,7 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
   E3DB_ReadRecordsResultIterator_Delete(it);
   E3DB_Op_Delete(op);
   curl_global_cleanup();
-
+  
   return 0;
 }
 

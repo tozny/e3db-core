@@ -1075,7 +1075,7 @@ E3DB_EAK *E3DB_ReadRecordsResultIterator_GetEAK(E3DB_GetEAKResultIterator *it)
 
 const char *E3DB_EAK_DecryptEAK(char *eak, char *pubKey, char *privKey)
 {
-  unsigned char *ak;
+  unsigned char *ak = (unsigned char *)malloc(32);
 
   int i = 0;
   char *p = strtok(eak, ".");
@@ -1092,15 +1092,50 @@ const char *E3DB_EAK_DecryptEAK(char *eak, char *pubKey, char *privKey)
   unsigned char *decodedPubKey = base64_decode(pubKey);
   unsigned char *decodedPrivKey = base64_decode(privKey);
 
-  int status = crypto_box_open(ak, decodedKey, 1000, decodedNonce, decodedPubKey, decodedPrivKey);
-  
-  printf("\n Decode status: %d \n", status);
+  unsigned long long clen = strlen((const char *)decodedKey);
 
-  for(int i=0; i<50; i++) {
-    printf("%d ", ak[i]);
-  } 
+  int status = crypto_box_open_easy(ak, decodedKey, clen, decodedNonce, decodedPubKey, decodedPrivKey);
 
   return ak;
+}
+
+const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned char *ak)
+{
+  unsigned char *data;
+  int i = 0;
+  char *p = strtok(edata, ".");
+  char *array[4];
+
+  while (p != NULL)
+  {
+    array[i++] = p;
+    p = strtok(NULL, ".");
+  }
+
+  unsigned char *decodedDataKey = base64_decode(array[0]);
+  unsigned char *decodedDataKeyNonce = base64_decode(array[1]);
+
+  unsigned char *decodedData = base64_decode(array[2]);
+  unsigned char *decodedDataNonce = base64_decode(array[3]);
+
+  unsigned long long clen = strlen((const char *)decodedDataKey);
+  unsigned char *dk;
+  
+  int status = crypto_secretbox_open_easy(dk, decodedDataKey, clen, decodedDataKeyNonce, ak);
+  printf("Data data key Decryption Status: %d \n", status);
+
+  unsigned long long dlen = strlen((const char *)decodedData);
+
+  status = crypto_secretbox_open_easy(data, decodedData, dlen, decodedDataNonce, dk);
+
+  printf("Data data Decryption Status: %d \n", status);
+
+  for(int i = 0; i<1; i++) {
+    printf("%d ", data[i]);
+  }
+
+  return data;
+
 }
 
 static void E3DB_EncryptedAccessKeys_InitOp(E3DB_Op *op)

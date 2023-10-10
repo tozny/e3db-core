@@ -183,6 +183,8 @@ extern "C"
   /* Return the value of the current field an iterator is pointing to. */
   const char *E3DB_RecordFieldIterator_GetValue(E3DB_RecordFieldIterator *it);
 
+  const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned char *ak);
+
   /*
    * {List Records}
    */
