@@ -39,6 +39,7 @@ sds base64_encode(const char *s)
 
 sds base64_decode(const char *base64)
 {
+	// printf("Received base64 length: %d \n", strlen(base64));
 	char *input;
 	input = (char *)malloc(strlen(base64) * sizeof(char) + 1);
 	// Remove double quotes, replace url encoded chars _ with / and - with +.
@@ -90,8 +91,8 @@ sds base64_decode(const char *base64)
 
 	/* we want to print the decoded data, so null-terminate it: */
 	*c = 0;
+	output[strlen(input)] = '\0';
 	free(input);
-	output[strlen(input) - 1] = '\0';
 	printf("\n");
 	for (int i = 0; i < strlen(output); i++)
 	{

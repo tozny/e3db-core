@@ -1087,6 +1087,7 @@ const char *E3DB_EAK_DecryptEAK(char *eak, char *pubKey, char *privKey)
     p = strtok(NULL, ".");
   }
   unsigned char *decodedKey = base64_decode(array[0]);
+  printf("FAILS");
   unsigned char *decodedNonce = base64_decode(array[1]);
 
   unsigned char *decodedPubKey = base64_decode(pubKey);
