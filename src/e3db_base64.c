@@ -38,7 +38,6 @@ sds base64_encode(const char *s)
 
 sds base64_decode(const char* base64)
 {
-	printf("Received base64 length: %d \n", strlen(base64));
 	char *input;
 	input = (char *)malloc(strlen(base64) * sizeof(char) + 1);
 	// Remove double quotes, replace url encoded chars _ with / and - with +.
@@ -59,30 +58,39 @@ sds base64_decode(const char* base64)
 		}
 		input = (char *)realloc(input, (strlen(base64) - quotes)*sizeof(char)+1);
 	}
-	input[strlen(input)-1] = '\0';
-	printf("URL Decoded Count: %d \n", count);
-	printf("URL Decoded base64: %s \n", input);
-	/* set up a destination buffer large enough to hold the encoded data */
-	unsigned char* output = (char*)malloc(strlen(input)+1);
-	/* keep track of our decoded position */
-	unsigned char* c = output;
-	/* store the number of bytes decoded by a single call */
-	int cnt = 0;
-	/* we need a decoder state */
-	base64_decodestate s;
-	
-	/*---------- START DECODING ----------*/
-	/* initialise the decoder state */
-	base64_init_decodestate(&s);
-	/* decode the input data */
-	cnt = base64_decode_block(input, strlen(input), c, &s);
-	c += cnt;
-	/* note: there is no base64_decode_blockend! */
-	/*---------- STOP DECODING  ----------*/
-	
-	/* we want to print the decoded data, so null-terminate it: */
-	*c = 0;
-	free(input);
-	output[strlen(input)-1] = '\0';
-	return output;
+	printf("\n Input to base64 decode: %s - %d", base64, strlen(input));
+	BIO *bio, *b64;
+	int decodeLen = strlen(input);
+	unsigned char *buffer = (unsigned char *)malloc(decodeLen + 1); // +1 for the null terminator
+	if (buffer == NULL)
+	{
+		fprintf(stderr, "Memory allocation failed\n");
+		return NULL;
+	}
+
+	memset(buffer, 0, decodeLen + 1); // Initialize buffer to zeros
+
+	b64 = BIO_new(BIO_f_base64());
+	bio = BIO_new_mem_buf(input, -1); // -1 indicates string is null terminated
+	bio = BIO_push(b64, bio);
+
+	BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL); // Don't require newlines
+
+	int bytesRead = BIO_read(bio, buffer, decodeLen);
+	if (bytesRead < 0)
+	{
+		fprintf(stderr, "BIO_read failed\n");
+		free(buffer);
+		BIO_free_all(bio);
+		return NULL;
+	}
+
+	buffer[bytesRead] = '\0'; // Null-terminate the result
+
+	printf("\n");
+	for(int i=0; i<strlen(buffer); i++) {
+		printf("%d ", buffer[i]);
+	}
+	printf("\n Buffered length: %d", strlen(buffer));
+	return buffer;
 }
