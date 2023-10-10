@@ -65,9 +65,9 @@ sds base64_decode(const char *base64)
 		{
 			quotes++;
 		}
-		// input = (char *)realloc(input, (strlen(base64) - quotes) * sizeof(char) + 1);
 	}
-	input[strlen(input) - 1] = '\0';
+	input = (char *)realloc(input, (strlen(base64) - quotes) * sizeof(char) + 1);
+	input[count] = '\0';
 	printf("URL Decoded Count: %d \n", count);
 	printf("URL Decoded base64: %s \n", input);
 	/* set up a destination buffer large enough to hold the encoded data */
@@ -92,5 +92,11 @@ sds base64_decode(const char *base64)
 	*c = 0;
 	free(input);
 	output[strlen(input) - 1] = '\0';
+	printf("\n");
+	for (int i = 0; i < strlen(output); i++)
+	{
+		printf("%d ", output[i]);
+	}
+	printf("\n Buffered length: %d", strlen(output));
 	return output;
 }
