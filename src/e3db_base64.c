@@ -40,19 +40,18 @@ sds base64_decode(const char* base64)
 {
 	char input[strlen(base64)];
 	// Remove double quotes, replace url encoded chars _ with / and - with +.
+	int count = 0;
 	for(int i=0; i<strlen(base64); i++) {
-		if (base64[i] != '"')
-		{
-		input[i] = base64[i];
-		}
-		if (base64[i] == '_')
-		{
-		input[i] = '/';
-		}
-		if (base64[i] == '-')
-		{
-		input[i] = '+';
-		}
+		if (base64[i] == '_'){
+			input[count] = '/';
+			count ++;
+		} else if (base64[i] == '-'){
+			input[count] = '+';
+			count ++;
+		} else if (base64[i] != '"') {
+			input[count] = base64[i];
+			count ++;
+		} 
 	}
 	printf("Received base64: %s \n", input);
 	/* set up a destination buffer large enough to hold the encoded data */
