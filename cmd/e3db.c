@@ -188,6 +188,7 @@ int curl_run_op(E3DB_Op *op)
       BIO_write(write_bio, "\0", 1);
       BIO_get_mem_data(write_bio, &body);
       E3DB_Op_FinishHttpState(op, response_code, body, NULL, 0);
+      printf("Response Code %ld", response_code);
       printf("HELLOO %s", body);
       BIO_free_all(write_bio);
       curl_slist_free_all(chunk);
@@ -399,6 +400,7 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
 
 int do_write_record(E3DB_Client *client, int argc, char **argv)
 {
+  printf("%s", argv);
   if (argc < 2)
   {
     fputs(
@@ -423,36 +425,14 @@ int do_write_record(E3DB_Client *client, int argc, char **argv)
   const char **meta = (const char **)&argv[6];
 
   curl_global_init(CURL_GLOBAL_DEFAULT);
-
-  E3DB_Op *op = E3DB_WriteRecord_Begin(client, argc - 1, NULL, 0);
+  printf("Before record begin");
+  E3DB_Op *op = E3DB_WriteRecord_Begin(client, record_type, data, meta);
+  printf("after record begin");
 
   curl_run_op(op);
 
-  E3DB_ReadRecordsResult *result = E3DB_ReadRecords_GetResult(op);
-  E3DB_ReadRecordsResultIterator *it = E3DB_ReadRecordsResult_GetIterator(result);
+  E3DB_WriteRecordsResult *result = E3DB_WriteRecords_GetResult(op);
 
-  while (!E3DB_ReadRecordsResultIterator_IsDone(it))
-  {
-    E3DB_RecordMeta *meta = E3DB_ReadRecordsResultIterator_GetMeta(it);
-    E3DB_Record *record = E3DB_ReadRecordsResultIterator_GetData(it);
-
-    printf("\n%-20s %s\n", "record_id", E3DB_RecordMeta_GetRecordId(meta));
-
-    E3DB_RecordFieldIterator *f_it = E3DB_Record_GetFieldIterator(record);
-
-    while (!E3DB_RecordFieldIterator_IsDone(f_it))
-    {
-      printf("%-20s %s\n",
-             E3DB_RecordFieldIterator_GetName(f_it),
-             E3DB_RecordFieldIterator_GetValue(f_it));
-      E3DB_RecordFieldIterator_Next(f_it);
-    }
-
-    E3DB_RecordFieldIterator_Delete(f_it);
-    E3DB_ReadRecordsResultIterator_Next(it);
-  }
-
-  E3DB_ReadRecordsResultIterator_Delete(it);
   E3DB_Op_Delete(op);
   curl_global_cleanup();
 
@@ -466,13 +446,15 @@ int main(int argc, char **argv)
   printf("E3DB Command Line Interface\n");
   printf("Instructions: \n");
   printf("You must have a configuration file here: /.tozny/e3db.json\n");
-
+  printf("HELLOOO");
   // Catches the help option
   if (argc < 2)
   {
     fputs(usage, stderr);
     return 1;
   }
+  printf("HELLOOO");
+  printf("%s", &argv[1]);
 
   E3DB_Client *client = E3DB_Client_New(load_config());
 
@@ -482,7 +464,7 @@ int main(int argc, char **argv)
   }
   else if (!strcmp(argv[1], "write"))
   {
-    return do_write_record(client, argc - 1, &argv[1]);
+    return do_write_record(client, argc - 1, &argv);
   }
   else
   {

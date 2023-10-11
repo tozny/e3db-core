@@ -1244,6 +1244,14 @@ struct Record
   const struct RecordMetaData *meta;
 };
 
+/* Return the result of a successful "read records" operation. Returns
+ * NULL if the operation is not complete. The returned structure has the
+ * same lifetime as the containing operation and does not need to be freed. */
+E3DB_WriteRecordsResult *E3DB_WriteRecords_GetResult(E3DB_Op *op)
+{
+  return op->result;
+}
+
 static void E3DB_WriteRecordsResult_Delete(void *p)
 {
   E3DB_WriteRecordsResult *result = p;
@@ -1256,6 +1264,41 @@ static void E3DB_WriteRecordsResult_Delete(void *p)
     }
     xfree(result);
   }
+}
+
+static int E3DB_WriteRecords_Response(
+    E3DB_Op *op, int response_code,
+    const char *body, E3DB_HttpHeaderList *headers, size_t num_headers)
+{
+  if (response_code != 200)
+  {
+    // TODO: Handle non-successful responses.
+    fprintf(stderr, "Fatal: Error response from E3DB API: %d\n", response_code);
+    abort();
+  }
+
+  cJSON *json = cJSON_Parse(body);
+
+  if (json == NULL)
+  {
+    // TODO: Figure out proper error handling here.
+    fprintf(stderr, "Fatal: Parsing ListRecords JSON failed.\n");
+    abort();
+  }
+
+  /* Wrap the result in an array if it is a single object. */
+  if (json->type == cJSON_Object)
+  {
+    cJSON *array = cJSON_CreateArray();
+    cJSON_AddItemToArray(array, json);
+    json = array;
+  }
+
+  E3DB_WriteRecordsResult *result = op->result;
+  result->json = json;
+
+  E3DB_Op_Finish(op);
+  return 0;
 }
 
 static void E3DB_WriteRecords_InitOp(E3DB_Op *op)
@@ -1280,7 +1323,7 @@ static void E3DB_WriteRecords_InitOp(E3DB_Op *op)
   op->request.http.url = url;
   op->request.http.method = sdsnew("POST");
   op->request.http.body = sdsnew("grant_type=client_credentials");
-  op->request.http.next_state = E3DB_ReadRecords_Response;
+  op->request.http.next_state = E3DB_WriteRecords_Response;
   op->request.http.headers = E3DB_HttpHeaderList_New();
 
   sds auth_header = sdsnew("Bearer ");
