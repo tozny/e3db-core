@@ -374,8 +374,15 @@ struct _E3DB_RecordMeta
   char *writer_id;
   char *user_id;
   char *type;
+  cJSON *plain;
   // TODO: Add creation/modification time.
   // TODO: Support custom plaintext metadata.
+};
+
+struct _E3DB_DecryptedRecord
+{
+  cJSON *data;
+  E3DB_RecordMeta *meta;
 };
 
 /*
@@ -429,6 +436,11 @@ const char *E3DB_RecordMeta_GetType(E3DB_RecordMeta *meta)
   return meta->type;
 }
 
+const char *E3DB_RecordMeta_GetPlain(E3DB_RecordMeta *meta)
+{
+  return meta->plain;
+}
+
 const char *E3DB_EAK_GetEAK(E3DB_EAK *eak)
 {
   return eak->eak;
@@ -456,12 +468,34 @@ static char *cJSON_GetSafeObjectItemString(cJSON *json, const char *name)
   }
 }
 
+/* Utility function to safely get the string value of a JSON object field,
+ * returning an empty string if not present. */
+static char *cJSON_GetSafeObjectItem(cJSON *json, const char *name)
+{
+  cJSON *obj = cJSON_GetObjectItem(json, name);
+  printf("\ncJSON_GetSafeObjectItem name = %s\n", name);
+
+  if (obj == NULL)
+  {
+    fprintf(stderr, "Warning: Field '%s' missing or not a string.\n", name);
+    return "";
+  }
+  if (obj->type == cJSON_String)
+  {
+    char *plain = obj->valuestring;
+    printf("\ncJSON_GetSafeObjectItem plain = %s\n", plain);
+    return plain;
+  }
+}
+
 static void E3DB_GetRecordMetaFromJSON(cJSON *json, E3DB_RecordMeta *meta)
 {
   meta->record_id = cJSON_GetSafeObjectItemString(json, "record_id");
   meta->writer_id = cJSON_GetSafeObjectItemString(json, "writer_id");
   meta->user_id = cJSON_GetSafeObjectItemString(json, "user_id");
   meta->type = cJSON_GetSafeObjectItemString(json, "type");
+  meta->plain = cJSON_GetObjectItem(json, "plain");
+  printf("\nE3DB_GetRecordMetaFromJSON plain %s\n", meta->plain);
 }
 
 static void E3DB_GetSignerSigningKeyFromJSON(cJSON *json, E3DB_SignerSigningKey *signer_signing_key)
@@ -1101,7 +1135,7 @@ const char *E3DB_EAK_DecryptEAK(char *eak, char *pubKey, char *privKey)
 
   unsigned long long clen = strlen((const char *)decodedKey);
   int status = crypto_box_open_easy(ak, decodedKey, clen, decodedNonce, decodedPubKey, decodedPrivKey);
-  
+
   free(eak_copy);
   free(decodedKey);
   free(decodedNonce);
@@ -1138,7 +1172,7 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
   unsigned long long dlen = strlen((const char *)decodedData);
   unsigned char *data = (char *)malloc(dlen * sizeof(char));
   status = crypto_secretbox_open_easy(data, decodedData, dlen, decodedDataNonce, dk);
-  
+
   free(edata_copy);
   free(decodedDataKey);
   free(decodedDataKeyNonce);

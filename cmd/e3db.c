@@ -18,6 +18,7 @@
 #include <openssl/evp.h>
 
 #include "e3db_core.h"
+#include "e3db_core.c"
 #include "sds.h"
 #include "cJSON.h"
 
@@ -376,25 +377,36 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
     E3DB_EAK *eak = E3DB_ReadRecordsResultIterator_GetEAK(EAKIt);
     char *rawEAK = E3DB_EAK_GetEAK(eak);
     char *authPublicKey = E3DB_EAK_GetAuthPubKey(eak);
-    //E3DB_ClientOptions *clientOptions = client.;
-    unsigned char *ak = E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, "e4Yj6iGbUrJGy3mrxuXXXqmeybyskuxAU48Cx5iFevo");
+    unsigned char *ak = E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, op->client->options->private_key);
 
-    printf("\n%-20s %s\n", "record_id", E3DB_RecordMeta_GetRecordId(meta));
-    printf("\n%-20s %s\n", "record_type", E3DB_RecordMeta_GetType(meta));
+    E3DB_DecryptedRecord *decrypted_record = (E3DB_DecryptedRecord *)malloc(sizeof(E3DB_DecryptedRecord));
+    decrypted_record->meta = meta;
 
+    // Decrypt the record data
     E3DB_RecordFieldIterator *f_it = E3DB_Record_GetFieldIterator(record);
-
+    cJSON *decryptedData = cJSON_CreateObject();
     while (!E3DB_RecordFieldIterator_IsDone(f_it))
     {
       unsigned char *edata = E3DB_RecordFieldIterator_GetValue(f_it);
-      char *data = E3DB_RecordFieldIterator_DecryptValue(edata, ak);
+      char *ddata = E3DB_RecordFieldIterator_DecryptValue(edata, ak);
+      char *name = E3DB_RecordFieldIterator_GetName(f_it);
 
-      printf("\n %-20s %s\n",
-             E3DB_RecordFieldIterator_GetName(f_it),
-             data);
-      free(data);
+      cJSON *keyValuePair = cJSON_CreateObject();
+      cJSON_AddStringToObject(decryptedData, name, ddata);
+
+      free(ddata);
       E3DB_RecordFieldIterator_Next(f_it);
     }
+    decrypted_record->data = decryptedData;
+
+    // Print the record info
+    printf("\n%-20s %s\n", "record_id:", decrypted_record->meta->record_id);
+    printf("\n%-20s %s\n", "record_type:", decrypted_record->meta->type);
+    printf("\n%-20s %s\n", "writer_id:", decrypted_record->meta->writer_id);
+    printf("\n%-20s %s\n", "user_id:", decrypted_record->meta->user_id);
+    printf("\n%-20s \n%s\n", "plain:", cJSON_Print(decrypted_record->meta->plain));
+    printf("\n%-20s \n%s\n", "data:", cJSON_Print(decrypted_record->data));
+
     free(ak);
     E3DB_RecordFieldIterator_Delete(f_it);
     E3DB_ReadRecordsResultIterator_Next(it);
