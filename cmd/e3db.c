@@ -257,7 +257,7 @@ E3DB_ClientOptions *load_config(void)
   }
 
   E3DB_ClientOptions *opts = E3DB_ClientOptions_New();
-  cJSON *api_key, *api_secret, *client_id;
+  cJSON *api_key, *api_secret, *client_id, *private_key;
 
   api_key = cJSON_GetObjectItem(json, "api_key_id");
   if (api_key == NULL || api_key->type != cJSON_String)
@@ -280,9 +280,17 @@ E3DB_ClientOptions *load_config(void)
     exit(1);
   }
 
+  private_key = cJSON_GetObjectItem(json, "private_key");
+  if (private_key == NULL || private_key->type != cJSON_String)
+  {
+    fprintf(stderr, "Error: Missing 'private_key' key in configuration file.\n");
+    exit(1);
+  }
+
   E3DB_ClientOptions_SetApiKey(opts, api_key->valuestring);
   E3DB_ClientOptions_SetApiSecret(opts, api_secret->valuestring);
   E3DB_ClientOptions_SetClientID(opts, client_id->valuestring);
+  E3DB_ClientOptions_SetPrivateKey(opts, private_key->valuestring);
 
   sdsfree(config);
   cJSON_Delete(json);
@@ -368,7 +376,7 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
     E3DB_EAK *eak = E3DB_ReadRecordsResultIterator_GetEAK(EAKIt);
     char *rawEAK = E3DB_EAK_GetEAK(eak);
     char *authPublicKey = E3DB_EAK_GetAuthPubKey(eak);
-
+    //E3DB_ClientOptions *clientOptions = client.;
     unsigned char *ak = E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, "e4Yj6iGbUrJGy3mrxuXXXqmeybyskuxAU48Cx5iFevo");
 
     printf("\n%-20s %s\n", "record_id", E3DB_RecordMeta_GetRecordId(meta));

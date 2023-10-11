@@ -30,6 +30,7 @@ extern "C"
     void E3DB_ClientOptions_SetApiKey(E3DB_ClientOptions *opts, const char *api_key);
     void E3DB_ClientOptions_SetApiSecret(E3DB_ClientOptions *opts, const char *api_secret);
     void E3DB_ClientOptions_SetClientID(E3DB_ClientOptions *opts, const char *client_id);
+    void E3DB_ClientOptions_SetPrivateKey(E3DB_ClientOptions *opts, const char *private_key);
 
     // TODO: Other ways to authenticate---Tozny, OIDC, etc.
 

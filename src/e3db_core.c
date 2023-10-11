@@ -37,6 +37,7 @@ struct _E3DB_ClientOptions
   sds api_key;
   sds api_secret;
   sds client_id;
+  sds private_key;
   // TODO: Add other forms of authentication.
 };
 
@@ -58,6 +59,7 @@ void E3DB_ClientOptions_Delete(E3DB_ClientOptions *opts)
   sdsfree(opts->api_key);
   sdsfree(opts->api_secret);
   sdsfree(opts->client_id);
+  sdsfree(opts->private_key);
   xfree(opts);
 }
 
@@ -83,7 +85,11 @@ void E3DB_ClientOptions_SetClientID(E3DB_ClientOptions *opts, const char *client
   sdsfree(opts->client_id);
   opts->client_id = sdsnew(client_id);
 }
-
+void E3DB_ClientOptions_SetPrivateKey(E3DB_ClientOptions *opts, const char *private_key)
+{
+  sdsfree(opts->private_key);
+  opts->private_key = sdsnew(private_key);
+}
 /*
  * {Clients}
  */
