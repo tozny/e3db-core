@@ -1096,7 +1096,11 @@ const char *E3DB_EAK_DecryptEAK(char *eak, char *pubKey, char *privKey)
   unsigned long long clen = strlen((const char *)decodedKey);
 
   int status = crypto_box_open_easy(ak, decodedKey, clen, decodedNonce, decodedPubKey, decodedPrivKey);
-  printf("Status of EAK Decryption: %d", status);
+  printf("Status of EAK Decryption: %d\n", status);
+  printf("BEFORE realloc, AK length = %d\n", strlen(ak));
+  ak = (char *)realloc(ak, 32 * sizeof(char) + 1);
+  ak[32] = '\0';
+  printf("AFTER realloc, AK length = %d\n", strlen(ak));
   return ak;
 }
 
@@ -1112,6 +1116,11 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
     array[i++] = p;
     p = strtok(NULL, ".");
   }
+
+  printf("\narray[0] %s\n", array[0]);
+  printf("array[1] %s\n", array[1]);
+  printf("array[2] %s\n", array[2]);
+  printf("array[3] %s\n", array[3]);
 
   unsigned char *decodedDataKey = base64_decode(array[0]);
   unsigned char *decodedDataKeyNonce = base64_decode(array[1]);

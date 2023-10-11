@@ -369,6 +369,12 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
     char *authPublicKey = E3DB_EAK_GetAuthPubKey(eak);
 
     unsigned char *ak = E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, "e4Yj6iGbUrJGy3mrxuXXXqmeybyskuxAU48Cx5iFevo");
+    printf("\n DECRYPTED ACCESS KEY =");
+    for (int i = 0; i < strlen(ak); i++)
+    {
+      printf("%d ", ak[i]);
+    }
+    printf("\n AK length: %d\n", strlen(ak));
 
     printf("\n%-20s %s\n", "record_id", E3DB_RecordMeta_GetRecordId(meta));
     printf("\n%-20s %s\n", "record_type", E3DB_RecordMeta_GetType(meta));
@@ -380,7 +386,7 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
       char *edata = E3DB_RecordFieldIterator_GetValue(f_it);
       E3DB_RecordFieldIterator_DecryptValue(edata, ak);
 
-      printf("\n %-20s %s\n",
+      printf("\n HIIIII %-20s %s\n",
              E3DB_RecordFieldIterator_GetName(f_it),
              E3DB_RecordFieldIterator_GetValue(f_it));
       E3DB_RecordFieldIterator_Next(f_it);
