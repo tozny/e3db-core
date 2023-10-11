@@ -22,7 +22,7 @@ sds base64_encode(const char *s);
  * result string must be free'd with `xfree'.
  *
  * TODO: How do we handle decode errors? */
-sds base64_decode(const char *s);
+unsigned char *base64_decode(const char *s);
 
 #ifdef __cplusplus
 }

@@ -378,15 +378,16 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
 
     while (!E3DB_RecordFieldIterator_IsDone(f_it))
     {
-      char *edata = E3DB_RecordFieldIterator_GetValue(f_it);
-      E3DB_RecordFieldIterator_DecryptValue(edata, ak);
+      unsigned char *edata = E3DB_RecordFieldIterator_GetValue(f_it);
+      char *data = E3DB_RecordFieldIterator_DecryptValue(edata, ak);
 
       printf("\n %-20s %s\n",
              E3DB_RecordFieldIterator_GetName(f_it),
-             E3DB_RecordFieldIterator_GetValue(f_it));
+             data);
+      free(data);
       E3DB_RecordFieldIterator_Next(f_it);
     }
-
+    free(ak);
     E3DB_RecordFieldIterator_Delete(f_it);
     E3DB_ReadRecordsResultIterator_Next(it);
   }

@@ -1076,9 +1076,11 @@ E3DB_EAK *E3DB_ReadRecordsResultIterator_GetEAK(E3DB_GetEAKResultIterator *it)
 const char *E3DB_EAK_DecryptEAK(char *eak, char *pubKey, char *privKey)
 {
   unsigned char *ak = (unsigned char *)malloc(32);
-
+  size_t eakLength = strlen(eak);
+  unsigned char *eak_copy = (char *)malloc(eakLength * sizeof(char) + 1);
+  strcpy(eak_copy, eak);
   int i = 0;
-  char *p = strtok(eak, ".");
+  char *p = strtok(eak_copy, ".");
   char *array[2];
 
   while (p != NULL)
@@ -1087,24 +1089,28 @@ const char *E3DB_EAK_DecryptEAK(char *eak, char *pubKey, char *privKey)
     p = strtok(NULL, ".");
   }
   unsigned char *decodedKey = base64_decode(array[0]);
-  printf("FAILS");
   unsigned char *decodedNonce = base64_decode(array[1]);
-
   unsigned char *decodedPubKey = base64_decode(pubKey);
   unsigned char *decodedPrivKey = base64_decode(privKey);
 
   unsigned long long clen = strlen((const char *)decodedKey);
-
   int status = crypto_box_open_easy(ak, decodedKey, clen, decodedNonce, decodedPubKey, decodedPrivKey);
-  printf("Status of EAK Decryption: %d", status);
+  
+  free(eak_copy);
+  free(decodedKey);
+  free(decodedNonce);
+  free(decodedPubKey);
+  free(decodedPrivKey);
   return ak;
 }
 
 const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned char *ak)
 {
-  unsigned char *data;
+  size_t edataLength = strlen(edata);
+  unsigned char *edata_copy = (char *)malloc(edataLength * sizeof(char) + 1);
+  strcpy(edata_copy, edata);
   int i = 0;
-  char *p = strtok(edata, ".");
+  char *p = strtok(edata_copy, ".");
   char *array[4];
 
   while (p != NULL)
@@ -1119,24 +1125,20 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
   unsigned char *decodedData = base64_decode(array[2]);
   unsigned char *decodedDataNonce = base64_decode(array[3]);
 
-  printf("decodedDataKey: %s", decodedDataKey);
-
   unsigned long long clen = strlen((const char *)decodedDataKey);
-  unsigned char *dk;
-
+  unsigned char *dk = (unsigned char *)malloc(32);
   int status = crypto_secretbox_open_easy(dk, decodedDataKey, clen, decodedDataKeyNonce, ak);
-  printf("Data data key Decryption Status: %d \n", status);
 
   unsigned long long dlen = strlen((const char *)decodedData);
-  printf("1128");
+  unsigned char *data = (char *)malloc(dlen * sizeof(char));
   status = crypto_secretbox_open_easy(data, decodedData, dlen, decodedDataNonce, dk);
-
-  printf("Data data Decryption Status: %d \n", status);
-
-  // for(int i = 0; i<1; i++) {
-  //   printf("%d ", data[i]);
-  // }
-
+  
+  free(edata_copy);
+  free(decodedDataKey);
+  free(decodedDataKeyNonce);
+  free(decodedData);
+  free(decodedDataNonce);
+  free(dk);
   return data;
 }
 
