@@ -1117,11 +1117,6 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
     p = strtok(NULL, ".");
   }
 
-  printf("\narray[0] %s\n", array[0]);
-  printf("array[1] %s\n", array[1]);
-  printf("array[2] %s\n", array[2]);
-  printf("array[3] %s\n", array[3]);
-
   unsigned char *decodedDataKey = base64_decode(array[0]);
   unsigned char *decodedDataKeyNonce = base64_decode(array[1]);
 
