@@ -386,7 +386,7 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
       char *edata = E3DB_RecordFieldIterator_GetValue(f_it);
       E3DB_RecordFieldIterator_DecryptValue(edata, ak);
 
-      printf("\n HIIIII %-20s %s\n",
+      printf("\n %-20s %s\n",
              E3DB_RecordFieldIterator_GetName(f_it),
              E3DB_RecordFieldIterator_GetValue(f_it));
       E3DB_RecordFieldIterator_Next(f_it);
