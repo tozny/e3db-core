@@ -133,6 +133,7 @@ extern "C"
      */
 
     typedef struct _E3DB_RecordMeta E3DB_RecordMeta;
+    typedef struct _E3DB_DecryptedRecord E3DB_DecryptedRecord;
 
     /*
      * Encrypted Access Key
@@ -149,6 +150,7 @@ extern "C"
     const char *E3DB_RecordMeta_GetWriterId(E3DB_RecordMeta *meta);
     const char *E3DB_RecordMeta_GetUserId(E3DB_RecordMeta *meta);
     const char *E3DB_RecordMeta_GetType(E3DB_RecordMeta *meta);
+    const char *E3DB_RecordMeta_GetPlain(E3DB_RecordMeta *meta);
     const char *E3DB_EAK_GetEAK(E3DB_EAK *eak);
     const char *E3DB_EAK_GetAuthPubKey(E3DB_EAK *eak);
     const char *E3DB_EAK_DecryptEAK(char *eak, char *pubKey, char *privKey);
