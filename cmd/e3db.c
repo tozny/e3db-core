@@ -417,11 +417,6 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
     E3DB_ReadRecordsResultIterator_Next(it);
   }
 
-  if (result->json)
-  {
-    cJSON_Delete(result->json);
-  }
-
   E3DB_ReadRecordsResultIterator_Delete(it);
   E3DB_Op_Delete(op);
   curl_global_cleanup();
