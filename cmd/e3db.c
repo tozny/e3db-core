@@ -293,8 +293,8 @@ E3DB_ClientOptions *load_config(void)
   E3DB_ClientOptions_SetClientID(opts, client_id->valuestring);
   E3DB_ClientOptions_SetPrivateKey(opts, private_key->valuestring);
 
+  sdsfree(config_file);
   sdsfree(config);
-  free(config_file);
   cJSON_Delete(json);
 
   return opts;
@@ -360,7 +360,6 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
 
   E3DB_ReadRecordsResult *result = E3DB_ReadRecords_GetResult(op);
   E3DB_ReadRecordsResultIterator *it = E3DB_ReadRecordsResult_GetIterator(result);
-
   while (!E3DB_ReadRecordsResultIterator_IsDone(it))
   {
     // At this point we have encrypted data
@@ -418,11 +417,29 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
     E3DB_ReadRecordsResultIterator_Next(it);
   }
 
+  // cJSON_Delete(result->json);
+  // free(result->record_ids);
+  // free(result);
+  if (result->json)
+  {
+    cJSON_Delete(result->json);
+  }
+  if (result->record_ids)
+  {
+    for (size_t i = 0; i < result->num_record_ids; i++)
+    {
+      if (result->record_ids[i])
+      {
+        free(result->record_ids[i]);
+      }
+    }
+    free(result->record_ids);
+  }
+  free(result);
+
   E3DB_ReadRecordsResultIterator_Delete(it);
   E3DB_Op_Delete(op);
   curl_global_cleanup();
-
-  free(result);
 
   return 0;
 }
