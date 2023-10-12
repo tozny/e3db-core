@@ -374,6 +374,9 @@ struct _E3DB_RecordMeta
   char *writer_id;
   char *user_id;
   char *type;
+  char *version;
+  char *created;
+  char *last_modified;
   cJSON *plain;
   // TODO: Add creation/modification time.
   // TODO: Support custom plaintext metadata.
@@ -381,8 +384,9 @@ struct _E3DB_RecordMeta
 
 struct _E3DB_DecryptedRecord
 {
-  cJSON *data;
   E3DB_RecordMeta *meta;
+  cJSON *data;
+  char *rec_sig;
 };
 
 /*
@@ -495,6 +499,9 @@ static void E3DB_GetRecordMetaFromJSON(cJSON *json, E3DB_RecordMeta *meta)
   meta->user_id = cJSON_GetSafeObjectItemString(json, "user_id");
   meta->type = cJSON_GetSafeObjectItemString(json, "type");
   meta->plain = cJSON_GetObjectItem(json, "plain");
+  meta->version = cJSON_GetSafeObjectItemString(json, "version");
+  meta->created = cJSON_GetSafeObjectItemString(json, "created");
+  meta->last_modified = cJSON_GetSafeObjectItemString(json, "last_modified");
   printf("\nE3DB_GetRecordMetaFromJSON plain %s\n", meta->plain);
 }
 
@@ -632,7 +639,6 @@ static void E3DB_HandleAuthResponse(E3DB_Op *op, int response_code, const char *
 
   sdsfree(op->client->access_token);
   op->client->access_token = sdsnew(cJSON_GetSafeObjectItemString(json, "access_token"));
-
   E3DB_Op_Finish(op);
 }
 
@@ -1061,6 +1067,19 @@ E3DB_Record *E3DB_ReadRecordsResultIterator_GetData(E3DB_ReadRecordsResultIterat
   return &it->record;
 }
 
+/* Return the record record data for the current record in the result set. */
+char *E3DB_ReadRecordsResultIterator_GetRecSig(E3DB_ReadRecordsResultIterator *it)
+{
+  char *rec_sig = cJSON_GetSafeObjectItemString(it->pos, "rec_sig");
+
+  if (rec_sig == NULL)
+  {
+    fprintf(stderr, "Error: data field doesn't exist.\n");
+    abort();
+  }
+  return rec_sig;
+}
+
 E3DB_EAK *E3DB_ReadRecordsResultIterator_GetEAK(E3DB_GetEAKResultIterator *it)
 {
   cJSON *EAK = cJSON_GetObjectItem(it->pos, "eak");
@@ -1358,15 +1377,15 @@ static void E3DB_WriteRecords_InitOp(E3DB_Op *op)
   metaData->plain = result->meta;
   record.meta = metaData;
   record.data = result->data;
-  //strcpy(record.meta->writer_id, op->client->options->client_id);
-  //strcpy(record.meta->user_id, op->client->options->client_id);
-  // strcpy(record.meta->type, result->record_type);
-  // strcpy(record.meta->plain, result->meta);
-  // strcpy(record.data, result->data);
+  // strcpy(record.meta->writer_id, op->client->options->client_id);
+  // strcpy(record.meta->user_id, op->client->options->client_id);
+  //  strcpy(record.meta->type, result->record_type);
+  //  strcpy(record.meta->plain, result->meta);
+  //  strcpy(record.data, result->data);
 
   printf("Reached here");
-  //exit(1);
-  // TODO: Add fields to URL
+  // exit(1);
+  //  TODO: Add fields to URL
 
   op->state = E3DB_OP_STATE_HTTP;
   op->request.http.url = url;

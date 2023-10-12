@@ -293,6 +293,7 @@ E3DB_ClientOptions *load_config(void)
   E3DB_ClientOptions_SetClientID(opts, client_id->valuestring);
   E3DB_ClientOptions_SetPrivateKey(opts, private_key->valuestring);
 
+  sdsfree(config_file);
   sdsfree(config);
   cJSON_Delete(json);
 
@@ -359,7 +360,6 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
 
   E3DB_ReadRecordsResult *result = E3DB_ReadRecords_GetResult(op);
   E3DB_ReadRecordsResultIterator *it = E3DB_ReadRecordsResult_GetIterator(result);
-
   while (!E3DB_ReadRecordsResultIterator_IsDone(it))
   {
     // At this point we have encrypted data
@@ -381,6 +381,7 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
 
     E3DB_DecryptedRecord *decrypted_record = (E3DB_DecryptedRecord *)malloc(sizeof(E3DB_DecryptedRecord));
     decrypted_record->meta = meta;
+    decrypted_record->rec_sig = E3DB_ReadRecordsResultIterator_GetRecSig(it);
 
     // Decrypt the record data
     E3DB_RecordFieldIterator *f_it = E3DB_Record_GetFieldIterator(record);
@@ -388,10 +389,10 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
     while (!E3DB_RecordFieldIterator_IsDone(f_it))
     {
       unsigned char *edata = E3DB_RecordFieldIterator_GetValue(f_it);
+
       char *ddata = E3DB_RecordFieldIterator_DecryptValue(edata, ak);
       char *name = E3DB_RecordFieldIterator_GetName(f_it);
 
-      cJSON *keyValuePair = cJSON_CreateObject();
       cJSON_AddStringToObject(decryptedData, name, ddata);
 
       free(ddata);
@@ -404,6 +405,10 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
     printf("\n%-20s %s\n", "record_type:", decrypted_record->meta->type);
     printf("\n%-20s %s\n", "writer_id:", decrypted_record->meta->writer_id);
     printf("\n%-20s %s\n", "user_id:", decrypted_record->meta->user_id);
+    printf("\n%-20s %s\n", "version:", decrypted_record->meta->version);
+    printf("\n%-20s %s\n", "created:", decrypted_record->meta->created);
+    printf("\n%-20s %s\n", "last_modified:", decrypted_record->meta->last_modified);
+    printf("\n%-20s %s\n", "rec_sig:", decrypted_record->rec_sig);
     printf("\n%-20s \n%s\n", "plain:", cJSON_Print(decrypted_record->meta->plain));
     printf("\n%-20s \n%s\n", "data:", cJSON_Print(decrypted_record->data));
 
@@ -411,6 +416,26 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
     E3DB_RecordFieldIterator_Delete(f_it);
     E3DB_ReadRecordsResultIterator_Next(it);
   }
+
+  // cJSON_Delete(result->json);
+  // free(result->record_ids);
+  // free(result);
+  if (result->json)
+  {
+    cJSON_Delete(result->json);
+  }
+  if (result->record_ids)
+  {
+    for (size_t i = 0; i < result->num_record_ids; i++)
+    {
+      if (result->record_ids[i])
+      {
+        free(result->record_ids[i]);
+      }
+    }
+    free(result->record_ids);
+  }
+  free(result);
 
   E3DB_ReadRecordsResultIterator_Delete(it);
   E3DB_Op_Delete(op);
@@ -438,27 +463,37 @@ int do_write_record(E3DB_Client *client, int argc, char **argv)
   const char *data = NULL;
   const char *meta = NULL;
 
-  for (int i = 1; i <= argc; i++) {
-    if (strcmp(argv[i], "-t") == 0) {
-        if (i + 1 <= argc && argv[i + 1][0] != '-') {
-            record_type = argv[i + 1];
-        }
-    } else if (strcmp(argv[i], "-d") == 0) {
-        if (i + 1 <= argc && argv[i + 1][0] != '-') {
-            data = argv[i + 1];
-        }
-    } else if (strcmp(argv[i], "-m") == 0) {
-        if (i + 1 <= argc && argv[i + 1][0] != '-') {
-            meta = argv[i + 1];
-        }
+  for (int i = 1; i <= argc; i++)
+  {
+    if (strcmp(argv[i], "-t") == 0)
+    {
+      if (i + 1 <= argc && argv[i + 1][0] != '-')
+      {
+        record_type = argv[i + 1];
+      }
+    }
+    else if (strcmp(argv[i], "-d") == 0)
+    {
+      if (i + 1 <= argc && argv[i + 1][0] != '-')
+      {
+        data = argv[i + 1];
+      }
+    }
+    else if (strcmp(argv[i], "-m") == 0)
+    {
+      if (i + 1 <= argc && argv[i + 1][0] != '-')
+      {
+        meta = argv[i + 1];
+      }
     }
   }
 
-  if (record_type == NULL || data == NULL || meta == NULL) {
+  if (record_type == NULL || data == NULL || meta == NULL)
+  {
     printf("Record Type(-t) or Meta(-m) or Data(-d) are not provided.\n");
     return 0;
   }
-  
+
   curl_global_init(CURL_GLOBAL_DEFAULT);
   printf("\n Before record begin rec type: %s \n", record_type);
   E3DB_Op *op = E3DB_WriteRecord_Begin(client, record_type, data, meta);
@@ -492,17 +527,20 @@ int main(int argc, char **argv)
 
   if (!strcmp(argv[1], "read-record"))
   {
-    return do_read_records(client, argc - 1, &argv[1]);
+    int records_read = do_read_records(client, argc - 1, &argv[1]);
+    E3DB_Client_Delete(client);
+    return records_read;
   }
   else if (!strcmp(argv[1], "write"))
   {
-    return do_write_record(client, argc - 1, argv);
+    int records_written = do_write_record(client, argc - 1, argv);
+    E3DB_Client_Delete(client);
+    return records_written;
   }
   else
   {
     fputs(usage, stderr);
+    E3DB_Client_Delete(client);
     return 1;
   }
-
-  E3DB_Client_Delete(client);
 }
