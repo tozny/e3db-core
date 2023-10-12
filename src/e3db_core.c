@@ -1351,14 +1351,21 @@ static void E3DB_WriteRecords_InitOp(E3DB_Op *op)
   url = sdscat(url, "/v1/storage/records/");
 
   struct Record record;
-  sizeof(record);
+  struct RecordMetaData *metaData = (struct RecordMetaData *)malloc(sizeof(struct RecordMetaData));
+  metaData->writer_id = op->client->options->client_id;
+  metaData->user_id = op->client->options->client_id;
+  metaData->type = result->record_type;
+  metaData->plain = result->meta;
+  record.meta = metaData;
+  record.data = result->data;
+  //strcpy(record.meta->writer_id, op->client->options->client_id);
+  //strcpy(record.meta->user_id, op->client->options->client_id);
+  // strcpy(record.meta->type, result->record_type);
+  // strcpy(record.meta->plain, result->meta);
+  // strcpy(record.data, result->data);
 
-  strcpy(record.meta->writer_id, op->client->options->client_id);
-  strcpy(record.meta->user_id, op->client->options->client_id);
-  strcpy(record.meta->type, result->record_type);
-  strcpy(record.meta->plain, result->meta);
-  strcpy(record.data, result->data);
-
+  printf("Reached here");
+  //exit(1);
   // TODO: Add fields to URL
 
   op->state = E3DB_OP_STATE_HTTP;

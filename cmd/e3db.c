@@ -421,7 +421,6 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
 
 int do_write_record(E3DB_Client *client, int argc, char **argv)
 {
-  printf("%s", argv);
   if (argc < 2)
   {
     fputs(
@@ -435,18 +434,33 @@ int do_write_record(E3DB_Client *client, int argc, char **argv)
     return 1;
   }
 
-  // printf("%s", argv);
-  // ./build/e3db write -t record-type -d "data" -m "meta"
+  const char *record_type = NULL;
+  const char *data = NULL;
+  const char *meta = NULL;
 
-  // Get Type
-  const char **record_type = (const char **)&argv[2];
-  // Get Data
-  const char **data = (const char **)&argv[4];
-  // Get Meta Data
-  const char **meta = (const char **)&argv[6];
+  for (int i = 1; i <= argc; i++) {
+    if (strcmp(argv[i], "-t") == 0) {
+        if (i + 1 <= argc && argv[i + 1][0] != '-') {
+            record_type = argv[i + 1];
+        }
+    } else if (strcmp(argv[i], "-d") == 0) {
+        if (i + 1 <= argc && argv[i + 1][0] != '-') {
+            data = argv[i + 1];
+        }
+    } else if (strcmp(argv[i], "-m") == 0) {
+        if (i + 1 <= argc && argv[i + 1][0] != '-') {
+            meta = argv[i + 1];
+        }
+    }
+  }
 
+  if (record_type == NULL || data == NULL || meta == NULL) {
+    printf("Record Type(-t) or Meta(-m) or Data(-d) are not provided.\n");
+    return 0;
+  }
+  
   curl_global_init(CURL_GLOBAL_DEFAULT);
-  printf("Before record begin");
+  printf("\n Before record begin rec type: %s \n", record_type);
   E3DB_Op *op = E3DB_WriteRecord_Begin(client, record_type, data, meta);
   printf("after record begin");
 
@@ -467,15 +481,12 @@ int main(int argc, char **argv)
   printf("E3DB Command Line Interface\n");
   printf("Instructions: \n");
   printf("You must have a configuration file here: /.tozny/e3db.json\n");
-  printf("HELLOOO");
   // Catches the help option
   if (argc < 2)
   {
     fputs(usage, stderr);
     return 1;
   }
-  printf("HELLOOO");
-  printf("%s", &argv[1]);
 
   E3DB_Client *client = E3DB_Client_New(load_config());
 
@@ -485,7 +496,7 @@ int main(int argc, char **argv)
   }
   else if (!strcmp(argv[1], "write"))
   {
-    return do_write_record(client, argc - 1, &argv);
+    return do_write_record(client, argc - 1, argv);
   }
   else
   {
