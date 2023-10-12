@@ -32,8 +32,7 @@ const char usage[] =
     "\n"
     "Available commands:\n"
     " read-record          read records\n"
-    " write                write record\n"
-    " writeFile            write file\n";
+    " write-record                write record\n";
 
 int calcDecodeLength(const char *b64input)
 { // Calculates the length of a decoded base64 string
@@ -123,18 +122,22 @@ size_t read_body(void *ptr, size_t size, size_t nmemb, BIO *bio)
 /* Complete an E3DB operation using libcurl for HTTP requests. */
 int curl_run_op(E3DB_Op *op)
 {
+  printf("%s", "Top");
   CURL *curl;
 
   if ((curl = curl_easy_init()) == NULL)
   {
+    printf("%s", "IF");
     fprintf(stderr, "Fatal: Curl initialization failed.\n");
     exit(1);
   }
 
   while (!E3DB_Op_IsDone(op))
   {
+    printf("%s", "While");
     if (E3DB_Op_IsHttpState(op))
     {
+      printf("%s", "If inside While");
       curl_easy_reset(curl);
 
       const char *method = E3DB_Op_GetHttpMethod(op);
@@ -156,6 +159,7 @@ int curl_run_op(E3DB_Op *op)
 
       if (!strcmp(method, "POST"))
       {
+        printf("%s", "IF POST");
         const char *post_body = E3DB_Op_GetHttpBody(op);
         curl_easy_setopt(curl, CURLOPT_POST, 1L);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_body);
@@ -169,7 +173,7 @@ int curl_run_op(E3DB_Op *op)
         fprintf(stderr, "Unsupported method: %s\n", method);
         abort();
       }
-
+      printf("in Curl Op before perform %s", "before");
       curl_easy_setopt(curl, CURLOPT_URL, E3DB_Op_GetHttpUrl(op));
       curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
       curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
@@ -181,7 +185,7 @@ int curl_run_op(E3DB_Op *op)
       {
         fprintf(stderr, "curl_easy_perform: %s\n", curl_easy_strerror(res));
       }
-
+      printf("in Curl Op after perform %s", "After");
       long response_code;
       curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
 
@@ -189,7 +193,6 @@ int curl_run_op(E3DB_Op *op)
       BIO_write(write_bio, "\0", 1);
       BIO_get_mem_data(write_bio, &body);
       E3DB_Op_FinishHttpState(op, response_code, body, NULL, 0);
-      printf("Response Code %ld", response_code);
       printf("HELLOO %s", body);
       BIO_free_all(write_bio);
       curl_slist_free_all(chunk);
@@ -367,14 +370,14 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
     E3DB_Record *record = E3DB_ReadRecordsResultIterator_GetData(it);
 
     // Set up Access Keys Fetch
-    E3DB_Op *op = E3DB_GetEncryptedAccessKeys_Begin(client, E3DB_RecordMeta_GetWriterId(meta), E3DB_RecordMeta_GetUserId(meta), E3DB_RecordMeta_GetUserId(meta), E3DB_RecordMeta_GetType(meta), NULL, 0);
+    E3DB_Op *op = E3DB_GetEncryptedAccessKeys_Begin(client, E3DB_RecordMeta_GetWriterId(meta), E3DB_RecordMeta_GetUserId(meta), E3DB_RecordMeta_GetUserId(meta), E3DB_RecordMeta_GetType(meta));
 
     // Run access keys fetch
     curl_run_op(op);
 
     E3DB_EncryptedAccessKeyResult *EAKResult = E3DB_EAK_GetResult(op);
     E3DB_GetEAKResultIterator *EAKIt = E3DB_GetEAKResultIterator_GetIterator(EAKResult);
-    E3DB_EAK *eak = E3DB_ReadRecordsResultIterator_GetEAK(EAKIt);
+    E3DB_EAK *eak = E3DB_ResultIterator_GetEAK(EAKIt);
     char *rawEAK = E3DB_EAK_GetEAK(eak);
     char *authPublicKey = E3DB_EAK_GetAuthPubKey(eak);
     unsigned char *ak = E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, op->client->options->private_key);
@@ -473,15 +476,43 @@ int do_write_record(E3DB_Client *client, int argc, char **argv)
     printf("Record Type(-t) or Meta(-m) or Data(-d) are not provided.\n");
     return 0;
   }
+  printf("Data Type %s\n", data);
+  printf("Meta Type %s\n", meta);
 
+  // Set Up Curl to be used
   curl_global_init(CURL_GLOBAL_DEFAULT);
-  printf("\n Before record begin rec type: %s \n", record_type);
-  E3DB_Op *op = E3DB_WriteRecord_Begin(client, record_type, data, meta);
-  printf("after record begin");
 
+  // Step 1: Get Access Key
+  printf("%s", "Before E3DB_GetEncryptedAccessKeys_Begin \n ");
+  E3DB_Op *op = E3DB_GetEncryptedAccessKeys_Begin(client, client->options->client_id, client->options->client_id, client->options->client_id, record_type);
+  printf("%s", "After E3DB_GetEncryptedAccessKeys_Begin \n ");
+
+  printf("Client id %s \n", client->options->client_id);
+  printf("Record Type %s\n", record_type);
+
+  printf("%s", "Before curl_run_op \n ");
   curl_run_op(op);
+  printf("%s", "After curl_run_op \n ");
 
-  E3DB_WriteRecordsResult *result = E3DB_WriteRecords_GetResult(op);
+  // Get Result
+  // E3DB_EncryptedAccessKeyResult *EAKResult = E3DB_EAK_GetResult(op);
+
+  // Path A: Access Key Exists
+
+  // E3DB_GetEAKResultIterator *EAKIt = E3DB_GetEAKResultIterator_GetIterator(EAKResult);
+  // E3DB_EAK *eak = E3DB_ResultIterator_GetEAK(EAKIt);
+  // char *rawEAK = E3DB_EAK_GetEAK(eak);
+  // char *authPublicKey = E3DB_EAK_GetAuthPubKey(eak);
+  // unsigned char *ak = E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, op->client->options->private_key);
+
+  // Path B: Access Key Does Not Exist
+
+  // // Write Record
+  // op = E3DB_WriteRecord_Begin(client, record_type, data, meta);
+
+  // curl_run_op(op);
+
+  // E3DB_WriteRecordsResult *result = E3DB_WriteRecords_GetResult(op);
 
   E3DB_Op_Delete(op);
   curl_global_cleanup();
@@ -511,7 +542,7 @@ int main(int argc, char **argv)
     E3DB_Client_Delete(client);
     return records_read;
   }
-  else if (!strcmp(argv[1], "write"))
+  else if (!strcmp(argv[1], "write-record"))
   {
     int records_written = do_write_record(client, argc - 1, argv);
     E3DB_Client_Delete(client);

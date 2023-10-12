@@ -1080,7 +1080,7 @@ char *E3DB_ReadRecordsResultIterator_GetRecSig(E3DB_ReadRecordsResultIterator *i
   return rec_sig;
 }
 
-E3DB_EAK *E3DB_ReadRecordsResultIterator_GetEAK(E3DB_GetEAKResultIterator *it)
+E3DB_EAK *E3DB_ResultIterator_GetEAK(E3DB_GetEAKResultIterator *it)
 {
   cJSON *EAK = cJSON_GetObjectItem(it->pos, "eak");
   if (EAK == NULL)
@@ -1236,7 +1236,7 @@ static void E3DB_EncryptedAccessKeys_InitOp(E3DB_Op *op)
 }
 
 E3DB_Op *E3DB_GetEncryptedAccessKeys_Begin(
-    E3DB_Client *client, const char **writer_id, const char **user_id, const char **client_id, const char **record_type, const char *fields[], size_t num_fields)
+    E3DB_Client *client, const char **writer_id, const char **user_id, const char **client_id, const char **record_type)
 {
 
   E3DB_Op *op = E3DB_Op_New(client, E3DB_OP_ENCRYPTED_ACCESS_KEYS_RECORDS);
@@ -1254,12 +1254,10 @@ E3DB_Op *E3DB_GetEncryptedAccessKeys_Begin(
   // TODO: Also fetch auth token if our access token is expired.
   if (client->access_token == NULL)
   {
-    printf("\nFrom E3DB_GetEncryptedAccessKeys_Begin, access key IS null\n");
     E3DB_InitAuthOp(client, op, E3DB_ReadRecords_Request);
   }
   else
   {
-    printf("\nFrom E3DB_GetEncryptedAccessKeys_Begin, access key is NOT null\n");
     E3DB_EncryptedAccessKeys_InitOp(op);
   }
 
@@ -1414,6 +1412,14 @@ E3DB_Op *E3DB_WriteRecord_Begin(
 {
   E3DB_Op *op = E3DB_Op_New(client, E3DB_OP_WRITE_RECORD);
   E3DB_WriteRecordsResult *result = xmalloc(sizeof(*result));
+
+  // Encrypt Record Begins ------------------------------------------------------
+
+  // Step 1: Get Access Key
+
+  // Path A: Access Key Exists
+
+  // Path B: Access Key Does Not Exist
 
   result->record_type = record_type;
   result->data = data;

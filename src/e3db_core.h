@@ -230,7 +230,7 @@ extern "C"
         const char *fields[], size_t num_fields);
 
     E3DB_Op *E3DB_GetEncryptedAccessKeys_Begin(
-        E3DB_Client *client, const char **writer_id, const char **user_id, const char **client_id, const char **record_type, const char *fields[], size_t num_fields);
+        E3DB_Client *client, const char **writer_id, const char **user_id, const char **client_id, const char **record_type);
 
     E3DB_Op *E3DB_WriteRecord_Begin(
         E3DB_Client *client, const char **record_type, const char **data, const char **meta);
@@ -269,7 +269,7 @@ extern "C"
     E3DB_Record *E3DB_ReadRecordsResultIterator_GetData(E3DB_ReadRecordsResultIterator *it);
 
     /* Return the EAK. */
-    E3DB_EAK *E3DB_ReadRecordsResultIterator_GetEAK(E3DB_GetEAKResultIterator *it);
+    E3DB_EAK *E3DB_ResultIterator_GetEAK(E3DB_GetEAKResultIterator *it);
 
 #ifdef __cplusplus
 }
