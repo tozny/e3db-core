@@ -1235,9 +1235,19 @@ static void E3DB_EncryptedAccessKeys_InitOp(E3DB_Op *op)
   sdsfree(auth_header);
 }
 
+static int E3DB_EncryptedAccessKey_Request(E3DB_Op *op, int response_code,
+                                           const char *body, E3DB_HttpHeaderList *headers,
+                                           size_t num_headers)
+{
+  E3DB_HandleAuthResponse(op, response_code, body);
+  E3DB_EncryptedAccessKeys_InitOp(op);
+  return 0;
+}
+
 E3DB_Op *E3DB_GetEncryptedAccessKeys_Begin(
     E3DB_Client *client, const char **writer_id, const char **user_id, const char **client_id, const char **record_type)
 {
+  printf("%s", "At the start of E3DB_GetEncryptedAccessKeys_Begin ");
 
   E3DB_Op *op = E3DB_Op_New(client, E3DB_OP_ENCRYPTED_ACCESS_KEYS_RECORDS);
   E3DB_EncryptedAccessKeyResult *result = xmalloc(sizeof(*result));
@@ -1254,23 +1264,15 @@ E3DB_Op *E3DB_GetEncryptedAccessKeys_Begin(
   // TODO: Also fetch auth token if our access token is expired.
   if (client->access_token == NULL)
   {
-    E3DB_InitAuthOp(client, op, E3DB_ReadRecords_Request);
+    E3DB_InitAuthOp(client, op, E3DB_EncryptedAccessKey_Request);
   }
   else
   {
     E3DB_EncryptedAccessKeys_InitOp(op);
   }
+  printf("%s", "At the end of E3DB_GetEncryptedAccessKeys_Begin ");
 
   return op;
-}
-
-static int E3DB_EncryptedAccessKey_Request(E3DB_Op *op, int response_code,
-                                           const char *body, E3DB_HttpHeaderList *headers,
-                                           size_t num_headers)
-{
-  E3DB_HandleAuthResponse(op, response_code, body);
-  E3DB_EncryptedAccessKeys_InitOp(op);
-  return 0;
 }
 
 // Write Data

@@ -488,6 +488,8 @@ int do_write_record(E3DB_Client *client, int argc, char **argv)
   printf("%s", "After E3DB_GetEncryptedAccessKeys_Begin \n ");
 
   printf("Client id %s \n", client->options->client_id);
+
+  printf("Access Token %s \n", client->access_token);
   printf("Record Type %s\n", record_type);
 
   printf("%s", "Before curl_run_op \n ");
