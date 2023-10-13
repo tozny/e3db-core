@@ -586,25 +586,19 @@ int do_write_record(E3DB_Client *client, int argc, char **argv)
 
   if (responseCode == 404)
   {
+    // Path B: Access Key Does Not Exist
     printf("%s", "case 404");
   }
-  else
-  {
-    printf("%s", "case 200");
-  }
-
-  // Get Result
-  // E3DB_EncryptedAccessKeyResult *EAKResult = E3DB_EAK_GetResult(op);
 
   // Path A: Access Key Exists
+  // Get Result
+  // E3DB_EncryptedAccessKeyResult *EAKResult = E3DB_EAK_GetResult(op);
 
   // E3DB_GetEAKResultIterator *EAKIt = E3DB_GetEAKResultIterator_GetIterator(EAKResult);
   // E3DB_EAK *eak = E3DB_ResultIterator_GetEAK(EAKIt);
   // char *rawEAK = E3DB_EAK_GetEAK(eak);
   // char *authPublicKey = E3DB_EAK_GetAuthPubKey(eak);
   // unsigned char *ak = E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, op->client->options->private_key);
-
-  // Path B: Access Key Does Not Exist
 
   // // Write Record
   // op = E3DB_WriteRecord_Begin(client, record_type, data, meta);
