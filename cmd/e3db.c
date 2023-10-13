@@ -503,7 +503,59 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
     printf("\n%-20s \n%s\n", "plain:", cJSON_Print(decrypted_record->meta->plain));
     printf("\n%-20s \n%s\n", "data:", cJSON_Print(decrypted_record->data));
 
-    free(ak);
+    // Free all memory
+    // TODO move all memory freeing to a separate function for each object
+    // free(ak);
+
+    // if (EAKIt)
+    // {
+    //   if (EAKIt->pos)
+    //     cJSON_Delete(EAKIt->pos);
+    //   free(EAKIt);
+    // }
+
+    // if (decrypted_record)
+    // {
+    //   if (decrypted_record->data)
+    //     cJSON_Delete(decrypted_record->data);
+    //   if (decrypted_record->rec_sig)
+    //     free(decrypted_record->rec_sig);
+    //   if (decrypted_record->meta)
+    //   {
+    //     if (decrypted_record->meta->record_id)
+    //       free(decrypted_record->meta->record_id);
+    //     if (decrypted_record->meta->writer_id)
+    //       free(decrypted_record->meta->writer_id);
+    //     if (decrypted_record->meta->user_id)
+    //       free(decrypted_record->meta->user_id);
+    //     if (decrypted_record->meta->type)
+    //       free(decrypted_record->meta->type);
+    //     if (decrypted_record->meta->version)
+    //       free(decrypted_record->meta->version);
+    //     if (decrypted_record->meta->last_modified)
+    //       free(decrypted_record->meta->last_modified);
+    //     if (decrypted_record->meta->created)
+    //       free(decrypted_record->meta->created);
+    //     if (decrypted_record->meta->plain)
+    //       cJSON_Delete(decrypted_record->meta->plain);
+    //     free(decrypted_record->meta);
+    //   }
+    // }
+
+    // if (eak)
+    // {
+    //   if (eak->eak)
+    //     free(eak->eak);
+    //   if (eak->signer_id)
+    //     free(eak->signer_id);
+    //   if (eak->authorizer_id)
+    //     free(eak->authorizer_id);
+    //   if (eak->signer_signing_key.ed25519)
+    //     free(eak->signer_signing_key.ed25519);
+    //   if (eak->auth_pub_key.curve25519)
+    //     free(eak->auth_pub_key.curve25519);
+    //   free(eak);
+    // }
     E3DB_RecordFieldIterator_Delete(f_it);
     E3DB_ReadRecordsResultIterator_Next(it);
   }
