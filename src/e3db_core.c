@@ -1250,6 +1250,7 @@ static int E3DB_EncryptedAccessKey_Request(E3DB_Op *op, int response_code,
                                            const char *body, E3DB_HttpHeaderList *headers,
                                            size_t num_headers)
 {
+  // TODO wonder if in the below response i can say "if its 404 or 200" but ill affect the read recorddd
   E3DB_HandleAuthResponse(op, response_code, body);
   E3DB_EncryptedAccessKeys_InitOp(op);
   return 0;
