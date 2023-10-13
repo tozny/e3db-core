@@ -203,6 +203,94 @@ int curl_run_op(E3DB_Op *op)
   return 0;
 }
 
+/* Complete an E3DB operation using libcurl for HTTP requests. */
+int curl_run_op_dont_fail_with_response_code(E3DB_Op *op, long response_code_not_errored)
+{
+  printf("%s", "Top");
+  CURL *curl;
+
+  if ((curl = curl_easy_init()) == NULL)
+  {
+    printf("%s", "IF");
+    fprintf(stderr, "Fatal: Curl initialization failed.\n");
+    exit(1);
+  }
+
+  while (!E3DB_Op_IsDone(op))
+  {
+    printf("%s", "While");
+    if (E3DB_Op_IsHttpState(op))
+    {
+      printf("%s", "If inside While");
+      curl_easy_reset(curl);
+
+      const char *method = E3DB_Op_GetHttpMethod(op);
+      E3DB_HttpHeaderList *headers = E3DB_Op_GetHttpHeaders(op);
+      BIO *write_bio = BIO_new(BIO_s_mem());
+
+      struct curl_slist *chunk = NULL;
+      E3DB_HttpHeader *header = E3DB_HttpHeaderList_GetFirst(headers);
+
+      while (header != NULL)
+      {
+        sds header_text = sdscatprintf(sdsempty(), "%s: %s",
+                                       E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
+        chunk = curl_slist_append(chunk, header_text);
+        sdsfree(header_text);
+
+        header = E3DB_HttpHeader_GetNext(header);
+      }
+
+      if (!strcmp(method, "POST"))
+      {
+        printf("%s", "IF POST");
+        const char *post_body = E3DB_Op_GetHttpBody(op);
+        curl_easy_setopt(curl, CURLOPT_POST, 1L);
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_body);
+      }
+      else if (!strcmp(method, "GET"))
+      {
+        // nothing special for GET
+      }
+      else
+      {
+        fprintf(stderr, "Unsupported method: %s\n", method);
+        abort();
+      }
+      printf("in Curl Op before perform %s", "before");
+      curl_easy_setopt(curl, CURLOPT_URL, E3DB_Op_GetHttpUrl(op));
+      curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+      curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
+      curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_body);
+      curl_easy_setopt(curl, CURLOPT_WRITEDATA, write_bio);
+
+      CURLcode res = curl_easy_perform(curl);
+      if (res != CURLE_OK)
+      {
+        fprintf(stderr, "curl_easy_perform: %s\n", curl_easy_strerror(res));
+      }
+      printf("in Curl Op after perform %s", "After");
+      long response_code;
+      curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+      printf("RESPONSE CODE %ld", response_code);
+      if (response_code == response_code_not_errored)
+      {
+        curl_easy_cleanup(curl);
+        return response_code_not_errored;
+      }
+
+      char *body;
+      BIO_write(write_bio, "\0", 1);
+      BIO_get_mem_data(write_bio, &body);
+      E3DB_Op_FinishHttpState(op, response_code, body, NULL, 0);
+      BIO_free_all(write_bio);
+      curl_slist_free_all(chunk);
+    }
+  }
+
+  curl_easy_cleanup(curl);
+  return 0;
+}
 /* Get the user's home directory.
  *
  * TODO: Support Windows. */
@@ -493,8 +581,17 @@ int do_write_record(E3DB_Client *client, int argc, char **argv)
   printf("Record Type %s\n", record_type);
 
   printf("%s", "Before curl_run_op \n ");
-  curl_run_op(op);
+  int responseCode = curl_run_op_dont_fail_with_response_code(op, 404);
   printf("%s", "After curl_run_op \n ");
+
+  if (responseCode == 404)
+  {
+    printf("%s", "case 404");
+  }
+  else
+  {
+    printf("%s", "case 200");
+  }
 
   // Get Result
   // E3DB_EncryptedAccessKeyResult *EAKResult = E3DB_EAK_GetResult(op);
