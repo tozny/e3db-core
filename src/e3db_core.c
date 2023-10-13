@@ -131,8 +131,9 @@ typedef enum
 {
   E3DB_OP_LIST_RECORDS,
   E3DB_OP_READ_RECORDS,
-  E3DB_OP_ENCRYPTED_ACCESS_KEYS_RECORDS,
+  E3DB_OP_ENCRYPTED_ACCESS_KEYS,
   E3DB_OP_WRITE_RECORD,
+  E3DB_OP_CREATE_ACCESS_KEYS,
 } E3DB_OpType;
 
 typedef enum
@@ -677,6 +678,16 @@ typedef struct _E3DB_EncryptedAccessKeyResult
   const char **reader_id;
   const char **type;
 } E3DB_EncryptedAccessKeyResult;
+
+typedef struct _E3DB_CreateAccessKeyResult
+{
+  cJSON *json; // entire ciphertext response body
+  const char **writer_id;
+  const char **user_id;
+  const char **reader_id;
+  const char **type;
+  const char **ak;
+} E3DB_CreateAccessKeyResult;
 
 typedef struct _E3DB_ListRecordsResultIterator
 {
@@ -1249,7 +1260,7 @@ E3DB_Op *E3DB_GetEncryptedAccessKeys_Begin(
 {
   printf("%s", "At the start of E3DB_GetEncryptedAccessKeys_Begin ");
 
-  E3DB_Op *op = E3DB_Op_New(client, E3DB_OP_ENCRYPTED_ACCESS_KEYS_RECORDS);
+  E3DB_Op *op = E3DB_Op_New(client, E3DB_OP_ENCRYPTED_ACCESS_KEYS);
   E3DB_EncryptedAccessKeyResult *result = xmalloc(sizeof(*result));
 
   // Set up needed params for call to get encrypted access keys
@@ -1271,6 +1282,97 @@ E3DB_Op *E3DB_GetEncryptedAccessKeys_Begin(
     E3DB_EncryptedAccessKeys_InitOp(op);
   }
   printf("%s", "At the end of E3DB_GetEncryptedAccessKeys_Begin ");
+
+  return op;
+}
+
+// Create Access Key Data
+// ---------------------------------------------------------------------------------------------------------------------------------
+static void E3DB_CreateAccessKeys_InitOp(E3DB_Op *op)
+{
+  printf("\nHELLO from E3DB_CreateAccessKeys_InitOp\n");
+  E3DB_CreateAccessKeyResult *result = op->result;
+
+  // TODO: Make sure at least 1 record ID is specified.
+
+  sds url = sdsnew(op->client->options->api_url);
+  url = sdscat(url, "/v1/storage/access_keys/");
+  url = sdscat(url, result->writer_id);
+  url = sdscat(url, "/");
+  url = sdscat(url, result->writer_id);
+  url = sdscat(url, "/");
+  url = sdscat(url, result->writer_id);
+  url = sdscat(url, "/");
+  url = sdscat(url, result->type);
+
+  printf("\nURL: %s\n", url);
+
+  // TODO: Add fields to URL
+
+  op->state = E3DB_OP_STATE_HTTP;
+  op->request.http.url = url;
+  op->request.http.method = sdsnew("PUT");
+  op->request.http.body = sdsnew("");
+  op->request.http.next_state = E3DB_ReadRecords_Response;
+  op->request.http.headers = E3DB_HttpHeaderList_New();
+
+  sds auth_header = sdsnew("Bearer ");
+  auth_header = sdscat(auth_header, op->client->access_token);
+  E3DB_HttpHeaderList_Add(op->request.http.headers, "Authorization", auth_header);
+  sdsfree(auth_header);
+}
+
+static int E3DB_CreateAccessKey_Request(E3DB_Op *op, int response_code,
+                                        const char *body, E3DB_HttpHeaderList *headers,
+                                        size_t num_headers)
+{
+  E3DB_HandleAuthResponse(op, response_code, body);
+  E3DB_CreateAccessKeys_InitOp(op);
+  return 0;
+}
+
+static void E3DB_CreateAccessKeyResult_Delete(void *p)
+{
+  E3DB_CreateAccessKeyResult *result = p;
+
+  if (result != NULL)
+  {
+    if (result->json != NULL)
+    {
+      cJSON_Delete(result->json);
+    }
+    xfree(result);
+  }
+}
+
+E3DB_Op *E3DB_CreateAccessKeys_Begin(
+    E3DB_Client *client, const char **writer_id, const char **user_id, const char **client_id, const char **record_type)
+{
+  printf("%s", "At the start of E3DB_CreateAccessKeys_Begin ");
+
+  E3DB_Op *op = E3DB_Op_New(client, E3DB_OP_CREATE_ACCESS_KEYS);
+  E3DB_CreateAccessKeyResult *result = xmalloc(sizeof(*result));
+
+  // Set up needed params for call to get encrypted access keys
+  result->writer_id = writer_id;
+  result->user_id = user_id;
+  result->user_id = client_id;
+  result->type = record_type;
+  result->ak = "MAKE THIS";
+
+  op->result = result;
+  op->free_result = E3DB_CreateAccessKeyResult_Delete;
+
+  // TODO: Also fetch auth token if our access token is expired.
+  if (client->access_token == NULL)
+  {
+    E3DB_InitAuthOp(client, op, E3DB_CreateAccessKey_Request);
+  }
+  else
+  {
+    E3DB_CreateAccessKeys_InitOp(op);
+  }
+  printf("%s", "At the end of E3DB_CreateAccessKeys_Begin ");
 
   return op;
 }

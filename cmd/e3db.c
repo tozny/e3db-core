@@ -588,7 +588,10 @@ int do_write_record(E3DB_Client *client, int argc, char **argv)
   {
     // Path B: Access Key Does Not Exist
     // Create Access Key
-    printf("%s", "case 404");
+    printf("%s", "start case 404");
+    E3DB_Op *op = E3DB_CreateAccessKeys_Begin(client, client->options->client_id, client->options->client_id, client->options->client_id, record_type);
+    curl_run_op(op);
+    printf("%s", "case 404 end");
     return 0;
   }
 

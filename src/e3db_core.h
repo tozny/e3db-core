@@ -189,15 +189,19 @@ extern "C"
     const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned char *ak);
 
     /*
-     * {List Records}
+     * {Result definitions}
      */
 
     typedef struct _E3DB_ListRecordsResult E3DB_ListRecordsResult;
     typedef struct _E3DB_EncryptedAccessKeyResult E3DB_EncryptedAccessKeyResult;
+    typedef struct _E3DB_CreateAccessKeyResult E3DB_CreateAccessKeyResult;
     typedef struct _E3DB_EncryptedAccessKeyJSON E3DB_EncryptedAccessKeyJSON;
     typedef struct _E3DB_ListRecordsResultIterator E3DB_ListRecordsResultIterator;
     typedef struct _E3DB_GetEAKResultIterator E3DB_GetEAKResultIterator;
 
+    /*
+     * {List Records}
+     */
     E3DB_Op *E3DB_ListRecords_Begin(E3DB_Client *client, int limit, int offset,
                                     UUID *writer_id, const char *types[],
                                     size_t num_types);
@@ -223,7 +227,6 @@ extern "C"
     typedef struct _E3DB_ReadRecordsResult E3DB_ReadRecordsResult;
     typedef struct _E3DB_WriteRecordsResult E3DB_WriteRecordsResult;
     typedef struct _E3DB_ReadRecordsResultIterator E3DB_ReadRecordsResultIterator;
-    typedef struct _E3DB_EncryptedAccessKeyResult E3DB_EncryptedAccessKeyResult;
 
     E3DB_Op *E3DB_ReadRecords_Begin(
         E3DB_Client *client, const char *record_ids[], size_t num_record_ids,
@@ -270,6 +273,13 @@ extern "C"
 
     /* Return the EAK. */
     E3DB_EAK *E3DB_ResultIterator_GetEAK(E3DB_GetEAKResultIterator *it);
+
+    /*
+     * {Create Access Key Records}
+     */
+
+    E3DB_Op *E3DB_CreateAccessKeys_Begin(
+        E3DB_Client *client, const char **writer_id, const char **user_id, const char **client_id, const char **record_type);
 
 #ifdef __cplusplus
 }
