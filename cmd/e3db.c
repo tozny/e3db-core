@@ -587,20 +587,21 @@ int do_write_record(E3DB_Client *client, int argc, char **argv)
   if (responseCode == 404)
   {
     // Path B: Access Key Does Not Exist
+    // Create Access Key
     printf("%s", "case 404");
+    return 0;
   }
 
-  // Path A: Access Key Exists
-  // Get Result
-  // E3DB_EncryptedAccessKeyResult *EAKResult = E3DB_EAK_GetResult(op);
+  // Step 2: Decrypt Access Key
+  E3DB_EncryptedAccessKeyResult *EAKResult = E3DB_EAK_GetResult(op);
+  E3DB_GetEAKResultIterator *EAKIt = E3DB_GetEAKResultIterator_GetIterator(EAKResult);
+  E3DB_EAK *eak = E3DB_ResultIterator_GetEAK(EAKIt);
+  char *rawEAK = E3DB_EAK_GetEAK(eak);
+  char *authPublicKey = E3DB_EAK_GetAuthPubKey(eak);
+  unsigned char *ak = E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, op->client->options->private_key);
 
-  // E3DB_GetEAKResultIterator *EAKIt = E3DB_GetEAKResultIterator_GetIterator(EAKResult);
-  // E3DB_EAK *eak = E3DB_ResultIterator_GetEAK(EAKIt);
-  // char *rawEAK = E3DB_EAK_GetEAK(eak);
-  // char *authPublicKey = E3DB_EAK_GetAuthPubKey(eak);
-  // unsigned char *ak = E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, op->client->options->private_key);
-
-  // // Write Record
+  // Write Record
+  // TODO Inside write record, we should encryppt
   // op = E3DB_WriteRecord_Begin(client, record_type, data, meta);
 
   // curl_run_op(op);
