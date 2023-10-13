@@ -640,6 +640,7 @@ static void E3DB_HandleAuthResponse(E3DB_Op *op, int response_code, const char *
 
   sdsfree(op->client->access_token);
   op->client->access_token = sdsnew(cJSON_GetSafeObjectItemString(json, "access_token"));
+  free(json);
   E3DB_Op_Finish(op);
 }
 
@@ -1140,6 +1141,11 @@ E3DB_EAK *E3DB_ResultIterator_GetEAK(E3DB_GetEAKResultIterator *it)
   printf("it->EAK.signer_signing_key.ed25519: %s\n", it->EAK.signer_signing_key.ed25519);
   printf("it->EAK.auth_pub_key.curve25519: %s\n", it->EAK.auth_pub_key.curve25519);
 
+  free(EAK);
+  free(signer_id);
+  free(authorizer_id);
+  free(signer_signing_key);
+  free(authorizer_public_key);
   return &it->EAK;
 }
 
@@ -1165,7 +1171,9 @@ const char *E3DB_EAK_DecryptEAK(char *eak, char *pubKey, char *privKey)
 
   unsigned long long clen = strlen((const char *)decodedKey);
   int status = crypto_box_open_easy(ak, decodedKey, clen, decodedNonce, decodedPubKey, decodedPrivKey);
-
+  ak = (char *)realloc(ak, 32 * sizeof(char) + 1);
+  ak[32] = '\0'; 
+  printf("\n EAK Decryption Status: %d", status);
   free(eak_copy);
   free(decodedKey);
   free(decodedNonce);
@@ -1196,13 +1204,26 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
   unsigned char *decodedDataNonce = base64_decode(array[3]);
 
   unsigned long long clen = strlen((const char *)decodedDataKey);
+  // Find length of data key cipher:
+  int length = 0;
+  while(decodedDataKey[length] != '\0' || decodedDataKey[length+1] != '\0') {
+    length ++;
+  }
+  // printf("\n Strlen: %d Custom Length: %d ", clen, length);
   unsigned char *dk = (unsigned char *)malloc(32);
-  int status = crypto_secretbox_open_easy(dk, decodedDataKey, clen, decodedDataKeyNonce, ak);
-
+  int status = crypto_secretbox_open_easy(dk, decodedDataKey, length, decodedDataKeyNonce, ak);
+  printf("\n DK Decryption Status: %d", status);
+ 
   unsigned long long dlen = strlen((const char *)decodedData);
   unsigned char *data = (char *)malloc(dlen * sizeof(char));
-  status = crypto_secretbox_open_easy(data, decodedData, dlen, decodedDataNonce, dk);
-
+  // Find length of data cipher:
+  length = 0;
+  while(decodedData[length] != '\0' || decodedData[length+1] != '\0') {
+    length ++;
+  }
+  // printf("\n Strlen: %d Custom Length: %d", dlen, length);
+  status = crypto_secretbox_open_easy(data, decodedData, length, decodedDataNonce, dk);
+  printf("\n Data Decryption Status: %d", status);
   free(edata_copy);
   free(decodedDataKey);
   free(decodedDataKeyNonce);
