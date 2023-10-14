@@ -31,6 +31,7 @@ extern "C"
     void E3DB_ClientOptions_SetApiSecret(E3DB_ClientOptions *opts, const char *api_secret);
     void E3DB_ClientOptions_SetClientID(E3DB_ClientOptions *opts, const char *client_id);
     void E3DB_ClientOptions_SetPrivateKey(E3DB_ClientOptions *opts, const char *private_key);
+    void E3DB_ClientOptions_SetPublicKey(E3DB_ClientOptions *opts, const char *public_key);
 
     // TODO: Other ways to authenticate---Tozny, OIDC, etc.
 
@@ -279,7 +280,7 @@ extern "C"
      */
 
     E3DB_Op *E3DB_CreateAccessKeys_Begin(
-        E3DB_Client *client, const char **writer_id, const char **user_id, const char **client_id, const char **record_type);
+        E3DB_Client *client, const char **writer_id, const char **user_id, const char **client_id, const char **record_type, const char **reader_public_key);
 
 #ifdef __cplusplus
 }

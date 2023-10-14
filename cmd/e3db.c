@@ -168,6 +168,13 @@ int curl_run_op(E3DB_Op *op)
       {
         // nothing special for GET
       }
+      else if (!strcmp(method, "PUT"))
+      {
+        const char *put_body = E3DB_Op_GetHttpBody(op);
+        printf("bBODYYY %s \n \n \n ", put_body);
+        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, put_body);
+      }
       else
       {
         fprintf(stderr, "Unsupported method: %s\n", method);
@@ -349,7 +356,7 @@ E3DB_ClientOptions *load_config(void)
   }
 
   E3DB_ClientOptions *opts = E3DB_ClientOptions_New();
-  cJSON *api_key, *api_secret, *client_id, *private_key;
+  cJSON *api_key, *api_secret, *client_id, *private_key, *public_key;
 
   api_key = cJSON_GetObjectItem(json, "api_key_id");
   if (api_key == NULL || api_key->type != cJSON_String)
@@ -379,10 +386,18 @@ E3DB_ClientOptions *load_config(void)
     exit(1);
   }
 
+  public_key = cJSON_GetObjectItem(json, "public_key");
+  if (public_key == NULL || public_key->type != cJSON_String)
+  {
+    fprintf(stderr, "Error: Missing 'public_key' key in configuration file.\n");
+    exit(1);
+  }
+
   E3DB_ClientOptions_SetApiKey(opts, api_key->valuestring);
   E3DB_ClientOptions_SetApiSecret(opts, api_secret->valuestring);
   E3DB_ClientOptions_SetClientID(opts, client_id->valuestring);
   E3DB_ClientOptions_SetPrivateKey(opts, private_key->valuestring);
+  E3DB_ClientOptions_SetPublicKey(opts, public_key->valuestring);
 
   sdsfree(config_file);
   sdsfree(config);
@@ -580,30 +595,34 @@ int do_write_record(E3DB_Client *client, int argc, char **argv)
   printf("Access Token %s \n", client->access_token);
   printf("Record Type %s\n", record_type);
 
-  printf("%s", "Before curl_run_op \n ");
+  printf("%s", "Before curl_run_op_dont_fail_with_response_code \n ");
   int responseCode = curl_run_op_dont_fail_with_response_code(op, 404);
-  printf("%s", "After curl_run_op \n ");
+  printf("%s", "After curl_run_op_dont_fail_with_response_code \n ");
 
+  printf("respinse code %d", responseCode);
   if (responseCode == 404)
   {
     // Path B: Access Key Does Not Exist
     // Create Access Key
     printf("%s", "start case 404");
-    E3DB_Op *op = E3DB_CreateAccessKeys_Begin(client, client->options->client_id, client->options->client_id, client->options->client_id, record_type);
+    printf("PUBLIC KEYYYY %s", client->options->public_key);
+
+    E3DB_Op *op = E3DB_CreateAccessKeys_Begin(client, client->options->client_id, client->options->client_id, client->options->client_id, record_type, client->options->public_key);
+    printf("%s", "Before curl_run_op \n ");
     curl_run_op(op);
-    printf("%s", "case 404 end");
+    printf("%s", "After curl_run_op \n ");
     return 0;
   }
 
-  // Step 2: Decrypt Access Key
-  E3DB_EncryptedAccessKeyResult *EAKResult = E3DB_EAK_GetResult(op);
-  E3DB_GetEAKResultIterator *EAKIt = E3DB_GetEAKResultIterator_GetIterator(EAKResult);
-  E3DB_EAK *eak = E3DB_ResultIterator_GetEAK(EAKIt);
-  char *rawEAK = E3DB_EAK_GetEAK(eak);
-  char *authPublicKey = E3DB_EAK_GetAuthPubKey(eak);
-  unsigned char *ak = E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, op->client->options->private_key);
+  // // Step 2: Decrypt Access Key
+  // E3DB_EncryptedAccessKeyResult *EAKResult = E3DB_EAK_GetResult(op);
+  // E3DB_GetEAKResultIterator *EAKIt = E3DB_GetEAKResultIterator_GetIterator(EAKResult);
+  // E3DB_EAK *eak = E3DB_ResultIterator_GetEAK(EAKIt);
+  // char *rawEAK = E3DB_EAK_GetEAK(eak);
+  // char *authPublicKey = E3DB_EAK_GetAuthPubKey(eak);
+  // unsigned char *ak = E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, op->client->options->private_key);
 
-  // Write Record
+  // // Write Record
   // TODO Inside write record, we should encryppt
   // op = E3DB_WriteRecord_Begin(client, record_type, data, meta);
 
