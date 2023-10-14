@@ -673,7 +673,6 @@ int do_write_record(E3DB_Client *client, int argc, char **argv)
     printf("%s", "Before curl_run_op \n ");
     curl_run_op(op);
     printf("%s", "After curl_run_op \n ");
-    return 0;
   }
 
   // // Step 2: Decrypt Access Key

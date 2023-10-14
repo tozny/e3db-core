@@ -628,7 +628,7 @@ static sds E3DB_GetAuthHeader(E3DB_Client *client)
  * in the client and will be used to authenticate subsequent requests. */
 static void E3DB_HandleAuthResponse(E3DB_Op *op, int response_code, const char *body)
 {
-  if (response_code != 200 && response_code != 201)
+  if (response_code != 200)
   {
     // TODO: Handle non-successful responses.
     fprintf(stderr, "Fatal: Error response from E3DB API: %d\n", response_code);
@@ -1330,6 +1330,8 @@ static int E3DB_CreateAccessKeys_Response(
     E3DB_Op *op, int response_code,
     const char *body, E3DB_HttpHeaderList *headers, size_t num_headers)
 {
+  printf("%s", "IN DA RESPONSE ");
+
   if (response_code != 201)
   {
     // TODO: Handle non-successful responses.
@@ -1396,8 +1398,6 @@ static void E3DB_CreateAccessKeys_InitOp(E3DB_Op *op)
   auth_header = sdscat(auth_header, op->client->access_token);
   E3DB_HttpHeaderList_Add(op->request.http.headers, "Authorization", auth_header);
   sdsfree(auth_header);
-  // free the JSON string and cJSON object
-  cJSON_Delete(json);
 }
 
 static int E3DB_CreateAccessKey_Request(E3DB_Op *op, int response_code,
