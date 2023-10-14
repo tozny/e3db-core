@@ -122,7 +122,7 @@ size_t read_body(void *ptr, size_t size, size_t nmemb, BIO *bio)
 /* Complete an E3DB operation using libcurl for HTTP requests. */
 int curl_run_op(E3DB_Op *op)
 {
-  printf("%s", "Top");
+  printf("\n%s\n", "Top");
   CURL *curl;
 
   if ((curl = curl_easy_init()) == NULL)
@@ -193,7 +193,7 @@ int curl_run_op(E3DB_Op *op)
       BIO_write(write_bio, "\0", 1);
       BIO_get_mem_data(write_bio, &body);
       E3DB_Op_FinishHttpState(op, response_code, body, NULL, 0);
-      printf("HELLOO %s", body);
+      printf("\nHELLOO %s\n", body);
       BIO_free_all(write_bio);
       curl_slist_free_all(chunk);
     }
@@ -444,125 +444,140 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
 
   curl_global_init(CURL_GLOBAL_DEFAULT);
 
-  const char **record_ids = (const char **)&argv[1];
-  printf("\nRECORDS = %s\n", *record_ids);
-  E3DB_Op *op = E3DB_ReadRecords_Begin(client, record_ids, argc - 1, NULL, 0);
-  curl_run_op(op);
+  const char **all_record_ids = (const char **)&argv[1];
+  printf("\n argc %d \n", argc);
+  E3DB_DecryptedRecord *decrypted_records = (E3DB_DecryptedRecord *)malloc(sizeof(E3DB_DecryptedRecord) * argc - 1);
 
-  E3DB_ReadRecordsResult *result = E3DB_ReadRecords_GetResult(op);
-  E3DB_ReadRecordsResultIterator *it = E3DB_ReadRecordsResult_GetIterator(result);
-  while (!E3DB_ReadRecordsResultIterator_IsDone(it))
+  for (int i = 0; i < argc - 1; i++)
   {
-    // At this point we have encrypted data
-    E3DB_RecordMeta *meta = E3DB_ReadRecordsResultIterator_GetMeta(it);
-    E3DB_Record *record = E3DB_ReadRecordsResultIterator_GetData(it);
+    printf("\n forloop %d \n", i);
 
-    // Set up Access Keys Fetch
-    E3DB_Op *op = E3DB_GetEncryptedAccessKeys_Begin(client, E3DB_RecordMeta_GetWriterId(meta), E3DB_RecordMeta_GetUserId(meta), E3DB_RecordMeta_GetUserId(meta), E3DB_RecordMeta_GetType(meta));
+    const char **record_ids = (const char **)malloc(sizeof(const char *));
+    record_ids[0] = all_record_ids[i];
 
-    // Run access keys fetch
+    E3DB_Op *op = E3DB_ReadRecords_Begin(client, &all_record_ids[i], 1, NULL, 0);
+    printf("\n before curl \n");
+    printf("\nclient->access_token %s\n", client->access_token);
     curl_run_op(op);
+    printf("\n after curl \n");
 
-    E3DB_EncryptedAccessKeyResult *EAKResult = E3DB_EAK_GetResult(op);
-    E3DB_GetEAKResultIterator *EAKIt = E3DB_GetEAKResultIterator_GetIterator(EAKResult);
-    E3DB_EAK *eak = E3DB_ResultIterator_GetEAK(EAKIt);
-    char *rawEAK = E3DB_EAK_GetEAK(eak);
-    char *authPublicKey = E3DB_EAK_GetAuthPubKey(eak);
-    unsigned char *ak = E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, op->client->options->private_key);
-
-    E3DB_DecryptedRecord *decrypted_record = (E3DB_DecryptedRecord *)malloc(sizeof(E3DB_DecryptedRecord));
-    decrypted_record->meta = meta;
-    decrypted_record->rec_sig = E3DB_ReadRecordsResultIterator_GetRecSig(it);
-
-    // Decrypt the record data
-    E3DB_RecordFieldIterator *f_it = E3DB_Record_GetFieldIterator(record);
-    cJSON *decryptedData = cJSON_CreateObject();
-    while (!E3DB_RecordFieldIterator_IsDone(f_it))
+    E3DB_ReadRecordsResult *result = E3DB_ReadRecords_GetResult(op);
+    E3DB_ReadRecordsResultIterator *it = E3DB_ReadRecordsResult_GetIterator(result);
+    while (!E3DB_ReadRecordsResultIterator_IsDone(it))
     {
-      unsigned char *edata = E3DB_RecordFieldIterator_GetValue(f_it);
+      // At this point we have encrypted data
+      E3DB_RecordMeta *meta = E3DB_ReadRecordsResultIterator_GetMeta(it);
+      E3DB_Record *record = E3DB_ReadRecordsResultIterator_GetData(it);
 
-      char *ddata = E3DB_RecordFieldIterator_DecryptValue(edata, ak);
-      char *name = E3DB_RecordFieldIterator_GetName(f_it);
+      // Set up Access Keys Fetch
+      E3DB_Op *eakOp = E3DB_GetEncryptedAccessKeys_Begin(client, E3DB_RecordMeta_GetWriterId(meta), E3DB_RecordMeta_GetUserId(meta), E3DB_RecordMeta_GetUserId(meta), E3DB_RecordMeta_GetType(meta));
 
-      cJSON_AddStringToObject(decryptedData, name, ddata);
+      // Run access keys fetch
+      curl_run_op(eakOp);
 
-      free(ddata);
-      E3DB_RecordFieldIterator_Next(f_it);
+      E3DB_EncryptedAccessKeyResult *EAKResult = E3DB_EAK_GetResult(eakOp);
+      E3DB_GetEAKResultIterator *EAKIt = E3DB_GetEAKResultIterator_GetIterator(EAKResult);
+      E3DB_EAK *eak = E3DB_ResultIterator_GetEAK(EAKIt);
+      char *rawEAK = E3DB_EAK_GetEAK(eak);
+      char *authPublicKey = E3DB_EAK_GetAuthPubKey(eak);
+      unsigned char *ak = E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, eakOp->client->options->private_key);
+
+      E3DB_DecryptedRecord *decrypted_record = (E3DB_DecryptedRecord *)malloc(sizeof(E3DB_DecryptedRecord));
+      decrypted_record->meta = meta;
+      decrypted_record->rec_sig = E3DB_ReadRecordsResultIterator_GetRecSig(it);
+
+      // Decrypt the record data
+      E3DB_RecordFieldIterator *f_it = E3DB_Record_GetFieldIterator(record);
+      cJSON *decryptedData = cJSON_CreateObject();
+      while (!E3DB_RecordFieldIterator_IsDone(f_it))
+      {
+        unsigned char *edata = E3DB_RecordFieldIterator_GetValue(f_it);
+
+        char *ddata = E3DB_RecordFieldIterator_DecryptValue(edata, ak);
+        char *name = E3DB_RecordFieldIterator_GetName(f_it);
+
+        cJSON_AddStringToObject(decryptedData, name, ddata);
+
+        free(ddata);
+        E3DB_RecordFieldIterator_Next(f_it);
+      }
+      decrypted_record->data = decryptedData;
+
+      // Print the record info
+      printf("\n IN LOOP RECORD %d:\n", i);
+
+      printf("\n%-20s %s\n", "record_id:", decrypted_record->meta->record_id);
+      printf("\n%-20s %s\n", "record_type:", decrypted_record->meta->type);
+      printf("\n%-20s %s\n", "writer_id:", decrypted_record->meta->writer_id);
+      printf("\n%-20s %s\n", "user_id:", decrypted_record->meta->user_id);
+      printf("\n%-20s %s\n", "version:", decrypted_record->meta->version);
+      printf("\n%-20s %s\n", "created:", decrypted_record->meta->created);
+      printf("\n%-20s %s\n", "last_modified:", decrypted_record->meta->last_modified);
+      printf("\n%-20s %s\n", "rec_sig:", decrypted_record->rec_sig);
+      printf("\n%-20s \n%s\n", "plain:", cJSON_Print(decrypted_record->meta->plain));
+      printf("\n%-20s \n%s\n", "data:", cJSON_Print(decrypted_record->data));
+
+      // Free all memory
+      // TODO move all memory freeing to a separate function for each object
+      // free(ak);
+
+      // if (EAKIt)
+      // {
+      //   if (EAKIt->pos)
+      //     cJSON_Delete(EAKIt->pos);
+      //   free(EAKIt);
+      // }
+
+      // if (decrypted_record)
+      // {
+      //   if (decrypted_record->data)
+      //     cJSON_Delete(decrypted_record->data);
+      //   if (decrypted_record->rec_sig)
+      //     free(decrypted_record->rec_sig);
+      //   if (decrypted_record->meta)
+      //   {
+      //     if (decrypted_record->meta->record_id)
+      //       free(decrypted_record->meta->record_id);
+      //     if (decrypted_record->meta->writer_id)
+      //       free(decrypted_record->meta->writer_id);
+      //     if (decrypted_record->meta->user_id)
+      //       free(decrypted_record->meta->user_id);
+      //     if (decrypted_record->meta->type)
+      //       free(decrypted_record->meta->type);
+      //     if (decrypted_record->meta->version)
+      //       free(decrypted_record->meta->version);
+      //     if (decrypted_record->meta->last_modified)
+      //       free(decrypted_record->meta->last_modified);
+      //     if (decrypted_record->meta->created)
+      //       free(decrypted_record->meta->created);
+      //     if (decrypted_record->meta->plain)
+      //       cJSON_Delete(decrypted_record->meta->plain);
+      //     free(decrypted_record->meta);
+      //   }
+      // }
+
+      // if (eak)
+      // {
+      //   if (eak->eak)
+      //     free(eak->eak);
+      //   if (eak->signer_id)
+      //     free(eak->signer_id);
+      //   if (eak->authorizer_id)
+      //     free(eak->authorizer_id);
+      //   if (eak->signer_signing_key.ed25519)
+      //     free(eak->signer_signing_key.ed25519);
+      //   if (eak->auth_pub_key.curve25519)
+      //     free(eak->auth_pub_key.curve25519);
+      //   free(eak);
+      // }
+      E3DB_RecordFieldIterator_Delete(f_it);
+      E3DB_ReadRecordsResultIterator_Next(it);
     }
-    decrypted_record->data = decryptedData;
 
-    // Print the record info
-    printf("\n%-20s %s\n", "record_id:", decrypted_record->meta->record_id);
-    printf("\n%-20s %s\n", "record_type:", decrypted_record->meta->type);
-    printf("\n%-20s %s\n", "writer_id:", decrypted_record->meta->writer_id);
-    printf("\n%-20s %s\n", "user_id:", decrypted_record->meta->user_id);
-    printf("\n%-20s %s\n", "version:", decrypted_record->meta->version);
-    printf("\n%-20s %s\n", "created:", decrypted_record->meta->created);
-    printf("\n%-20s %s\n", "last_modified:", decrypted_record->meta->last_modified);
-    printf("\n%-20s %s\n", "rec_sig:", decrypted_record->rec_sig);
-    printf("\n%-20s \n%s\n", "plain:", cJSON_Print(decrypted_record->meta->plain));
-    printf("\n%-20s \n%s\n", "data:", cJSON_Print(decrypted_record->data));
-
-    // Free all memory
-    // TODO move all memory freeing to a separate function for each object
-    // free(ak);
-
-    // if (EAKIt)
-    // {
-    //   if (EAKIt->pos)
-    //     cJSON_Delete(EAKIt->pos);
-    //   free(EAKIt);
-    // }
-
-    // if (decrypted_record)
-    // {
-    //   if (decrypted_record->data)
-    //     cJSON_Delete(decrypted_record->data);
-    //   if (decrypted_record->rec_sig)
-    //     free(decrypted_record->rec_sig);
-    //   if (decrypted_record->meta)
-    //   {
-    //     if (decrypted_record->meta->record_id)
-    //       free(decrypted_record->meta->record_id);
-    //     if (decrypted_record->meta->writer_id)
-    //       free(decrypted_record->meta->writer_id);
-    //     if (decrypted_record->meta->user_id)
-    //       free(decrypted_record->meta->user_id);
-    //     if (decrypted_record->meta->type)
-    //       free(decrypted_record->meta->type);
-    //     if (decrypted_record->meta->version)
-    //       free(decrypted_record->meta->version);
-    //     if (decrypted_record->meta->last_modified)
-    //       free(decrypted_record->meta->last_modified);
-    //     if (decrypted_record->meta->created)
-    //       free(decrypted_record->meta->created);
-    //     if (decrypted_record->meta->plain)
-    //       cJSON_Delete(decrypted_record->meta->plain);
-    //     free(decrypted_record->meta);
-    //   }
-    // }
-
-    // if (eak)
-    // {
-    //   if (eak->eak)
-    //     free(eak->eak);
-    //   if (eak->signer_id)
-    //     free(eak->signer_id);
-    //   if (eak->authorizer_id)
-    //     free(eak->authorizer_id);
-    //   if (eak->signer_signing_key.ed25519)
-    //     free(eak->signer_signing_key.ed25519);
-    //   if (eak->auth_pub_key.curve25519)
-    //     free(eak->auth_pub_key.curve25519);
-    //   free(eak);
-    // }
-    E3DB_RecordFieldIterator_Delete(f_it);
-    E3DB_ReadRecordsResultIterator_Next(it);
+    E3DB_ReadRecordsResultIterator_Delete(it);
+    E3DB_Op_Delete(op);
+    curl_global_cleanup();
   }
-
-  E3DB_ReadRecordsResultIterator_Delete(it);
-  E3DB_Op_Delete(op);
-  curl_global_cleanup();
 
   return 0;
 }
