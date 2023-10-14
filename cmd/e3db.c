@@ -445,21 +445,15 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
   curl_global_init(CURL_GLOBAL_DEFAULT);
 
   const char **all_record_ids = (const char **)&argv[1];
-  printf("\n argc %d \n", argc);
-  E3DB_DecryptedRecord *decrypted_records = (E3DB_DecryptedRecord *)malloc(sizeof(E3DB_DecryptedRecord) * argc - 1);
+  E3DB_DecryptedRecord *decrypted_records = (E3DB_DecryptedRecord *)malloc(sizeof(E3DB_DecryptedRecord) * (argc - 1));
 
   for (int i = 0; i < argc - 1; i++)
   {
-    printf("\n forloop %d \n", i);
-
     const char **record_ids = (const char **)malloc(sizeof(const char *));
     record_ids[0] = all_record_ids[i];
 
     E3DB_Op *op = E3DB_ReadRecords_Begin(client, &all_record_ids[i], 1, NULL, 0);
-    printf("\n before curl \n");
-    printf("\nclient->access_token %s\n", client->access_token);
     curl_run_op(op);
-    printf("\n after curl \n");
 
     E3DB_ReadRecordsResult *result = E3DB_ReadRecords_GetResult(op);
     E3DB_ReadRecordsResultIterator *it = E3DB_ReadRecordsResult_GetIterator(result);
@@ -503,19 +497,20 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
       }
       decrypted_record->data = decryptedData;
 
-      // Print the record info
-      printf("\n IN LOOP RECORD %d:\n", i);
+      decrypted_records[i] = *decrypted_record;
 
-      printf("\n%-20s %s\n", "record_id:", decrypted_record->meta->record_id);
-      printf("\n%-20s %s\n", "record_type:", decrypted_record->meta->type);
-      printf("\n%-20s %s\n", "writer_id:", decrypted_record->meta->writer_id);
-      printf("\n%-20s %s\n", "user_id:", decrypted_record->meta->user_id);
-      printf("\n%-20s %s\n", "version:", decrypted_record->meta->version);
-      printf("\n%-20s %s\n", "created:", decrypted_record->meta->created);
-      printf("\n%-20s %s\n", "last_modified:", decrypted_record->meta->last_modified);
-      printf("\n%-20s %s\n", "rec_sig:", decrypted_record->rec_sig);
-      printf("\n%-20s \n%s\n", "plain:", cJSON_Print(decrypted_record->meta->plain));
-      printf("\n%-20s \n%s\n", "data:", cJSON_Print(decrypted_record->data));
+      // Print the record info
+      printf("\nRECORD INFO FOR RECORD #%d:\n", i + 1);
+      printf("\n%-20s %s\n", "record_id:", decrypted_records[i].meta->record_id);
+      printf("\n%-20s %s\n", "record_type:", decrypted_records[i].meta->type);
+      printf("\n%-20s %s\n", "writer_id:", decrypted_records[i].meta->writer_id);
+      printf("\n%-20s %s\n", "user_id:", decrypted_records[i].meta->user_id);
+      printf("\n%-20s %s\n", "version:", decrypted_records[i].meta->version);
+      printf("\n%-20s %s\n", "created:", decrypted_records[i].meta->created);
+      printf("\n%-20s %s\n", "last_modified:", decrypted_records[i].meta->last_modified);
+      printf("\n%-20s %s\n", "rec_sig:", decrypted_records[i].rec_sig);
+      printf("\n%-20s \n%s\n", "plain:", cJSON_Print(decrypted_records[i].meta->plain));
+      printf("\n%-20s \n%s\n", "data:", cJSON_Print(decrypted_records[i].data));
 
       // Free all memory
       // TODO move all memory freeing to a separate function for each object
