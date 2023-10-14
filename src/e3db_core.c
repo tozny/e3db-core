@@ -979,6 +979,8 @@ E3DB_Op *E3DB_ReadRecords_Begin(
     E3DB_Client *client, const char **record_ids, size_t num_record_ids,
     const char *fields[], size_t num_fields)
 {
+  printf("\nIn E3DB_ReadRecords_Begin\n");
+
   E3DB_Op *op = E3DB_Op_New(client, E3DB_OP_READ_RECORDS);
   E3DB_ReadRecordsResult *result = xmalloc(sizeof(*result));
 
@@ -991,10 +993,13 @@ E3DB_Op *E3DB_ReadRecords_Begin(
   // TODO: Also fetch auth token if our access token is expired.
   if (client->access_token == NULL)
   {
+    printf("\nE3DB_ReadRecords_Begin getting access token\n");
     E3DB_InitAuthOp(client, op, E3DB_ReadRecords_Request);
   }
   else
   {
+    printf("\nE3DB_ReadRecords_Begin already have access token\n");
+
     E3DB_ReadRecords_InitOp(op);
   }
   return op;
