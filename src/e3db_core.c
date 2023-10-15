@@ -1426,11 +1426,9 @@ static void E3DB_CreateAccessKeyResult_Delete(void *p)
 E3DB_Op *E3DB_CreateAccessKeys_Begin(
     E3DB_Client *client, const char **writer_id, const char **user_id, const char **client_id, const char **record_type, const char **reader_public_key)
 {
-  printf("%s", "At the start of E3DB_CreateAccessKeys_Begin ");
 
   E3DB_Op *op = E3DB_Op_New(client, E3DB_OP_CREATE_ACCESS_KEYS);
   E3DB_CreateAccessKeyResult *result = xmalloc(sizeof(*result));
-  printf("%s \n ", "Before Random Key ");
 
   // Generate a Random Secret Key- 32 bytes
   unsigned char *key[SECRET_KEY_SIZE];
@@ -1440,7 +1438,6 @@ E3DB_Op *E3DB_CreateAccessKeys_Begin(
   strcpy(accessKey, key);
   accessKey[32] = '\0';
   unsigned long long keyLength = strlen((const char *)accessKey);
-  printf("KEYLENGTH   %d ", keyLength);
 
   // Grab User Private Key
   char *writerKey = client->options->private_key;
@@ -1450,22 +1447,17 @@ E3DB_Op *E3DB_CreateAccessKeys_Begin(
   unsigned char *privateKey = base64_decode(writerKey);
 
   // Create Nonce- 24 bytes
-  printf(" Before  Nonce %d ", crypto_box_NONCEBYTES);
   unsigned char *generateNonce[crypto_box_NONCEBYTES];
   randombytes_buf(generateNonce, crypto_box_NONCEBYTES);
   // Add Null Terminater
   unsigned char *nonce = (char *)malloc(crypto_box_NONCEBYTES * sizeof(char) + 1);
   strcpy(nonce, generateNonce);
   nonce[crypto_box_NONCEBYTES] = '\0';
-  printf("%s  %s", "After  Nonce ", base64_encode(nonce));
 
   // Encrypt
-  printf("%s", "Before  Encrypt ");
   unsigned char *ciphertext[crypto_box_MACBYTES + SECRET_KEY_SIZE];
   // Pass in access key (null terminated) or non null terminated
   int status = crypto_box_easy(ciphertext, accessKey, SECRET_KEY_SIZE, nonce, publicKey, privateKey);
-  printf("%s", "After  Encrypt ");
-  printf(" Encrypt STATUSSSSSSSSSSS %d", status);
 
   // Add Null terminator
   unsigned char *newCipher = (char *)malloc((crypto_box_MACBYTES + SECRET_KEY_SIZE) * sizeof(char) + 1);
@@ -1474,9 +1466,6 @@ E3DB_Op *E3DB_CreateAccessKeys_Begin(
   // Encode
   sds ciphertext_base64 = base64_encode(newCipher);
   sds nonce_base64 = base64_encode(nonce);
-  printf("CIPHER TEST AFTER ENCODE Text --> %s", ciphertext_base64);
-
-  printf("NONCE AFTER ENCODE  --> %s", nonce_base64);
 
   // Set up EAK
   // Join the EAK.Nonce
@@ -1485,7 +1474,6 @@ E3DB_Op *E3DB_CreateAccessKeys_Begin(
   strncat(encryptedAccessKey, ".", 1);
   strncat(encryptedAccessKey, nonce_base64, strlen(nonce_base64) + 1);
 
-  printf("Cipher Text --> %s", encryptedAccessKey);
   result->writer_id = writer_id;
   result->user_id = user_id;
   result->type = record_type;
@@ -1505,7 +1493,6 @@ E3DB_Op *E3DB_CreateAccessKeys_Begin(
     printf("%s", "Access key is NOT null");
     E3DB_CreateAccessKeys_InitOp(op);
   }
-  printf("%s", "At the end of E3DB_CreateAccessKeys_Begin ");
 
   return op;
 }
