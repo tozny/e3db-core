@@ -670,20 +670,22 @@ int do_write_record(E3DB_Client *client, int argc, char **argv)
     E3DB_Op *operationCreateAccessKey = E3DB_CreateAccessKeys_Begin(client, client->options->client_id, client->options->client_id, client->options->client_id, record_type, client->options->public_key);
     printf("%s", "Before curl_run_op \n ");
     curl_run_op(operationCreateAccessKey);
-    E3DB_Op_Delete(operationCreateAccessKey);
+    // E3DB_Op_Delete(operationCreateAccessKey);
     printf("%s", "After curl_run_op \n ");
     // Fetch Encrypted Access Key
-    E3DB_Op *op = E3DB_GetEncryptedAccessKeys_Begin(client, client->options->client_id, client->options->client_id, client->options->client_id, record_type);
+    op = E3DB_GetEncryptedAccessKeys_Begin(client, client->options->client_id, client->options->client_id, client->options->client_id, record_type);
     curl_run_op(op);
   }
 
   // Step 2: Decrypt Access Key
+  printf("%s", "Begin Decrypt Access Key \n ");
   E3DB_EncryptedAccessKeyResult *EAKResult = E3DB_EAK_GetResult(op);
   E3DB_GetEAKResultIterator *EAKIt = E3DB_GetEAKResultIterator_GetIterator(EAKResult);
   E3DB_EAK *eak = E3DB_ResultIterator_GetEAK(EAKIt);
   char *rawEAK = E3DB_EAK_GetEAK(eak);
   char *authPublicKey = E3DB_EAK_GetAuthPubKey(eak);
   unsigned char *ak = E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, op->client->options->private_key);
+  printf("%s", "End Decrypt Access Key \n ");
 
   // // Write Record
   // TODO Inside write record, we should encryppt
@@ -693,7 +695,7 @@ int do_write_record(E3DB_Client *client, int argc, char **argv)
 
   // E3DB_WriteRecordsResult *result = E3DB_WriteRecords_GetResult(op);
 
-  E3DB_Op_Delete(op);
+  // E3DB_Op_Delete(op);
   curl_global_cleanup();
 
   return 0;

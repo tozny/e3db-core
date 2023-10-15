@@ -1431,68 +1431,65 @@ E3DB_Op *E3DB_CreateAccessKeys_Begin(
   E3DB_Op *op = E3DB_Op_New(client, E3DB_OP_CREATE_ACCESS_KEYS);
   E3DB_CreateAccessKeyResult *result = xmalloc(sizeof(*result));
   printf("%s \n ", "Before Random Key ");
-  // Generate a Random Secret Key
-  unsigned char key[SECRET_KEY_SIZE];
-  randombytes_buf(key, sizeof key);
-  // unsigned char *key = (unsigned char *)malloc(SECRET_KEY_SIZE);
-  // crypto_secretbox_keygen(key);
-  unsigned long long keyLength = strlen((const char *)key) + 1;
-  printf("%s \n", "After Random Key ");
-  // printf("Key --> %s \n", key);
-  // printf("KeyLength --> %ld \n ", keyLength);
 
-  printf("%s", "Before  Keys ");
+  // Generate a Random Secret Key- 32 bytes
+  unsigned char *key[SECRET_KEY_SIZE];
+  randombytes_buf(key, SECRET_KEY_SIZE);
+  // Add Null Terminater
+  unsigned char *accessKey = (char *)malloc(SECRET_KEY_SIZE * sizeof(char) + 1);
+  strcpy(accessKey, key);
+  accessKey[32] = '\0';
+  unsigned long long keyLength = strlen((const char *)accessKey);
+  printf("KEYLENGTH   %d ", keyLength);
 
+  // Grab User Private Key
   char *writerKey = client->options->private_key;
-  // printf("Public Key --> %s", reader_public_key);
-  // printf("Private Key --> %s", writerKey);
+
   // Grab reader and writer key and decode
   unsigned char *publicKey = base64_decode(reader_public_key);
   unsigned char *privateKey = base64_decode(writerKey);
-  printf("%s", "After  Keys ");
 
-  // printf("Public Key --> %s", publicKey);
-  // printf("Private Key --> %s", privateKey);
-  // Create Nonce
-  printf("%s ", "Before  Nonce ");
-  // unsigned char *nonce = (unsigned char *)malloc(SECRET_KEY_SIZE);
-  // randombytes(nonce, crypto_secretbox_noncebytes);
-  unsigned char nonce[crypto_box_NONCEBYTES];
-  randombytes_buf(nonce, sizeof nonce);
-  printf("%s  %s", "After  Nonce ", nonce);
+  // Create Nonce- 24 bytes
+  printf(" Before  Nonce %d ", crypto_box_NONCEBYTES);
+  unsigned char *generateNonce[crypto_box_NONCEBYTES];
+  randombytes_buf(generateNonce, crypto_box_NONCEBYTES);
+  // Add Null Terminater
+  unsigned char *nonce = (char *)malloc(crypto_box_NONCEBYTES * sizeof(char) + 1);
+  strcpy(nonce, generateNonce);
+  nonce[crypto_box_NONCEBYTES] = '\0';
+  printf("%s  %s", "After  Nonce ", base64_encode(nonce));
 
   // Encrypt
   printf("%s", "Before  Encrypt ");
-  unsigned char ciphertext[crypto_box_MACBYTES + keyLength];
-  // unsigned char *ciphertext = (unsigned char *)malloc(crypto_box_macbytes + keyLength);
-  crypto_box_easy(ciphertext, key, keyLength, nonce, publicKey, privateKey);
+  unsigned char *ciphertext[crypto_box_MACBYTES + SECRET_KEY_SIZE];
+  // Pass in access key (null terminated) or non null terminated
+  int status = crypto_box_easy(ciphertext, accessKey, SECRET_KEY_SIZE, nonce, publicKey, privateKey);
   printf("%s", "After  Encrypt ");
+  printf(" Encrypt STATUSSSSSSSSSSS %d", status);
 
-  // int nonceSize = sizeof(nonce);
-  // int cipherTextSize = sizeof(ciphertext);
-
-  // // to chars
-  // char nonceChars[nonceSize + 1];
-  // memcpy(nonceChars, nonce, nonceSize);
-  // nonceChars[nonceSize] = '\0'; // Null-terminate the string
-
-  // char cipherChars[cipherTextSize + 1];
-  // memcpy(cipherChars, ciphertext, cipherTextSize);
-  // cipherChars[cipherTextSize] = '\0'; // Null-terminate the string
-
-  sds ciphertext_base64 = base64_encode(ciphertext);
+  // Add Null terminator
+  unsigned char *newCipher = (char *)malloc((crypto_box_MACBYTES + SECRET_KEY_SIZE) * sizeof(char) + 1);
+  strcpy(newCipher, ciphertext);
+  newCipher[(crypto_box_MACBYTES + SECRET_KEY_SIZE) * sizeof(char)] = '\0';
+  // Encode
+  sds ciphertext_base64 = base64_encode(newCipher);
   sds nonce_base64 = base64_encode(nonce);
+  printf("CIPHER TEST AFTER ENCODE Text --> %s", ciphertext_base64);
+
+  printf("NONCE AFTER ENCODE  --> %s", nonce_base64);
+
   // Set up EAK
   // Join the EAK.Nonce
-  strncat(ciphertext_base64, ".", 1);
-  strncat(ciphertext_base64, nonce_base64, sizeof nonce_base64);
-  // sds ciphertext_base64 = base64_encode(ciphertext);
-  printf("Cipher Text --> %s", ciphertext_base64);
+  unsigned char *encryptedAccessKey = (char *)malloc(strlen(ciphertext_base64) + strlen(nonce_base64) + 1);
+  strcpy(encryptedAccessKey, ciphertext_base64);
+  strncat(encryptedAccessKey, ".", 1);
+  strncat(encryptedAccessKey, nonce_base64, strlen(nonce_base64) + 1);
+
+  printf("Cipher Text --> %s", encryptedAccessKey);
   result->writer_id = writer_id;
   result->user_id = user_id;
-  result->user_id = client_id;
   result->type = record_type;
-  result->ak = ciphertext_base64;
+  result->ak = encryptedAccessKey;
 
   op->result = result;
   op->free_result = E3DB_CreateAccessKeyResult_Delete;
