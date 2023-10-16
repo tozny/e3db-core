@@ -1511,8 +1511,8 @@ struct _E3DB_WriteRecordsResult
 {
   cJSON *json; // entire ciphertext response body
   const char **record_type;
-  const char **data;
-  const char **meta;
+  cJSON *data;
+  cJSON *meta;
 };
 
 struct RecordMetaData
@@ -1560,7 +1560,7 @@ static int E3DB_WriteRecords_Response(
     E3DB_Op *op, int response_code,
     const char *body, E3DB_HttpHeaderList *headers, size_t num_headers)
 {
-  if (response_code != 200)
+  if (response_code != 201)
   {
     // TODO: Handle non-successful responses.
     fprintf(stderr, "Fatal: Error response from E3DB API: %d\n", response_code);
@@ -1620,14 +1620,14 @@ static void E3DB_WriteRecords_InitOp(E3DB_Op *op)
   cJSON_AddStringToObject(metaJSONObject, "user_id", op->client->options->client_id);
   cJSON_AddStringToObject(metaJSONObject, "type", result->record_type);
   // this is wrong, this needs to be a map[string]string
-  cJSON_AddStringToObject(metaJSONObject, "plain", result->meta);
+  cJSON_AddItemToObject(metaJSONObject, "plain", result->meta);
   char *metaJSON = cJSON_Print(metaJSONObject);
   printf("META JSON %s \n\n\n", metaJSON);
 
   // Record JSON Object
   cJSON *recordWriteRequestJSON = cJSON_CreateObject();
   // this is wrong, this needs to be a map[string]string
-  cJSON_AddStringToObject(recordWriteRequestJSON, "data", result->data);
+  cJSON_AddItemToObject(recordWriteRequestJSON, "data", result->data);
   cJSON_AddItemToObject(recordWriteRequestJSON, "meta", metaJSONObject);
   char *request = cJSON_Print(recordWriteRequestJSON);
   printf("request JSON %s", request);
@@ -1734,15 +1734,13 @@ E3DB_Op *E3DB_WriteRecord_Begin(
 
   cJSON *dataJSON = cJSON_CreateObject();
   cJSON_AddStringToObject(dataJSON, "dataKey", encryptedField);
-  char *data_str = cJSON_Print(dataJSON);
 
   cJSON *metaJson = cJSON_CreateObject();
   cJSON_AddStringToObject(metaJson, "metaKey", meta);
-  char *meta_str = cJSON_Print(metaJson);
 
   result->record_type = record_type;
-  result->data = data_str;
-  result->meta = meta_str;
+  result->data = dataJSON;
+  result->meta = metaJson;
 
   op->result = result;
   op->free_result = E3DB_WriteRecordsResult_Delete;
