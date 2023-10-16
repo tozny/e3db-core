@@ -1590,6 +1590,22 @@ static int E3DB_WriteRecords_Response(
   E3DB_Op_Finish(op);
   return 0;
 }
+const char *SignDocumentWithPrivateKey(char *document, char *privateSigningKey)
+{
+  // Raw Signing key
+  unsigned char *decodedPrivateSigningKey = base64_decode(privateSigningKey);
+  unsigned char sig[crypto_sign_BYTES];
+
+  int status = crypto_sign_detached(sig, NULL, document, strlen(document), decodedPrivateSigningKey);
+  printf("Status of Signature %d", status);
+
+  // Add Null terminator
+  unsigned char *signedDocument = (char *)malloc(crypto_sign_BYTES * sizeof(char) + 1);
+  strcpy(signedDocument, sig);
+  signedDocument[crypto_sign_BYTES * sizeof(char)] = '\0';
+
+  return base64_encode(signedDocument);
+}
 
 static void E3DB_WriteRecords_InitOp(E3DB_Op *op)
 {
@@ -1615,7 +1631,9 @@ static void E3DB_WriteRecords_InitOp(E3DB_Op *op)
   cJSON_AddStringToObject(recordWriteRequestJSON, "meta", metaJSON);
   char *request = cJSON_Print(recordWriteRequestJSON);
   printf("request JSON %s", request);
-  cJSON_AddStringToObject(recordWriteRequestJSON, "rec_sig", SignDocument(request, op->client->options->private_signing_key));
+
+  char *signature = SignDocumentWithPrivateKey(request, op->client->options->private_signing_key);
+  cJSON_AddStringToObject(recordWriteRequestJSON, "rec_sig", signature);
   char *signedRequest = cJSON_Print(recordWriteRequestJSON);
 
   printf("signed request JSON %s", signedRequest);
@@ -1642,22 +1660,6 @@ static int E3DB_WriteRecords_Request(E3DB_Op *op, int response_code,
   return 0;
 }
 
-const char *SignDocument(char *document, char *privateSigningKey)
-{
-  // Raw Signing key
-  unsigned char *decodedPrivateSigningKey = base64_decode(privateSigningKey);
-  unsigned char sig[crypto_sign_BYTES];
-
-  int status = crypto_sign_detached(sig, NULL, document, strlen(document), decodedPrivateSigningKey);
-  printf("Status of Signature %d", status);
-
-  // Add Null terminator
-  unsigned char *signedDocument = (char *)malloc(crypto_sign_BYTES * sizeof(char) + 1);
-  strcpy(signedDocument, sig);
-  signedDocument[crypto_sign_BYTES * sizeof(char)] = '\0';
-
-  return base64_encode(signedDocument);
-}
 const char *EncryptRecordField(char *ak, char *field)
 {
   // Create dk
