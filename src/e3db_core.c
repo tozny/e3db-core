@@ -1604,7 +1604,7 @@ const char *SignDocumentWithPrivateKey(char *document, char *privateSigningKey)
   strcpy(signedDocument, sig);
   signedDocument[crypto_sign_BYTES * sizeof(char)] = '\0';
 
-  return base64_encode(signedDocument);
+  return base64_encodeUrl(signedDocument);
 }
 
 static void E3DB_WriteRecords_InitOp(E3DB_Op *op)
@@ -1660,17 +1660,15 @@ static int E3DB_WriteRecords_Request(E3DB_Op *op, int response_code,
   return 0;
 }
 
-const char *EncryptRecordField(char *ak, char *field)
+const char *EncryptRecordField(unsigned char *ak, char *field)
 {
-
-  // TODO TEST THIS BECAUSE I THINK THE PROBLEM IS HERE OR WITH THE DATA ARRAY FORMAT
   // Create dk
-  unsigned char *key[SECRET_KEY_SIZE];
-  randombytes_buf(key, SECRET_KEY_SIZE);
+  unsigned char *key[crypto_secretbox_KEYBYTES];
+  randombytes_buf(key, crypto_secretbox_KEYBYTES);
   // Add Null Terminater
-  unsigned char *dk = (char *)malloc(SECRET_KEY_SIZE * sizeof(char) + 1);
+  unsigned char *dk = (char *)malloc(crypto_secretbox_KEYBYTES * sizeof(char) + 1);
   strcpy(dk, key);
-  dk[32] = '\0';
+  dk[crypto_secretbox_KEYBYTES] = '\0';
 
   // Create efN
   unsigned char *generateNonce[crypto_box_NONCEBYTES];
@@ -1682,7 +1680,8 @@ const char *EncryptRecordField(char *ak, char *field)
 
   // Encrypt Symmetric
   unsigned char *ciphertext[crypto_box_MACBYTES + strlen(field)];
-  crypto_secretbox_easy(ciphertext, field, strlen(field), efN, dk);
+  int status = crypto_secretbox_easy(ciphertext, field, strlen(field), efN, dk);
+  printf("Encrypting data field status %d", status);
   // Add Null terminator
   unsigned char *ef = (char *)malloc((crypto_box_MACBYTES + strlen(field)) * sizeof(char) + 1);
   strcpy(ef, ciphertext);
@@ -1697,18 +1696,24 @@ const char *EncryptRecordField(char *ak, char *field)
   edkN[crypto_box_NONCEBYTES] = '\0';
 
   // Encrypt Symmetric
-  unsigned char *ciphertextedk[crypto_box_MACBYTES + strlen(dk)];
-  crypto_secretbox_easy(ciphertextedk, dk, strlen(dk), edkN, ak);
+  unsigned char *ciphertextedk[crypto_box_MACBYTES + crypto_secretbox_KEYBYTES];
+  int status2 = crypto_secretbox_easy(ciphertextedk, dk, crypto_secretbox_KEYBYTES, edkN, ak);
+  printf("Encrypting data key status %d", status2);
   // Add Null terminator
-  unsigned char *edk = (char *)malloc((crypto_box_MACBYTES + strlen(dk)) * sizeof(char) + 1);
-  strcpy(edk, ciphertext);
-  edk[(crypto_box_MACBYTES + strlen(dk)) * sizeof(char)] = '\0';
+  unsigned char *edk = (char *)malloc((crypto_box_MACBYTES + crypto_secretbox_KEYBYTES) * sizeof(char) + 1);
+  strcpy(edk, ciphertextedk);
+  edk[(crypto_box_MACBYTES + crypto_secretbox_KEYBYTES) * sizeof(char)] = '\0';
 
   // Create dotted quad
   sds edk_base64 = base64_encodeUrl(edk);
   sds edkN_base64 = base64_encodeUrl(edkN);
   sds ef_base64 = base64_encodeUrl(ef);
   sds efN_base64 = base64_encodeUrl(efN);
+
+  printf(" edk_base64 -->  %s \n\n", edk_base64);
+  printf(" edkN_base64 -->  %s \n\n", edkN_base64);
+  printf(" ef_base64 -->  %s \n\n", ef_base64);
+  printf(" efN_base64 -->  %s \n\n", efN_base64);
 
   // edk.edkN.ef.efN
   unsigned char *encryptedField = (char *)malloc(strlen(edk_base64) + strlen(edkN_base64) + strlen(ef_base64) + strlen(efN_base64) + 3);
@@ -1724,7 +1729,7 @@ const char *EncryptRecordField(char *ak, char *field)
 }
 
 E3DB_Op *E3DB_WriteRecord_Begin(
-    E3DB_Client *client, const char **record_type, const char **data, const char **meta, const char **accessKey)
+    E3DB_Client *client, const char **record_type, const char **data, const char **meta, unsigned char *accessKey)
 {
   E3DB_Op *op = E3DB_Op_New(client, E3DB_OP_WRITE_RECORD);
   E3DB_WriteRecordsResult *result = xmalloc(sizeof(*result));
@@ -1735,6 +1740,7 @@ E3DB_Op *E3DB_WriteRecord_Begin(
   char *encryptedField = EncryptRecordField(accessKey, data);
 
   cJSON *dataJSON = cJSON_CreateObject();
+
   cJSON_AddStringToObject(dataJSON, "dataKey", encryptedField);
 
   cJSON *metaJson = cJSON_CreateObject();

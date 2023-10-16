@@ -237,7 +237,7 @@ extern "C"
         E3DB_Client *client, const char **writer_id, const char **user_id, const char **client_id, const char **record_type);
 
     E3DB_Op *E3DB_WriteRecord_Begin(
-        E3DB_Client *client, const char **record_type, const char **data, const char **meta, const char **accessKey);
+        E3DB_Client *client, const char **record_type, const char **data, const char **meta, unsigned char *accessKey);
 
     /* Return the result of a successful "read records" operation. Returns
      * NULL if the operation is not complete. The returned structure has the
