@@ -356,7 +356,7 @@ E3DB_ClientOptions *load_config(void)
   }
 
   E3DB_ClientOptions *opts = E3DB_ClientOptions_New();
-  cJSON *api_key, *api_secret, *client_id, *private_key, *public_key;
+  cJSON *api_key, *api_secret, *client_id, *private_key, *public_key, *private_signing_key;
 
   api_key = cJSON_GetObjectItem(json, "api_key_id");
   if (api_key == NULL || api_key->type != cJSON_String)
@@ -393,11 +393,19 @@ E3DB_ClientOptions *load_config(void)
     exit(1);
   }
 
+  private_signing_key = cJSON_GetObjectItem(json, "private_signing_key");
+  if (private_signing_key == NULL || private_signing_key->type != cJSON_String)
+  {
+    fprintf(stderr, "Error: Missing 'private_signing_key' key in configuration file.\n");
+    exit(1);
+  }
+
   E3DB_ClientOptions_SetApiKey(opts, api_key->valuestring);
   E3DB_ClientOptions_SetApiSecret(opts, api_secret->valuestring);
   E3DB_ClientOptions_SetClientID(opts, client_id->valuestring);
   E3DB_ClientOptions_SetPrivateKey(opts, private_key->valuestring);
   E3DB_ClientOptions_SetPublicKey(opts, public_key->valuestring);
+  E3DB_ClientOptions_SetPrivateSigningKey(opts, private_signing_key->valuestring);
 
   sdsfree(config_file);
   sdsfree(config);
@@ -688,13 +696,16 @@ int do_write_record(E3DB_Client *client, int argc, char **argv)
   printf("%s", "End Decrypt Access Key \n ");
 
   // Write Record
+  printf("%s", "Begin E3DB_WriteRecord_Begin \n ");
   op = E3DB_WriteRecord_Begin(client, record_type, data, meta, ak);
+  printf("%s", "After E3DB_WriteRecord_Begin \n ");
+  printf("%s", "Before curlop of write record \n ");
+  curl_run_op(op);
+  printf("%s", "after curlop of write record \n ");
 
-  // curl_run_op(op);
+  E3DB_WriteRecordsResult *result = E3DB_WriteRecords_GetResult(op);
 
-  // E3DB_WriteRecordsResult *result = E3DB_WriteRecords_GetResult(op);
-
-  // E3DB_Op_Delete(op);
+  E3DB_Op_Delete(op);
   curl_global_cleanup();
 
   return 0;

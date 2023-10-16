@@ -40,6 +40,7 @@ struct _E3DB_ClientOptions
   sds client_id;
   sds private_key;
   sds public_key;
+  sds private_signing_key;
   // TODO: Add other forms of authentication.
 };
 
@@ -63,6 +64,7 @@ void E3DB_ClientOptions_Delete(E3DB_ClientOptions *opts)
   sdsfree(opts->client_id);
   sdsfree(opts->private_key);
   sdsfree(opts->public_key);
+  sdsfree(opts->private_signing_key);
   xfree(opts);
 }
 
@@ -97,6 +99,11 @@ void E3DB_ClientOptions_SetPublicKey(E3DB_ClientOptions *opts, const char *publi
 {
   sdsfree(opts->public_key);
   opts->public_key = sdsnew(public_key);
+}
+void E3DB_ClientOptions_SetPrivateSigningKey(E3DB_ClientOptions *opts, const char *private_signing_key)
+{
+  sdsfree(opts->private_signing_key);
+  opts->private_signing_key = sdsnew(private_signing_key);
 }
 /*
  * {Clients}
@@ -1591,28 +1598,32 @@ static void E3DB_WriteRecords_InitOp(E3DB_Op *op)
   sds url = sdsnew(op->client->options->api_url);
   url = sdscat(url, "/v1/storage/records/");
 
-  struct Record record;
-  struct RecordMetaData *metaData = (struct RecordMetaData *)malloc(sizeof(struct RecordMetaData));
-  metaData->writer_id = op->client->options->client_id;
-  metaData->user_id = op->client->options->client_id;
-  metaData->type = result->record_type;
-  metaData->plain = result->meta;
-  record.meta = metaData;
-  record.data = result->data;
-  // strcpy(record.meta->writer_id, op->client->options->client_id);
-  // strcpy(record.meta->user_id, op->client->options->client_id);
-  //  strcpy(record.meta->type, result->record_type);
-  //  strcpy(record.meta->plain, result->meta);
-  //  strcpy(record.data, result->data);
+  // Meta JSON Object
+  cJSON *metaJSONObject = cJSON_CreateObject();
+  cJSON_AddStringToObject(metaJSONObject, "writer_id", op->client->options->client_id);
+  cJSON_AddStringToObject(metaJSONObject, "user_id", op->client->options->client_id);
+  cJSON_AddStringToObject(metaJSONObject, "type", result->record_type);
+  // this is wrong, this needs to be a map[string]string
+  cJSON_AddStringToObject(metaJSONObject, "plain", result->meta);
+  char *metaJSON = cJSON_Print(metaJSONObject);
+  printf("META JSON %s", metaJSON);
 
-  printf("Reached here");
-  // exit(1);
-  //  TODO: Add fields to URL
+  // Record JSON Object
+  cJSON *recordWriteRequestJSON = cJSON_CreateObject();
+  // this is wrong, this needs to be a map[string]string
+  cJSON_AddStringToObject(recordWriteRequestJSON, "data", result->data);
+  cJSON_AddStringToObject(recordWriteRequestJSON, "meta", metaJSON);
+  char *request = cJSON_Print(recordWriteRequestJSON);
+  printf("request JSON %s", request);
+  cJSON_AddStringToObject(recordWriteRequestJSON, "rec_sig", SignDocument(request, op->client->options->private_signing_key));
+  char *signedRequest = cJSON_Print(recordWriteRequestJSON);
+
+  printf("signed request JSON %s", signedRequest);
 
   op->state = E3DB_OP_STATE_HTTP;
   op->request.http.url = url;
   op->request.http.method = sdsnew("POST");
-  op->request.http.body = sdsnew("grant_type=client_credentials");
+  op->request.http.body = sdsnew(signedRequest);
   op->request.http.next_state = E3DB_WriteRecords_Response;
   op->request.http.headers = E3DB_HttpHeaderList_New();
 
@@ -1631,6 +1642,22 @@ static int E3DB_WriteRecords_Request(E3DB_Op *op, int response_code,
   return 0;
 }
 
+const char *SignDocument(char *document, char *privateSigningKey)
+{
+  // Raw Signing key
+  unsigned char *decodedPrivateSigningKey = base64_decode(privateSigningKey);
+  unsigned char sig[crypto_sign_BYTES];
+
+  int status = crypto_sign_detached(sig, NULL, document, strlen(document), decodedPrivateSigningKey);
+  printf("Status of Signature %d", status);
+
+  // Add Null terminator
+  unsigned char *signedDocument = (char *)malloc(crypto_sign_BYTES * sizeof(char) + 1);
+  strcpy(signedDocument, sig);
+  signedDocument[crypto_sign_BYTES * sizeof(char)] = '\0';
+
+  return base64_encode(signedDocument);
+}
 const char *EncryptRecordField(char *ak, char *field)
 {
   // Create dk
@@ -1699,10 +1726,21 @@ E3DB_Op *E3DB_WriteRecord_Begin(
   E3DB_WriteRecordsResult *result = xmalloc(sizeof(*result));
 
   // Encrypt Record Begins ------------------------------------------------------
+  // right now we are not passing in json objects or tags...... we need to do both
+
+  char *encryptedField = EncryptRecordField(accessKey, data);
+
+  cJSON *dataJSON = cJSON_CreateObject();
+  cJSON_AddStringToObject(dataJSON, "dataKey", encryptedField);
+  char *data_str = cJSON_Print(dataJSON);
+
+  cJSON *metaJson = cJSON_CreateObject();
+  cJSON_AddStringToObject(metaJson, "metaKey", meta);
+  char *meta_str = cJSON_Print(metaJson);
 
   result->record_type = record_type;
-  result->data = data;
-  result->meta = meta;
+  result->data = data_str;
+  result->meta = meta_str;
 
   op->result = result;
   op->free_result = E3DB_WriteRecordsResult_Delete;
