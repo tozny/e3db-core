@@ -605,9 +605,10 @@ int do_write_record(E3DB_Client *client, int argc, char **argv)
   if (argc < 2)
   {
     fputs(
-        "Usage: e3db write [OPTIONS] -t TYPE -d  DATA -m META \n"
+        "Usage: e3db write [OPTIONS] -t TYPE -d @filename or JSON  -m @filename or JSON \n"
         "Write a record to E3DB.\n"
-        "Pass in as JSON"
+        "Example: write-record -t hello -d '{hello: hello}'  -m '{english : language}' "
+        "Pass in as JSON or fileName"
         "\n"
         "Available options:\n"
         "  -h, --help           print this help and exit\n",
@@ -618,6 +619,8 @@ int do_write_record(E3DB_Client *client, int argc, char **argv)
   const char *record_type = NULL;
   const char *data = NULL;
   const char *meta = NULL;
+  cJSON *dataJSON = NULL;
+  cJSON *metaJSON = NULL;
 
   for (int i = 1; i <= argc; i++)
   {
@@ -649,8 +652,108 @@ int do_write_record(E3DB_Client *client, int argc, char **argv)
     printf("Record Type(-t) or Meta(-m) or Data(-d) are not provided.\n");
     return 0;
   }
-  printf("Data Type %s\n", data);
-  printf("Meta Type %s\n", meta);
+  printf("Record Type %s\n", record_type);
+  printf("Data  %s\n", data);
+  printf("Meta  %s\n", meta);
+
+  if (data[0] == '@')
+  {
+    // Case File
+    // open the file
+    FILE *fp = fopen(data + 1, "r");
+    if (fp == NULL)
+    {
+      printf("Error %s ", ": Unable to open the file.\n");
+      return 1;
+    }
+
+    // read the file contents into a string
+    char buffer[1024];
+    int len = fread(buffer, 1, sizeof(buffer), fp);
+    fclose(fp);
+
+    // parse the JSON data
+    cJSON *json = cJSON_Parse(buffer);
+    if (json == NULL)
+    {
+      const char *error_ptr = cJSON_GetErrorPtr();
+      if (error_ptr != NULL)
+      {
+        printf("Error: %s\n", error_ptr);
+      }
+      cJSON_Delete(json);
+      return 1;
+    }
+    dataJSON = json;
+  }
+  else
+  {
+    printf("%s", "inside else");
+    // Case JSON
+    cJSON *json = cJSON_Parse(data);
+    if (json == NULL)
+    {
+      const char *error_ptr = cJSON_GetErrorPtr();
+      if (error_ptr != NULL)
+      {
+        printf("Error: %s\n", error_ptr);
+      }
+      cJSON_Delete(json);
+      return 1;
+    }
+    dataJSON = json;
+  }
+
+  printf("\nDATA JSON %s \n", cJSON_Print(dataJSON));
+
+  if (meta[0] == '@')
+  {
+    // Case File
+    // open the file
+    FILE *fp = fopen(meta + 1, "r");
+    if (fp == NULL)
+    {
+      printf("Error %s ", ": Unable to open the file.\n");
+      return 1;
+    }
+
+    // read the file contents into a string
+    char buffer[1024];
+    int len = fread(buffer, 1, sizeof(buffer), fp);
+    fclose(fp);
+
+    // parse the JSON data
+    cJSON *json = cJSON_Parse(buffer);
+    if (json == NULL)
+    {
+      const char *error_ptr = cJSON_GetErrorPtr();
+      if (error_ptr != NULL)
+      {
+        printf("Error: %s\n", error_ptr);
+      }
+      cJSON_Delete(json);
+      return 1;
+    }
+    metaJSON = json;
+  }
+  else
+  {
+    // Case JSON
+    cJSON *json = cJSON_Parse(meta);
+    if (json == NULL)
+    {
+      const char *error_ptr = cJSON_GetErrorPtr();
+      if (error_ptr != NULL)
+      {
+        printf("Error: %s\n", error_ptr);
+      }
+      cJSON_Delete(json);
+      return 1;
+    }
+    metaJSON = json;
+  }
+
+  printf("\nMETA JSON %s \n", cJSON_Print(metaJSON));
 
   // Set Up Curl to be used
   curl_global_init(CURL_GLOBAL_DEFAULT);
@@ -680,7 +783,7 @@ int do_write_record(E3DB_Client *client, int argc, char **argv)
   unsigned char *ak = E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, op->client->options->private_key);
 
   // Write Record
-  op = E3DB_WriteRecord_Begin(client, record_type, data, meta, ak);
+  op = E3DB_WriteRecord_Begin(client, record_type, dataJSON, metaJSON, ak);
   curl_run_op(op);
 
   // Get Results

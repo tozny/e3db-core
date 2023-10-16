@@ -1662,6 +1662,7 @@ static int E3DB_WriteRecords_Request(E3DB_Op *op, int response_code,
 
 const char *EncryptRecordField(unsigned char *ak, char *field)
 {
+
   // Create dk
   unsigned char *key[crypto_secretbox_KEYBYTES];
   randombytes_buf(key, crypto_secretbox_KEYBYTES);
@@ -1729,26 +1730,31 @@ const char *EncryptRecordField(unsigned char *ak, char *field)
 }
 
 E3DB_Op *E3DB_WriteRecord_Begin(
-    E3DB_Client *client, const char **record_type, const char **data, const char **meta, unsigned char *accessKey)
+    E3DB_Client *client, const char **record_type, cJSON *data, cJSON *meta, unsigned char *accessKey)
 {
   E3DB_Op *op = E3DB_Op_New(client, E3DB_OP_WRITE_RECORD);
   E3DB_WriteRecordsResult *result = xmalloc(sizeof(*result));
 
   // Encrypt Record Begins ------------------------------------------------------
-  // right now we are not passing in json objects or tags...... we need to do both
+  cJSON *temp = data;
+  cJSON *encryptedData = cJSON_CreateObject();
 
-  char *encryptedField = EncryptRecordField(accessKey, data);
+  // Base Case
+  char *encryptedField = EncryptRecordField(accessKey, temp->child->valuestring);
+  cJSON_AddStringToObject(encryptedData, temp->child->string, encryptedField);
 
-  cJSON *dataJSON = cJSON_CreateObject();
-
-  cJSON_AddStringToObject(dataJSON, "dataKey", encryptedField);
-
-  cJSON *metaJson = cJSON_CreateObject();
-  cJSON_AddStringToObject(metaJson, "metaKey", meta);
+  // Recursive Case
+  temp = temp->child->next;
+  while (temp != NULL)
+  {
+    char *encryptedField = EncryptRecordField(accessKey, temp->valuestring);
+    cJSON_AddStringToObject(encryptedData, temp->string, encryptedField);
+    temp = temp->next;
+  }
 
   result->record_type = record_type;
-  result->data = dataJSON;
-  result->meta = metaJson;
+  result->data = encryptedData;
+  result->meta = meta;
 
   op->result = result;
   op->free_result = E3DB_WriteRecordsResult_Delete;

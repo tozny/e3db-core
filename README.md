@@ -14,3 +14,13 @@ To run the following library
 ```bash
 ./build/e3db [command]
 ```
+
+
+To run Write Record
+```bash
+
+./build/e3db write-record -t recordTypeWanted -d @<PathToJSON>/example_data.json  -m @<PathToJSON>/example_meta.json
+
+./build/e3db write-record -t recordTypeWanted -d '{"key": "value"}'  -m '{"key": "value"}'
+
+```
