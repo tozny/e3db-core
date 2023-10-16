@@ -1662,6 +1662,8 @@ static int E3DB_WriteRecords_Request(E3DB_Op *op, int response_code,
 
 const char *EncryptRecordField(char *ak, char *field)
 {
+
+  // TODO TEST THIS BECAUSE I THINK THE PROBLEM IS HERE OR WITH THE DATA ARRAY FORMAT
   // Create dk
   unsigned char *key[SECRET_KEY_SIZE];
   randombytes_buf(key, SECRET_KEY_SIZE);
