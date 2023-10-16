@@ -1622,13 +1622,13 @@ static void E3DB_WriteRecords_InitOp(E3DB_Op *op)
   // this is wrong, this needs to be a map[string]string
   cJSON_AddStringToObject(metaJSONObject, "plain", result->meta);
   char *metaJSON = cJSON_Print(metaJSONObject);
-  printf("META JSON %s", metaJSON);
+  printf("META JSON %s \n\n\n", metaJSON);
 
   // Record JSON Object
   cJSON *recordWriteRequestJSON = cJSON_CreateObject();
   // this is wrong, this needs to be a map[string]string
   cJSON_AddStringToObject(recordWriteRequestJSON, "data", result->data);
-  cJSON_AddStringToObject(recordWriteRequestJSON, "meta", metaJSON);
+  cJSON_AddItemToObject(recordWriteRequestJSON, "meta", metaJSONObject);
   char *request = cJSON_Print(recordWriteRequestJSON);
   printf("request JSON %s", request);
 
