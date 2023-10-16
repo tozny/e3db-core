@@ -1631,19 +1631,74 @@ static int E3DB_WriteRecords_Request(E3DB_Op *op, int response_code,
   return 0;
 }
 
+const char *EncryptRecordField(char *ak, char *field)
+{
+  // Create dk
+  unsigned char *key[SECRET_KEY_SIZE];
+  randombytes_buf(key, SECRET_KEY_SIZE);
+  // Add Null Terminater
+  unsigned char *dk = (char *)malloc(SECRET_KEY_SIZE * sizeof(char) + 1);
+  strcpy(dk, key);
+  dk[32] = '\0';
+
+  // Create efN
+  unsigned char *generateNonce[crypto_box_NONCEBYTES];
+  randombytes_buf(generateNonce, crypto_box_NONCEBYTES);
+  // Add Null Terminater
+  unsigned char *efN = (char *)malloc(crypto_box_NONCEBYTES * sizeof(char) + 1);
+  strcpy(efN, generateNonce);
+  efN[crypto_box_NONCEBYTES] = '\0';
+
+  // Encrypt Symmetric
+  unsigned char *ciphertext[crypto_box_MACBYTES + strlen(field)];
+  crypto_secretbox_easy(ciphertext, field, strlen(field), efN, dk);
+  // Add Null terminator
+  unsigned char *ef = (char *)malloc((crypto_box_MACBYTES + strlen(field)) * sizeof(char) + 1);
+  strcpy(ef, ciphertext);
+  ef[(crypto_box_MACBYTES + strlen(field)) * sizeof(char)] = '\0';
+
+  // Create edkN
+  unsigned char *generateedkNNonce[crypto_box_NONCEBYTES];
+  randombytes_buf(generateedkNNonce, crypto_box_NONCEBYTES);
+  // Add Null Terminater
+  unsigned char *edkN = (char *)malloc(crypto_box_NONCEBYTES * sizeof(char) + 1);
+  strcpy(edkN, generateedkNNonce);
+  edkN[crypto_box_NONCEBYTES] = '\0';
+
+  // Encrypt Symmetric
+  unsigned char *ciphertextedk[crypto_box_MACBYTES + strlen(dk)];
+  crypto_secretbox_easy(ciphertextedk, dk, strlen(dk), edkN, ak);
+  // Add Null terminator
+  unsigned char *edk = (char *)malloc((crypto_box_MACBYTES + strlen(dk)) * sizeof(char) + 1);
+  strcpy(edk, ciphertext);
+  edk[(crypto_box_MACBYTES + strlen(dk)) * sizeof(char)] = '\0';
+
+  // Create dotted quad
+  sds edk_base64 = base64_encode(edk);
+  sds edkN_base64 = base64_encode(edkN);
+  sds ef_base64 = base64_encode(ef);
+  sds efN_base64 = base64_encode(efN);
+
+  // edk.edkN.ef.efN
+  unsigned char *encryptedField = (char *)malloc(strlen(edk_base64) + strlen(edkN_base64) + strlen(ef_base64) + strlen(efN_base64) + 3);
+  strcpy(encryptedField, edk_base64);
+  strncat(encryptedField, ".", 1);
+  strncat(encryptedField, edkN_base64, strlen(edkN_base64));
+  strncat(encryptedField, ".", 1);
+  strncat(encryptedField, ef_base64, strlen(ef_base64));
+  strncat(encryptedField, ".", 1);
+  strncat(encryptedField, efN_base64, strlen(efN_base64));
+
+  return encryptedField;
+}
+
 E3DB_Op *E3DB_WriteRecord_Begin(
-    E3DB_Client *client, const char **record_type, const char **data, const char **meta)
+    E3DB_Client *client, const char **record_type, const char **data, const char **meta, const char **accessKey)
 {
   E3DB_Op *op = E3DB_Op_New(client, E3DB_OP_WRITE_RECORD);
   E3DB_WriteRecordsResult *result = xmalloc(sizeof(*result));
 
   // Encrypt Record Begins ------------------------------------------------------
-
-  // Step 1: Get Access Key
-
-  // Path A: Access Key Exists
-
-  // Path B: Access Key Does Not Exist
 
   result->record_type = record_type;
   result->data = data;

@@ -687,9 +687,8 @@ int do_write_record(E3DB_Client *client, int argc, char **argv)
   unsigned char *ak = E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, op->client->options->private_key);
   printf("%s", "End Decrypt Access Key \n ");
 
-  // // Write Record
-  // TODO Inside write record, we should encryppt
-  // op = E3DB_WriteRecord_Begin(client, record_type, data, meta);
+  // Write Record
+  op = E3DB_WriteRecord_Begin(client, record_type, data, meta, ak);
 
   // curl_run_op(op);
 
