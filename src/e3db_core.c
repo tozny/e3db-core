@@ -1471,8 +1471,8 @@ E3DB_Op *E3DB_CreateAccessKeys_Begin(
   strcpy(newCipher, ciphertext);
   newCipher[(crypto_box_MACBYTES + SECRET_KEY_SIZE) * sizeof(char)] = '\0';
   // Encode
-  sds ciphertext_base64 = base64_encode(newCipher);
-  sds nonce_base64 = base64_encode(nonce);
+  sds ciphertext_base64 = base64_encodeUrl(newCipher);
+  sds nonce_base64 = base64_encodeUrl(nonce);
 
   // Set up EAK
   // Join the EAK.Nonce
@@ -1705,10 +1705,10 @@ const char *EncryptRecordField(char *ak, char *field)
   edk[(crypto_box_MACBYTES + strlen(dk)) * sizeof(char)] = '\0';
 
   // Create dotted quad
-  sds edk_base64 = base64_encode(edk);
-  sds edkN_base64 = base64_encode(edkN);
-  sds ef_base64 = base64_encode(ef);
-  sds efN_base64 = base64_encode(efN);
+  sds edk_base64 = base64_encodeUrl(edk);
+  sds edkN_base64 = base64_encodeUrl(edkN);
+  sds ef_base64 = base64_encodeUrl(ef);
+  sds efN_base64 = base64_encodeUrl(efN);
 
   // edk.edkN.ef.efN
   unsigned char *encryptedField = (char *)malloc(strlen(edk_base64) + strlen(edkN_base64) + strlen(ef_base64) + strlen(efN_base64) + 3);
