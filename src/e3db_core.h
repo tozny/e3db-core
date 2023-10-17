@@ -14,10 +14,40 @@ extern "C"
 #endif
 
 #include <stdlib.h> // for size_t
-#include <e3db_client.h>
 #include "cJSON.h"
 
     // TODO: Add error handling machinery to this library.
+
+    /*
+     * {Client Options}
+     */
+
+    typedef struct _E3DB_ClientOptions E3DB_ClientOptions;
+
+    E3DB_ClientOptions *E3DB_ClientOptions_New(void);
+    void E3DB_ClientOptions_Delete(E3DB_ClientOptions *opts);
+
+    void E3DB_ClientOptions_SetApiUrl(E3DB_ClientOptions *opts, const char *url);
+    void E3DB_ClientOptions_SetApiKey(E3DB_ClientOptions *opts, const char *api_key);
+    void E3DB_ClientOptions_SetApiSecret(E3DB_ClientOptions *opts, const char *api_secret);
+    void E3DB_ClientOptions_SetClientID(E3DB_ClientOptions *opts, const char *client_id);
+    void E3DB_ClientOptions_SetPrivateKey(E3DB_ClientOptions *opts, const char *private_key);
+    void E3DB_ClientOptions_SetPublicKey(E3DB_ClientOptions *opts, const char *public_key);
+
+    // TODO: Other ways to authenticate---Tozny, OIDC, etc.
+
+    /*
+     * {Clients}
+     */
+
+    typedef struct _E3DB_Client E3DB_Client;
+
+    /* Create an E3DB client object given a set of options.  The newly created
+     * client assumes ownership of `opts', so it does not need to be freed. */
+    E3DB_Client *E3DB_Client_New(E3DB_ClientOptions *opts);
+
+    /* Free an E3DB client object. */
+    void E3DB_Client_Delete(E3DB_Client *client);
 
     /*
      * {HTTP Headers}
@@ -128,7 +158,7 @@ extern "C"
     const char *E3DB_EAK_DecryptEAK(char *eak, char *pubKey, char *privKey);
     // TODO: creation and modification time
 
-    typedef struct _E3DB_Record_Legacy E3DB_Record_Legacy;
+    typedef struct _E3DB_Record E3DB_Record;
     typedef struct _E3DB_RecordFieldIterator E3DB_RecordFieldIterator;
 
     // TODO: Create and delete record objects
@@ -138,10 +168,10 @@ extern "C"
     /* Return the value of a field in a record. Returns NULL if the field
      * doesn't exist. The returned string lasts until the containing
      * record is deleted. */
-    const char *E3DB_Record_GetField(E3DB_Record_Legacy *r, const char *field);
+    const char *E3DB_Record_GetField(E3DB_Record *r, const char *field);
 
     /* Return an iterator over the fields of a record. */
-    E3DB_RecordFieldIterator *E3DB_Record_GetFieldIterator(E3DB_Record_Legacy *r);
+    E3DB_RecordFieldIterator *E3DB_Record_GetFieldIterator(E3DB_Record *r);
 
     /* Delete a record field iterator. */
     void E3DB_RecordFieldIterator_Delete(E3DB_RecordFieldIterator *it);
@@ -241,7 +271,7 @@ extern "C"
     E3DB_RecordMeta *E3DB_ReadRecordsResultIterator_GetMeta(E3DB_ReadRecordsResultIterator *it);
 
     /* Return the record record data for the current record in the result set. */
-    E3DB_Record_Legacy *E3DB_ReadRecordsResultIterator_GetData(E3DB_ReadRecordsResultIterator *it);
+    E3DB_Record *E3DB_ReadRecordsResultIterator_GetData(E3DB_ReadRecordsResultIterator *it);
 
     /* Return the EAK. */
     E3DB_EAK *E3DB_ResultIterator_GetEAK(E3DB_GetEAKResultIterator *it);

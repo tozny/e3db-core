@@ -16,7 +16,6 @@
 #include "sds.h"
 
 #include "e3db_core.h"
-#include "e3db_client.c"
 #include "e3db_mem.h"
 #include "e3db_base64.h"
 
@@ -105,6 +104,38 @@ void E3DB_ClientOptions_SetPrivateSigningKey(E3DB_ClientOptions *opts, const cha
 {
   sdsfree(opts->private_signing_key);
   opts->private_signing_key = sdsnew(private_signing_key);
+}
+/*
+ * {Clients}
+ */
+
+struct _E3DB_Client
+{
+  E3DB_ClientOptions *options;
+  sds access_token;
+  // TODO: Add cached JWT from auth service.
+  // TODO: If we add mutable state (like the JWT above), also add a lock
+  // so that concurrent access via multiple operations in flight is safe.
+};
+
+/* Create an E3DB client object. */
+E3DB_Client *E3DB_Client_New(E3DB_ClientOptions *opts)
+{
+  E3DB_Client *client = xmalloc(sizeof(E3DB_Client));
+  client->options = opts;
+  client->access_token = NULL;
+  return client;
+}
+
+/* Free an E3DB client object. */
+void E3DB_Client_Delete(E3DB_Client *client)
+{
+  E3DB_ClientOptions_Delete(client->options);
+  if (client->access_token)
+  {
+    sdsfree(client->access_token);
+  }
+  xfree(client);
 }
 
 /*
@@ -500,7 +531,8 @@ static void E3DB_GetAuthPubKeyFromJSON(cJSON *json, E3DB_AuthPubKey *auth_pub_ke
   auth_pub_key->curve25519 = cJSON_GetSafeObjectItemString(json, "curve25519");
 }
 
-struct _E3DB_Record_Legacy
+// TODO: How to reconcile this with decryption?
+struct _E3DB_Record
 {
   cJSON *json; // "data" field within record
 };
@@ -513,7 +545,7 @@ struct _E3DB_RecordFieldIterator
 /* Return the value of a field in a record. Returns NULL if the field
  * doesn't exist. The returned string lasts until the containing
  * record is deleted. */
-const char *E3DB_Record_GetField(E3DB_Record_Legacy *r, const char *field)
+const char *E3DB_Record_GetField(E3DB_Record *r, const char *field)
 {
   assert(r != NULL);
   assert(r->json != NULL);
@@ -535,7 +567,7 @@ const char *E3DB_Record_GetField(E3DB_Record_Legacy *r, const char *field)
 }
 
 /* Return an iterator over the fields of a record. */
-E3DB_RecordFieldIterator *E3DB_Record_GetFieldIterator(E3DB_Record_Legacy *r)
+E3DB_RecordFieldIterator *E3DB_Record_GetFieldIterator(E3DB_Record *r)
 {
   assert(r != NULL);
   assert(r->json != NULL);
@@ -858,7 +890,7 @@ struct _E3DB_ReadRecordsResultIterator
 {
   cJSON *pos;
   E3DB_RecordMeta meta;
-  E3DB_Record_Legacy record;
+  E3DB_Record record;
 };
 
 static void E3DB_ReadRecordsResult_Delete(void *p)
@@ -1053,7 +1085,7 @@ E3DB_RecordMeta *E3DB_ReadRecordsResultIterator_GetMeta(E3DB_ReadRecordsResultIt
 }
 
 /* Return the record record data for the current record in the result set. */
-E3DB_Record_Legacy *E3DB_ReadRecordsResultIterator_GetData(E3DB_ReadRecordsResultIterator *it)
+E3DB_Record *E3DB_ReadRecordsResultIterator_GetData(E3DB_ReadRecordsResultIterator *it)
 {
   cJSON *data = cJSON_GetObjectItem(it->pos, "data");
 
