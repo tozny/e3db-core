@@ -1,7 +1,7 @@
 /*
  * e3db.c
  *
- * Copyright (C) 2017, Tozny, LLC.
+ * Copyright (C) 2023, Tozny.
  * All Rights Reserved.
  */
 
@@ -484,7 +484,7 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
     {
       // At this point we have encrypted data
       E3DB_RecordMeta *meta = E3DB_ReadRecordsResultIterator_GetMeta(it);
-      E3DB_Record *record = E3DB_ReadRecordsResultIterator_GetData(it);
+      E3DB_Record_Legacy *record = E3DB_ReadRecordsResultIterator_GetData(it);
 
       // Set up Access Keys Fetch
       E3DB_Op *eakOp = E3DB_GetEncryptedAccessKeys_Begin(client, E3DB_RecordMeta_GetWriterId(meta), E3DB_RecordMeta_GetUserId(meta), E3DB_RecordMeta_GetUserId(meta), E3DB_RecordMeta_GetType(meta));
