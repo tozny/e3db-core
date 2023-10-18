@@ -306,6 +306,8 @@ int cmdWrite(int argc, char **argv)
 
 	// Clean Up Memory
 	E3DB_Client_Delete(client);
+	cJSON_Delete(metaJSON);
+	cJSON_Delete(dataJSON);
 
 	return 0;
 }
