@@ -265,6 +265,8 @@ void WriteRecord(E3DB_Record *record, E3DB_Client *client, const char **record_t
 	// Get Results
 	E3DB_WriteRecordsResult *result = E3DB_WriteRecords_GetResult(op);
 
+	// TODO Set Record to returned result
+
 	E3DB_Op_Delete(op);
 	curl_global_cleanup();
 }

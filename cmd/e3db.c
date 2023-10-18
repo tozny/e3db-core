@@ -239,7 +239,6 @@ int cmdWrite(int argc, char **argv)
 	}
 	else
 	{
-		printf("%s", "inside else");
 		// Case JSON
 		cJSON *json = cJSON_Parse(data);
 		if (json == NULL)
