@@ -9,24 +9,26 @@
 #define E3DB_BASE64_H_INCLUDED
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 #include "sds.h"
 
-/* Base64 encode a string, returning a freshly allocated result. The result
- * string must be free'd with `xfree'. */
-sds base64_encode(const char *s);
-sds base64_encodeUrl(const char *s);
+	/* Base64 encode a string, returning a freshly allocated result. The result
+	 * string must be free'd with `xfree'. */
+	sds base64_encode(const char *s);
+	sds base64_encodeUrl(const char *s);
+	sds base64_encodeUrl2(const char *s, size_t length);
 
-/* Base64 decode a string, returning a freshly allocated result. The
- * result string must be free'd with `xfree'.
- *
- * TODO: How do we handle decode errors? */
-unsigned char *base64_decode(const char *s);
+	/* Base64 decode a string, returning a freshly allocated result. The
+	 * result string must be free'd with `xfree'.
+	 *
+	 * TODO: How do we handle decode errors? */
+	unsigned char *base64_decode(const char *s);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif   /* !defined E3DB_BASE64_H_INCLUDED */
+#endif /* !defined E3DB_BASE64_H_INCLUDED */

@@ -37,7 +37,7 @@ sds base64_encode(const char *s)
 	return result;
 }
 
-sds base64_encodeUrl(const char *s)
+sds base64_encodeUrl2(const char *s, size_t length)
 {
 	BIO *bio, *b64;
 	char *buf;
@@ -48,8 +48,8 @@ sds base64_encodeUrl(const char *s)
 	bio = BIO_push(b64, bio);
 
 	BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
-	BIO_write(bio, s, strlen(s));
-	//BIO_write(bio, "\0", 1);
+	BIO_write(bio, s, length);
+	// BIO_write(bio, "\0", 1);
 	BIO_flush(bio);
 
 	BIO_get_mem_data(bio, &buf);
@@ -69,14 +69,66 @@ sds base64_encodeUrl(const char *s)
 		}
 	}
 	// Remove padding characters '='
-    int padding = 0;
-    for (int i = strlen(result) - 1; i >= 0; i--) {
-        if (result[i] == '=') {
-            padding++;
-        } else {
-            break;
-        }
-    }
+	int padding = 0;
+	for (int i = strlen(result) - 1; i >= 0; i--)
+	{
+		if (result[i] == '=')
+		{
+			padding++;
+		}
+		else
+		{
+			break;
+		}
+	}
+	result[strlen(result) - padding] = '\0';
+	return result;
+}
+
+sds base64_encodeUrl(const char *s)
+{
+	BIO *bio, *b64;
+	char *buf;
+	sds result;
+
+	b64 = BIO_new(BIO_f_base64());
+	bio = BIO_new(BIO_s_mem());
+	bio = BIO_push(b64, bio);
+
+	BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
+	BIO_write(bio, s, strlen(s));
+	// BIO_write(bio, "\0", 1);
+	BIO_flush(bio);
+
+	BIO_get_mem_data(bio, &buf);
+	result = sdsnew(buf);
+
+	BIO_free_all(bio);
+
+	for (int i = 0; i < strlen(result); i++)
+	{
+		if (result[i] == '/')
+		{
+			result[i] = '_';
+		}
+		else if (result[i] == '+')
+		{
+			result[i] = '-';
+		}
+	}
+	// Remove padding characters '='
+	int padding = 0;
+	for (int i = strlen(result) - 1; i >= 0; i--)
+	{
+		if (result[i] == '=')
+		{
+			padding++;
+		}
+		else
+		{
+			break;
+		}
+	}
 	result[strlen(result) - padding] = '\0';
 	return result;
 }

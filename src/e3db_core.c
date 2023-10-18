@@ -1662,54 +1662,53 @@ static int E3DB_WriteRecords_Request(E3DB_Op *op, int response_code,
 
 const char *EncryptRecordField(unsigned char *ak, char *field)
 {
-
   // Create dk
-  unsigned char *key[crypto_secretbox_KEYBYTES];
-  randombytes_buf(key, crypto_secretbox_KEYBYTES);
+  unsigned char dk[crypto_secretbox_KEYBYTES];
+  randombytes_buf(dk, sizeof dk);
   // Add Null Terminater
-  unsigned char *dk = (char *)malloc(crypto_secretbox_KEYBYTES * sizeof(char) + 1);
-  strcpy(dk, key);
-  dk[crypto_secretbox_KEYBYTES] = '\0';
+  unsigned char *dkTerm = (char *)malloc(crypto_secretbox_KEYBYTES + 1);
+  memcpy(dkTerm, dk, crypto_secretbox_KEYBYTES);
+  dkTerm[crypto_secretbox_KEYBYTES] = '\0';
 
   // Create efN
-  unsigned char *generateNonce[crypto_box_NONCEBYTES];
-  randombytes_buf(generateNonce, crypto_box_NONCEBYTES);
+  unsigned char efN[crypto_box_NONCEBYTES];
+  randombytes_buf(efN, sizeof efN);
   // Add Null Terminater
-  unsigned char *efN = (char *)malloc(crypto_box_NONCEBYTES * sizeof(char) + 1);
-  strcpy(efN, generateNonce);
-  efN[crypto_box_NONCEBYTES] = '\0';
+  unsigned char *efNTerm = (char *)malloc(crypto_box_NONCEBYTES + 1);
+  memcpy(efNTerm, efN, crypto_box_NONCEBYTES);
+  efNTerm[crypto_box_NONCEBYTES] = '\0';
 
   // Encrypt Symmetric
-  unsigned char *ciphertext[crypto_box_MACBYTES + strlen(field)];
-  int status = crypto_secretbox_easy(ciphertext, field, strlen(field), efN, dk);
+  unsigned char ef[crypto_box_MACBYTES + strlen(field)];
+  int status = crypto_secretbox_easy(ef, field, strlen(field), efN, dk);
   printf("Encrypting data field status %d", status);
   // Add Null terminator
-  unsigned char *ef = (char *)malloc((crypto_box_MACBYTES + strlen(field)) * sizeof(char) + 1);
-  strcpy(ef, ciphertext);
-  ef[(crypto_box_MACBYTES + strlen(field)) * sizeof(char)] = '\0';
+  unsigned char *efTerm = (char *)malloc((crypto_box_MACBYTES + strlen(field)) + 1);
+  memcpy(efTerm, ef, crypto_box_MACBYTES + strlen(field));
+  efTerm[(crypto_box_MACBYTES + strlen(field))] = '\0';
 
   // Create edkN
-  unsigned char *generateedkNNonce[crypto_box_NONCEBYTES];
-  randombytes_buf(generateedkNNonce, crypto_box_NONCEBYTES);
+  unsigned char edkN[crypto_box_NONCEBYTES];
+  randombytes_buf(edkN, sizeof edkN);
   // Add Null Terminater
-  unsigned char *edkN = (char *)malloc(crypto_box_NONCEBYTES * sizeof(char) + 1);
-  strcpy(edkN, generateedkNNonce);
-  edkN[crypto_box_NONCEBYTES] = '\0';
+  unsigned char *edkNTerm = (char *)malloc(crypto_box_NONCEBYTES + 1);
+  memcpy(edkNTerm, edkN, crypto_box_NONCEBYTES);
+  edkNTerm[crypto_box_NONCEBYTES] = '\0';
 
   // Encrypt Symmetric
-  unsigned char *ciphertextedk[crypto_box_MACBYTES + crypto_secretbox_KEYBYTES];
-  int status2 = crypto_secretbox_easy(ciphertextedk, dk, crypto_secretbox_KEYBYTES, edkN, ak);
+  unsigned char edk[crypto_box_MACBYTES + crypto_secretbox_KEYBYTES];
+  int status2 = crypto_secretbox_easy(edk, dk, crypto_secretbox_KEYBYTES, edkN, ak);
   printf("Encrypting data key status %d", status2);
   // Add Null terminator
-  unsigned char *edk = (char *)malloc((crypto_box_MACBYTES + crypto_secretbox_KEYBYTES) * sizeof(char) + 1);
-  strcpy(edk, ciphertextedk);
-  edk[(crypto_box_MACBYTES + crypto_secretbox_KEYBYTES) * sizeof(char)] = '\0';
+  unsigned char *edkTerm = (char *)malloc((crypto_box_MACBYTES + crypto_secretbox_KEYBYTES) + 1);
+  memcpy(edkTerm, edk, crypto_box_MACBYTES + crypto_secretbox_KEYBYTES);
+  edkTerm[(crypto_box_MACBYTES + crypto_secretbox_KEYBYTES)] = '\0';
 
   // Create dotted quad
-  sds edk_base64 = base64_encodeUrl(edk);
-  sds edkN_base64 = base64_encodeUrl(edkN);
-  sds ef_base64 = base64_encodeUrl(ef);
-  sds efN_base64 = base64_encodeUrl(efN);
+  sds edk_base64 = base64_encodeUrl(edkTerm);
+  sds edkN_base64 = base64_encodeUrl(edkNTerm);
+  sds ef_base64 = base64_encodeUrl(efTerm);
+  sds efN_base64 = base64_encodeUrl(efNTerm);
 
   printf(" edk_base64 -->  %s \n\n", edk_base64);
   printf(" edkN_base64 -->  %s \n\n", edkN_base64);
@@ -1747,7 +1746,7 @@ E3DB_Op *E3DB_WriteRecord_Begin(
   temp = temp->child->next;
   while (temp != NULL)
   {
-    char *encryptedField = EncryptRecordField(accessKey, temp->valuestring);
+    encryptedField = EncryptRecordField(accessKey, temp->valuestring);
     cJSON_AddStringToObject(encryptedData, temp->string, encryptedField);
     temp = temp->next;
   }
