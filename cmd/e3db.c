@@ -5,21 +5,10 @@
  * All Rights Reserved.
  */
 
-#include <sys/types.h>
 #include <pwd.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
-
-#include <curl/curl.h>
-#include <openssl/bio.h>
-#include <openssl/buffer.h>
-#include <openssl/evp.h>
-
 #include "e3db_client.h"
 #include "e3db_client.c"
-
 #include "sds.h"
 #include "cJSON.h"
 
@@ -33,7 +22,7 @@ const char usage[] =
     "\n"
     "Available commands:\n"
     " read-record          read records\n"
-    " write-record                write record\n";
+    " write-record         write record\n";
 
 /* Get the user's home directory.
  *
