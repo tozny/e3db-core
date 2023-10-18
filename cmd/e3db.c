@@ -220,7 +220,7 @@ int cmdWrite(int argc, char **argv)
 
 		// read the file contents into a string
 		char buffer[1024];
-		int len = fread(buffer, 1, sizeof(buffer), fp);
+		fread(buffer, 1, sizeof(buffer), fp);
 		fclose(fp);
 
 		// parse the JSON data
@@ -266,7 +266,7 @@ int cmdWrite(int argc, char **argv)
 
 		// read the file contents into a string
 		char buffer[1024];
-		int len = fread(buffer, 1, sizeof(buffer), fp);
+		fread(buffer, 1, sizeof(buffer), fp);
 		fclose(fp);
 
 		// parse the JSON data
@@ -302,7 +302,7 @@ int cmdWrite(int argc, char **argv)
 	// Set Up Returned Record Wriiten
 	E3DB_Record *record = (E3DB_Record *)malloc(sizeof(E3DB_Record));
 	// Write the Record
-	WriteRecord(record, client, record_type, dataJSON, metaJSON);
+	WriteRecord(record, client, (const char **)record_type, dataJSON, metaJSON);
 
 	// Clean Up Memory
 	E3DB_Client_Delete(client);

@@ -205,8 +205,8 @@ sds base64_encodeUrl2(const char *s, size_t size)
 
 unsigned char *base64_decode(const char *base64)
 {
-	char *input;
-	input = (char *)malloc(strlen(base64) * sizeof(char) + 1);
+	unsigned char *input;
+	input = (unsigned char *)malloc(strlen(base64) * sizeof(char) + 1);
 	// Remove double quotes, replace url encoded chars _ with / and - with +.
 	int count = 0;
 	int quotes = 0;
@@ -232,10 +232,10 @@ unsigned char *base64_decode(const char *base64)
 			quotes++;
 		}
 	}
-	input = (char *)realloc(input, (strlen(base64) - quotes) * sizeof(char) + 1);
+	input = (unsigned char *)realloc(input, (strlen(base64) - quotes) * sizeof(unsigned char) + 1);
 	input[count] = '\0';
 	/* set up a destination buffer large enough to hold the encoded data */
-	unsigned char *output = (char *)malloc(strlen(input) + 1);
+	unsigned char *output = (unsigned char *)malloc(strlen((char *)input) + 1);
 	/* keep track of our decoded position */
 	unsigned char *c = output;
 	/* store the number of bytes decoded by a single call */
@@ -247,14 +247,14 @@ unsigned char *base64_decode(const char *base64)
 	/* initialise the decoder state */
 	base64_init_decodestate(&s);
 	/* decode the input data */
-	cnt = base64_decode_block(input, strlen(input), c, &s);
+	cnt = base64_decode_block((char *)input, strlen((char *)input), (char *)c, &s);
 	c += cnt;
 	/* note: there is no base64_decode_blockend! */
 	/*---------- STOP DECODING  ----------*/
 
 	/* we want to print the decoded data, so null-terminate it: */
 	*c = 0;
-	output[strlen(input)] = '\0';
+	output[strlen((char *)input)] = '\0';
 	free(input);
 	return output;
 }
