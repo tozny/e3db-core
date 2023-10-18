@@ -234,7 +234,7 @@ void WriteRecord(E3DB_Record *record, E3DB_Client *client, const char **record_t
 	curl_global_init(CURL_GLOBAL_DEFAULT);
 
 	// Step 1: Get Access Key
-	E3DB_Op *op = E3DB_GetEncryptedAccessKeys_Begin(client, client->options->client_id, client->options->client_id, client->options->client_id, record_type);
+	E3DB_Op *op = E3DB_GetEncryptedAccessKeys_Begin(client, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)record_type);
 
 	int responseCode = curl_run_op_dont_fail_with_response_code(op, 404);
 
@@ -242,10 +242,10 @@ void WriteRecord(E3DB_Record *record, E3DB_Client *client, const char **record_t
 	{
 		// Path B: Access Key Does Not Exist
 		// Create Access Key
-		E3DB_Op *operationCreateAccessKey = E3DB_CreateAccessKeys_Begin(client, client->options->client_id, client->options->client_id, client->options->client_id, record_type, client->options->public_key);
+		E3DB_Op *operationCreateAccessKey = E3DB_CreateAccessKeys_Begin(client, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)record_type, (const char **)client->options->public_key);
 		curl_run_op(operationCreateAccessKey);
 		// Fetch Encrypted Access Key
-		op = E3DB_GetEncryptedAccessKeys_Begin(client, client->options->client_id, client->options->client_id, client->options->client_id, record_type);
+		op = E3DB_GetEncryptedAccessKeys_Begin(client, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)record_type);
 		curl_run_op(op);
 	}
 
@@ -253,9 +253,9 @@ void WriteRecord(E3DB_Record *record, E3DB_Client *client, const char **record_t
 	E3DB_EncryptedAccessKeyResult *EAKResult = E3DB_EAK_GetResult(op);
 	E3DB_GetEAKResultIterator *EAKIt = E3DB_GetEAKResultIterator_GetIterator(EAKResult);
 	E3DB_EAK *eak = E3DB_ResultIterator_GetEAK(EAKIt);
-	char *rawEAK = E3DB_EAK_GetEAK(eak);
-	char *authPublicKey = E3DB_EAK_GetAuthPubKey(eak);
-	unsigned char *ak = E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, op->client->options->private_key);
+	char *rawEAK = (char *)E3DB_EAK_GetEAK(eak);
+	char *authPublicKey = (char *)E3DB_EAK_GetAuthPubKey(eak);
+	unsigned char *ak = (unsigned char *)E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, op->client->options->private_key);
 	printf("\nDECRYPTED AK %s \n", ak);
 
 	// Write Record
@@ -263,7 +263,7 @@ void WriteRecord(E3DB_Record *record, E3DB_Client *client, const char **record_t
 	curl_run_op(op);
 
 	// Get Results
-	E3DB_WriteRecordsResult *result = E3DB_WriteRecords_GetResult(op);
+	// E3DB_WriteRecordsResult *result = E3DB_WriteRecords_GetResult(op);
 
 	// TODO Set Record to returned result
 
@@ -294,7 +294,7 @@ void ReadRecords(E3DB_Record *records, E3DB_Client *client, const char **all_rec
 			E3DB_Legacy_Record *record = E3DB_ReadRecordsResultIterator_GetData(it);
 
 			// Set up Access Keys Fetch
-			E3DB_Op *eakOp = E3DB_GetEncryptedAccessKeys_Begin(client, E3DB_RecordMeta_GetWriterId(meta), E3DB_RecordMeta_GetUserId(meta), E3DB_RecordMeta_GetUserId(meta), E3DB_RecordMeta_GetType(meta));
+			E3DB_Op *eakOp = E3DB_GetEncryptedAccessKeys_Begin(client, (const char**)E3DB_RecordMeta_GetWriterId(meta), (const char**)E3DB_RecordMeta_GetUserId(meta), (const char**)E3DB_RecordMeta_GetUserId(meta), (const char**)E3DB_RecordMeta_GetType(meta));
 
 			// Run access keys fetch
 			curl_run_op(eakOp);
@@ -302,9 +302,9 @@ void ReadRecords(E3DB_Record *records, E3DB_Client *client, const char **all_rec
 			E3DB_EncryptedAccessKeyResult *EAKResult = E3DB_EAK_GetResult(eakOp);
 			E3DB_GetEAKResultIterator *EAKIt = E3DB_GetEAKResultIterator_GetIterator(EAKResult);
 			E3DB_EAK *eak = E3DB_ResultIterator_GetEAK(EAKIt);
-			char *rawEAK = E3DB_EAK_GetEAK(eak);
-			char *authPublicKey = E3DB_EAK_GetAuthPubKey(eak);
-			unsigned char *ak = E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, eakOp->client->options->private_key);
+			char *rawEAK = (char *)E3DB_EAK_GetEAK(eak);
+			char *authPublicKey = (char *)E3DB_EAK_GetAuthPubKey(eak);
+			unsigned char *ak = (unsigned char *)E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, eakOp->client->options->private_key);
 			printf("\nDECRYPTED AK %s\n", ak);
 
 			E3DB_Record *decrypted_record = (E3DB_Record *)malloc(sizeof(E3DB_Record));
@@ -316,15 +316,15 @@ void ReadRecords(E3DB_Record *records, E3DB_Client *client, const char **all_rec
 			cJSON *decryptedData = cJSON_CreateObject();
 			while (!E3DB_RecordFieldIterator_IsDone(f_it))
 			{
-				unsigned char *edata = E3DB_RecordFieldIterator_GetValue(f_it);
+				unsigned char *edata = (unsigned char *)E3DB_RecordFieldIterator_GetValue(f_it);
 				printf("\nedata: %s\n", edata);
 
-				char *ddata = E3DB_RecordFieldIterator_DecryptValue(edata, ak);
-				char *name = E3DB_RecordFieldIterator_GetName(f_it);
+				const char *ddata = E3DB_RecordFieldIterator_DecryptValue(edata, ak);
+				const char *name = E3DB_RecordFieldIterator_GetName(f_it);
 
 				cJSON_AddStringToObject(decryptedData, name, ddata);
 
-				free(ddata);
+				free((void*)ddata);
 				E3DB_RecordFieldIterator_Next(f_it);
 			}
 			decrypted_record->data = decryptedData;
