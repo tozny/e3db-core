@@ -186,20 +186,7 @@ sds base64_encodeUrl2(const char *s, size_t size)
 			result[i] = '-';
 		}
 	}
-	// Remove padding characters '='
-	int padding = 0;
-	for (int i = size - 1; i >= 0; i--)
-	{
-		if (result[i] == '=')
-		{
-			padding++;
-		}
-		else
-		{
-			break;
-		}
-	}
-	// result[size - padding] = '\0';
+
 	return result;
 }
 
