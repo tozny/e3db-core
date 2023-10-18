@@ -488,26 +488,6 @@ static char *cJSON_GetSafeObjectItemString(cJSON *json, const char *name)
   }
 }
 
-/* Utility function to safely get the string value of a JSON object field,
- * returning an empty string if not present. */
-static char *cJSON_GetSafeObjectItem(cJSON *json, const char *name)
-{
-  cJSON *obj = cJSON_GetObjectItem(json, name);
-  printf("\ncJSON_GetSafeObjectItem name = %s\n", name);
-
-  if (obj == NULL)
-  {
-    fprintf(stderr, "Warning: Field '%s' missing or not a string.\n", name);
-    return "";
-  }
-  if (obj->type == cJSON_String)
-  {
-    char *plain = obj->valuestring;
-    printf("\ncJSON_GetSafeObjectItem plain = %s\n", plain);
-    return plain;
-  }
-  return "";
-}
 
 static void E3DB_GetRecordMetaFromJSON(cJSON *json, E3DB_RecordMeta *meta)
 {
@@ -1372,7 +1352,7 @@ static void E3DB_CreateAccessKeys_InitOp(E3DB_Op *op)
 
   sds url = sdsnew(op->client->options->api_url);
   url = sdscat(url, "/v1/storage/access_keys/");
-  url = sdscat(url,(const char *)result->writer_id);
+  url = sdscat(url, (const char *)result->writer_id);
   url = sdscat(url, "/");
   url = sdscat(url, (const char *)result->writer_id);
   url = sdscat(url, "/");
@@ -1383,7 +1363,7 @@ static void E3DB_CreateAccessKeys_InitOp(E3DB_Op *op)
   printf("\nURL: %s\n", url);
 
   cJSON *json = cJSON_CreateObject();
-  cJSON_AddStringToObject(json, "eak", result->ak);
+  cJSON_AddStringToObject(json, "eak", (const char *)result->ak);
   char *json_str = cJSON_Print(json);
   // puts(buffer);
   // TODO: Add fields to URL
@@ -1435,50 +1415,54 @@ E3DB_Op *E3DB_CreateAccessKeys_Begin(
   unsigned char *key[SECRET_KEY_SIZE];
   randombytes_buf(key, SECRET_KEY_SIZE);
   // Add Null Terminater
-  unsigned char *accessKey = (char *)malloc(SECRET_KEY_SIZE * sizeof(char) + 1);
-  strcpy(accessKey, key);
+  unsigned char *accessKey = (unsigned char *)malloc(SECRET_KEY_SIZE * sizeof(char) + 1);
+  strcpy((char *)accessKey, (char *)key);
   accessKey[32] = '\0';
-  unsigned long long keyLength = strlen((const char *)accessKey);
 
   // Grab User Private Key
   char *writerKey = client->options->private_key;
 
   // Grab reader and writer key and decode
-  unsigned char *publicKey = base64_decode(reader_public_key);
-  unsigned char *privateKey = base64_decode(writerKey);
+  unsigned char *publicKey = base64_decode((char *)reader_public_key);
+  unsigned char *privateKey = base64_decode((char *)writerKey);
 
   // Create Nonce- 24 bytes
   unsigned char *generateNonce[crypto_box_NONCEBYTES];
   randombytes_buf(generateNonce, crypto_box_NONCEBYTES);
   // Add Null Terminater
-  unsigned char *nonce = (char *)malloc(crypto_box_NONCEBYTES * sizeof(char) + 1);
-  strcpy(nonce, generateNonce);
+  unsigned char *nonce = (unsigned char *)malloc(crypto_box_NONCEBYTES * sizeof(char) + 1);
+  strcpy((char *)nonce, (char *)generateNonce);
   nonce[crypto_box_NONCEBYTES] = '\0';
 
   // Encrypt
   unsigned char *ciphertext[crypto_box_MACBYTES + SECRET_KEY_SIZE];
   // Pass in access key (null terminated) or non null terminated
-  int status = crypto_box_easy(ciphertext, accessKey, SECRET_KEY_SIZE, nonce, publicKey, privateKey);
+  int status = crypto_box_easy((unsigned char *)ciphertext, accessKey, SECRET_KEY_SIZE, nonce, publicKey, privateKey);
+  if (status < 0)
+  {
+    // TODO handle error
+    printf("\nStatus =  %d\n", status);
+  }
 
   // Add Null terminator
-  unsigned char *newCipher = (char *)malloc((crypto_box_MACBYTES + SECRET_KEY_SIZE) * sizeof(char) + 1);
-  strcpy(newCipher, ciphertext);
+  unsigned char *newCipher = (unsigned char *)malloc((crypto_box_MACBYTES + SECRET_KEY_SIZE) * sizeof(char) + 1);
+  strcpy((char *)newCipher, (char *)ciphertext);
   newCipher[(crypto_box_MACBYTES + SECRET_KEY_SIZE) * sizeof(char)] = '\0';
   // Encode
-  sds ciphertext_base64 = base64_encodeUrl(newCipher);
-  sds nonce_base64 = base64_encodeUrl(nonce);
+  sds ciphertext_base64 = base64_encodeUrl((char *)newCipher);
+  sds nonce_base64 = base64_encodeUrl((char *)nonce);
 
   // Set up EAK
   // Join the EAK.Nonce
-  unsigned char *encryptedAccessKey = (char *)malloc(strlen(ciphertext_base64) + strlen(nonce_base64) + 1);
-  strcpy(encryptedAccessKey, ciphertext_base64);
-  strncat(encryptedAccessKey, ".", 1);
-  strncat(encryptedAccessKey, nonce_base64, strlen(nonce_base64) + 1);
+  unsigned char *encryptedAccessKey = (unsigned char *)malloc(strlen(ciphertext_base64) + strlen(nonce_base64) + 1);
+  strcpy((char *)encryptedAccessKey, (char *)ciphertext_base64);
+  strncat((char *)encryptedAccessKey, ".", 1);
+  strncat((char *)encryptedAccessKey, nonce_base64, strlen(nonce_base64) + 1);
 
   result->writer_id = writer_id;
   result->user_id = user_id;
   result->type = record_type;
-  result->ak = encryptedAccessKey;
+  result->ak = (const char **)encryptedAccessKey;
 
   op->result = result;
   op->free_result = E3DB_CreateAccessKeyResult_Delete;
@@ -1590,15 +1574,15 @@ const char *SignDocumentWithPrivateKey(char *document, char *privateSigningKey)
   unsigned char *decodedPrivateSigningKey = base64_decode(privateSigningKey);
   unsigned char sig[crypto_sign_BYTES];
 
-  int status = crypto_sign_detached(sig, NULL, document, strlen(document), decodedPrivateSigningKey);
+  int status = crypto_sign_detached(sig, NULL, (const unsigned char *)document, strlen(document), decodedPrivateSigningKey);
   printf("Status of Signature %d", status);
 
   // Add Null terminator
-  unsigned char *signedDocument = (char *)malloc(crypto_sign_BYTES * sizeof(char) + 1);
-  strcpy(signedDocument, sig);
+  unsigned char *signedDocument = (unsigned char *)malloc(crypto_sign_BYTES * sizeof(char) + 1);
+  strcpy((char *)signedDocument, (char *)sig);
   signedDocument[crypto_sign_BYTES * sizeof(char)] = '\0';
 
-  return base64_encodeUrl(signedDocument);
+  return base64_encodeUrl((char *)signedDocument);
 }
 
 static void E3DB_WriteRecords_InitOp(E3DB_Op *op)
@@ -1612,7 +1596,7 @@ static void E3DB_WriteRecords_InitOp(E3DB_Op *op)
   cJSON *metaJSONObject = cJSON_CreateObject();
   cJSON_AddStringToObject(metaJSONObject, "writer_id", op->client->options->client_id);
   cJSON_AddStringToObject(metaJSONObject, "user_id", op->client->options->client_id);
-  cJSON_AddStringToObject(metaJSONObject, "type", result->record_type);
+  cJSON_AddStringToObject(metaJSONObject, "type", (const char *)result->record_type);
   // this is wrong, this needs to be a map[string]string
   cJSON_AddItemToObject(metaJSONObject, "plain", result->meta);
   char *metaJSON = cJSON_Print(metaJSONObject);
@@ -1626,7 +1610,7 @@ static void E3DB_WriteRecords_InitOp(E3DB_Op *op)
   char *request = cJSON_Print(recordWriteRequestJSON);
   printf("request JSON %s", request);
 
-  char *signature = SignDocumentWithPrivateKey(request, op->client->options->private_signing_key);
+  const char *signature = SignDocumentWithPrivateKey(request, op->client->options->private_signing_key);
   cJSON_AddStringToObject(recordWriteRequestJSON, "rec_sig", signature);
   char *signedRequest = cJSON_Print(recordWriteRequestJSON);
 
@@ -1663,7 +1647,7 @@ const char *EncryptRecordField(unsigned char *ak, char *field)
   unsigned char dk[crypto_secretbox_KEYBYTES];
   randombytes_buf(dk, sizeof dk);
   // Add Null Terminater
-  unsigned char *dkTerm = (char *)malloc(crypto_secretbox_KEYBYTES + 1);
+  unsigned char *dkTerm = (unsigned char *)malloc(crypto_secretbox_KEYBYTES + 1);
   memcpy(dkTerm, dk, crypto_secretbox_KEYBYTES);
   dkTerm[crypto_secretbox_KEYBYTES] = '\0';
 
@@ -1671,16 +1655,16 @@ const char *EncryptRecordField(unsigned char *ak, char *field)
   unsigned char efN[crypto_box_NONCEBYTES];
   randombytes_buf(efN, sizeof efN);
   // Add Null Terminater
-  unsigned char *efNTerm = (char *)malloc(crypto_box_NONCEBYTES + 1);
+  unsigned char *efNTerm = (unsigned char *)malloc(crypto_box_NONCEBYTES + 1);
   memcpy(efNTerm, efN, crypto_box_NONCEBYTES);
   efNTerm[crypto_box_NONCEBYTES] = '\0';
 
   // Encrypt Symmetric
   unsigned char ef[crypto_box_MACBYTES + strlen(field)];
-  int status = crypto_secretbox_easy(ef, field, strlen(field), efN, dk);
+  int status = crypto_secretbox_easy(ef, (unsigned char *)field, strlen(field), efN, dk);
   printf("Encrypting data field status %d", status);
   // Add Null terminator
-  unsigned char *efTerm = (char *)malloc((crypto_box_MACBYTES + strlen(field)) + 1);
+  unsigned char *efTerm = (unsigned char *)malloc((crypto_box_MACBYTES + strlen(field)) + 1);
   memcpy(efTerm, ef, crypto_box_MACBYTES + strlen(field));
   efTerm[(crypto_box_MACBYTES + strlen(field))] = '\0';
 
@@ -1688,7 +1672,7 @@ const char *EncryptRecordField(unsigned char *ak, char *field)
   unsigned char edkN[crypto_box_NONCEBYTES];
   randombytes_buf(edkN, sizeof edkN);
   // Add Null Terminater
-  unsigned char *edkNTerm = (char *)malloc(crypto_box_NONCEBYTES + 1);
+  unsigned char *edkNTerm = (unsigned char *)malloc(crypto_box_NONCEBYTES + 1);
   memcpy(edkNTerm, edkN, crypto_box_NONCEBYTES);
   edkNTerm[crypto_box_NONCEBYTES] = '\0';
 
@@ -1697,15 +1681,15 @@ const char *EncryptRecordField(unsigned char *ak, char *field)
   int status2 = crypto_secretbox_easy(edk, dk, crypto_secretbox_KEYBYTES, edkN, ak);
   printf("Encrypting data key status %d", status2);
   // Add Null terminator
-  unsigned char *edkTerm = (char *)malloc((crypto_box_MACBYTES + crypto_secretbox_KEYBYTES) + 1);
+  unsigned char *edkTerm = (unsigned char *)malloc((crypto_box_MACBYTES + crypto_secretbox_KEYBYTES) + 1);
   memcpy(edkTerm, edk, crypto_box_MACBYTES + crypto_secretbox_KEYBYTES);
   edkTerm[(crypto_box_MACBYTES + crypto_secretbox_KEYBYTES)] = '\0';
 
   // Create dotted quad
-  sds edk_base64 = base64_encodeUrl2(edk, crypto_box_MACBYTES + crypto_secretbox_KEYBYTES);
-  sds edkN_base64 = base64_encodeUrl2(edkN, crypto_box_NONCEBYTES);
-  sds ef_base64 = base64_encodeUrl2(ef, crypto_box_MACBYTES + strlen(field));
-  sds efN_base64 = base64_encodeUrl2(efN, crypto_box_NONCEBYTES);
+  sds edk_base64 = base64_encodeUrl2((const char *)edk, crypto_box_MACBYTES + crypto_secretbox_KEYBYTES);
+  sds edkN_base64 = base64_encodeUrl2((const char *)edkN, crypto_box_NONCEBYTES);
+  sds ef_base64 = base64_encodeUrl2((const char *)ef, crypto_box_MACBYTES + strlen(field));
+  sds efN_base64 = base64_encodeUrl2((const char *)efN, crypto_box_NONCEBYTES);
 
   printf(" edk_base64 -->  %s \n\n", edk_base64);
   printf(" edkN_base64 -->  %s \n\n", edkN_base64);
@@ -1713,16 +1697,16 @@ const char *EncryptRecordField(unsigned char *ak, char *field)
   printf(" efN_base64 -->  %s \n\n", efN_base64);
 
   // edk.edkN.ef.efN
-  unsigned char *encryptedField = (char *)malloc(strlen(edk_base64) + strlen(edkN_base64) + strlen(ef_base64) + strlen(efN_base64) + 3 + 1);
-  strcpy(encryptedField, edk_base64);
-  strncat(encryptedField, ".", 1);
-  strncat(encryptedField, edkN_base64, strlen(edkN_base64));
-  strncat(encryptedField, ".", 1);
-  strncat(encryptedField, ef_base64, strlen(ef_base64));
-  strncat(encryptedField, ".", 1);
-  strncat(encryptedField, efN_base64, strlen(efN_base64));
+  unsigned char *encryptedField = (unsigned char *)malloc(strlen(edk_base64) + strlen(edkN_base64) + strlen(ef_base64) + strlen(efN_base64) + 3 + 1);
+  strcpy((char*)encryptedField, edk_base64);
+  strncat((char*)encryptedField, ".", 1);
+  strncat((char*)encryptedField, edkN_base64, strlen(edkN_base64));
+  strncat((char*)encryptedField, ".", 1);
+  strncat((char*)encryptedField, ef_base64, strlen(ef_base64));
+  strncat((char*)encryptedField, ".", 1);
+  strncat((char*)encryptedField, efN_base64, strlen(efN_base64));
 
-  return encryptedField;
+  return (char*)encryptedField;
 }
 
 E3DB_Op *E3DB_WriteRecord_Begin(
@@ -1736,7 +1720,7 @@ E3DB_Op *E3DB_WriteRecord_Begin(
   cJSON *encryptedData = cJSON_CreateObject();
 
   // Base Case
-  char *encryptedField = EncryptRecordField(accessKey, temp->child->valuestring);
+  const char *encryptedField = EncryptRecordField(accessKey, temp->child->valuestring);
   cJSON_AddStringToObject(encryptedData, temp->child->string, encryptedField);
 
   // Recursive Case
