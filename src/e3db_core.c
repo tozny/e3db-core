@@ -398,7 +398,7 @@ struct _E3DB_RecordMeta
   // TODO: Support custom plaintext metadata.
 };
 
-struct _E3DB_DecryptedRecord
+struct _E3DB_Record
 {
   E3DB_RecordMeta *meta;
   cJSON *data;
@@ -532,7 +532,7 @@ static void E3DB_GetAuthPubKeyFromJSON(cJSON *json, E3DB_AuthPubKey *auth_pub_ke
 }
 
 // TODO: How to reconcile this with decryption?
-struct _E3DB_Record
+struct _E3DB_Legacy_Record
 {
   cJSON *json; // "data" field within record
 };
@@ -545,7 +545,7 @@ struct _E3DB_RecordFieldIterator
 /* Return the value of a field in a record. Returns NULL if the field
  * doesn't exist. The returned string lasts until the containing
  * record is deleted. */
-const char *E3DB_Record_GetField(E3DB_Record *r, const char *field)
+const char *E3DB_Record_GetField(E3DB_Legacy_Record *r, const char *field)
 {
   assert(r != NULL);
   assert(r->json != NULL);
@@ -567,7 +567,7 @@ const char *E3DB_Record_GetField(E3DB_Record *r, const char *field)
 }
 
 /* Return an iterator over the fields of a record. */
-E3DB_RecordFieldIterator *E3DB_Record_GetFieldIterator(E3DB_Record *r)
+E3DB_RecordFieldIterator *E3DB_Record_GetFieldIterator(E3DB_Legacy_Record *r)
 {
   assert(r != NULL);
   assert(r->json != NULL);
@@ -890,7 +890,7 @@ struct _E3DB_ReadRecordsResultIterator
 {
   cJSON *pos;
   E3DB_RecordMeta meta;
-  E3DB_Record record;
+  E3DB_Legacy_Record record;
 };
 
 static void E3DB_ReadRecordsResult_Delete(void *p)
@@ -1085,7 +1085,7 @@ E3DB_RecordMeta *E3DB_ReadRecordsResultIterator_GetMeta(E3DB_ReadRecordsResultIt
 }
 
 /* Return the record record data for the current record in the result set. */
-E3DB_Record *E3DB_ReadRecordsResultIterator_GetData(E3DB_ReadRecordsResultIterator *it)
+E3DB_Legacy_Record *E3DB_ReadRecordsResultIterator_GetData(E3DB_ReadRecordsResultIterator *it)
 {
   cJSON *data = cJSON_GetObjectItem(it->pos, "data");
 

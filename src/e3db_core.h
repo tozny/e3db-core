@@ -135,7 +135,7 @@ extern "C"
      */
 
     typedef struct _E3DB_RecordMeta E3DB_RecordMeta;
-    typedef struct _E3DB_DecryptedRecord E3DB_DecryptedRecord;
+    typedef struct _E3DB_Record E3DB_Record;
 
     /*
      * Encrypted Access Key
@@ -158,7 +158,7 @@ extern "C"
     const char *E3DB_EAK_DecryptEAK(char *eak, char *pubKey, char *privKey);
     // TODO: creation and modification time
 
-    typedef struct _E3DB_Record E3DB_Record;
+    typedef struct _E3DB_Legacy_Record E3DB_Legacy_Record;
     typedef struct _E3DB_RecordFieldIterator E3DB_RecordFieldIterator;
 
     // TODO: Create and delete record objects
@@ -168,10 +168,10 @@ extern "C"
     /* Return the value of a field in a record. Returns NULL if the field
      * doesn't exist. The returned string lasts until the containing
      * record is deleted. */
-    const char *E3DB_Record_GetField(E3DB_Record *r, const char *field);
+    const char *E3DB_Record_GetField(E3DB_Legacy_Record *r, const char *field);
 
     /* Return an iterator over the fields of a record. */
-    E3DB_RecordFieldIterator *E3DB_Record_GetFieldIterator(E3DB_Record *r);
+    E3DB_RecordFieldIterator *E3DB_Record_GetFieldIterator(E3DB_Legacy_Record *r);
 
     /* Delete a record field iterator. */
     void E3DB_RecordFieldIterator_Delete(E3DB_RecordFieldIterator *it);
@@ -271,7 +271,7 @@ extern "C"
     E3DB_RecordMeta *E3DB_ReadRecordsResultIterator_GetMeta(E3DB_ReadRecordsResultIterator *it);
 
     /* Return the record record data for the current record in the result set. */
-    E3DB_Record *E3DB_ReadRecordsResultIterator_GetData(E3DB_ReadRecordsResultIterator *it);
+    E3DB_Legacy_Record *E3DB_ReadRecordsResultIterator_GetData(E3DB_ReadRecordsResultIterator *it);
 
     /* Return the EAK. */
     E3DB_EAK *E3DB_ResultIterator_GetEAK(E3DB_GetEAKResultIterator *it);
