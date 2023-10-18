@@ -37,53 +37,76 @@ sds base64_encode(const char *s)
 	return result;
 }
 
-sds base64_encodeUrl2(const char *s, size_t length)
+// sds base64_encodeUrl2(const char *s, size_t length)
+// {
+// 	BIO *bio, *b64;
+// 	char *buf;
+// 	sds result;
+
+// 	b64 = BIO_new(BIO_f_base64());
+// 	bio = BIO_new(BIO_s_mem());
+// 	bio = BIO_push(b64, bio);
+
+// 	BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
+// 	BIO_write(bio, s, length);
+// 	// BIO_write(bio, "\0", 1);
+// 	BIO_flush(bio);
+
+// 	BIO_get_mem_data(bio, &buf);
+// 	result = sdsnew(buf);
+
+// 	BIO_free_all(bio);
+
+// 	for (int i = 0; i < strlen(result); i++)
+// 	{
+// 		if (result[i] == '/')
+// 		{
+// 			result[i] = '_';
+// 		}
+// 		else if (result[i] == '+')
+// 		{
+// 			result[i] = '-';
+// 		}
+// 	}
+// 	// Remove padding characters '='
+// 	int padding = 0;
+// 	for (int i = strlen(result) - 1; i >= 0; i--)
+// 	{
+// 		if (result[i] == '=')
+// 		{
+// 			padding++;
+// 		}
+// 		else
+// 		{
+// 			break;
+// 		}
+// 	}
+// 	result[strlen(result) - padding] = '\0';
+// 	return result;
+// }
+
+sds sdsRemoveBytes(sds str, size_t start, size_t count)
 {
-	BIO *bio, *b64;
-	char *buf;
-	sds result;
+	if (str == NULL)
+		return NULL;
+	size_t len = sdslen(str);
+	if (start >= len)
+		return str; // Nothing to remove
 
-	b64 = BIO_new(BIO_f_base64());
-	bio = BIO_new(BIO_s_mem());
-	bio = BIO_push(b64, bio);
+	// Calculate the new length of the string
+	size_t new_len = len - count;
+	if (new_len >= len)
+		return str; // Avoid underflow
 
-	BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
-	BIO_write(bio, s, length);
-	// BIO_write(bio, "\0", 1);
-	BIO_flush(bio);
+	// Remove the specified bytes by shifting the data
+	memmove(str + start, str + start + count, len - start - count + 1); // +1 for null terminator
 
-	BIO_get_mem_data(bio, &buf);
-	result = sdsnew(buf);
+	// Update the length of the string
+	sdssetlen(str, new_len);
 
-	BIO_free_all(bio);
-
-	for (int i = 0; i < strlen(result); i++)
-	{
-		if (result[i] == '/')
-		{
-			result[i] = '_';
-		}
-		else if (result[i] == '+')
-		{
-			result[i] = '-';
-		}
-	}
-	// Remove padding characters '='
-	int padding = 0;
-	for (int i = strlen(result) - 1; i >= 0; i--)
-	{
-		if (result[i] == '=')
-		{
-			padding++;
-		}
-		else
-		{
-			break;
-		}
-	}
-	result[strlen(result) - padding] = '\0';
-	return result;
+	return str;
 }
+
 
 sds base64_encodeUrl(const char *s)
 {
@@ -130,6 +153,54 @@ sds base64_encodeUrl(const char *s)
 		}
 	}
 	result[strlen(result) - padding] = '\0';
+	return result;
+}
+
+sds base64_encodeUrl2(const char *s, size_t size)
+{
+	BIO *bio, *b64;
+	char *buf;
+	sds result;
+
+	b64 = BIO_new(BIO_f_base64());
+	bio = BIO_new(BIO_s_mem());
+	bio = BIO_push(b64, bio);
+
+	BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
+	BIO_write(bio, s, size);
+	// BIO_write(bio, "\0", 1);
+	BIO_flush(bio);
+
+	BIO_get_mem_data(bio, &buf);
+	result = sdsnew(buf);
+
+	BIO_free_all(bio);
+
+	for (int i = 0; i < size; i++)
+	{
+		if (result[i] == '/')
+		{
+			result[i] = '_';
+		}
+		else if (result[i] == '+')
+		{
+			result[i] = '-';
+		}
+	}
+	// Remove padding characters '='
+	int padding = 0;
+	for (int i = size - 1; i >= 0; i--)
+	{
+		if (result[i] == '=')
+		{
+			padding++;
+		}
+		else
+		{
+			break;
+		}
+	}
+	//result[size - padding] = '\0';
 	return result;
 }
 

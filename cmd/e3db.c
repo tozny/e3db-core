@@ -498,6 +498,7 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
       char *rawEAK = E3DB_EAK_GetEAK(eak);
       char *authPublicKey = E3DB_EAK_GetAuthPubKey(eak);
       unsigned char *ak = E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, eakOp->client->options->private_key);
+      printf("\nDECRYPTED AK %s\n", ak);
 
       E3DB_DecryptedRecord *decrypted_record = (E3DB_DecryptedRecord *)malloc(sizeof(E3DB_DecryptedRecord));
       decrypted_record->meta = meta;
@@ -509,6 +510,7 @@ int do_read_records(E3DB_Client *client, int argc, char **argv)
       while (!E3DB_RecordFieldIterator_IsDone(f_it))
       {
         unsigned char *edata = E3DB_RecordFieldIterator_GetValue(f_it);
+        printf("\nedata: %s\n", edata);
 
         char *ddata = E3DB_RecordFieldIterator_DecryptValue(edata, ak);
         char *name = E3DB_RecordFieldIterator_GetName(f_it);
@@ -781,6 +783,7 @@ int do_write_record(E3DB_Client *client, int argc, char **argv)
   char *rawEAK = E3DB_EAK_GetEAK(eak);
   char *authPublicKey = E3DB_EAK_GetAuthPubKey(eak);
   unsigned char *ak = E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, op->client->options->private_key);
+  printf("\nDECRYPTED AK %s \n", ak);
 
   // Write Record
   op = E3DB_WriteRecord_Begin(client, record_type, dataJSON, metaJSON, ak);

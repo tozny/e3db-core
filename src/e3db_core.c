@@ -1662,6 +1662,9 @@ static int E3DB_WriteRecords_Request(E3DB_Op *op, int response_code,
 
 const char *EncryptRecordField(unsigned char *ak, char *field)
 {
+  printf("\nEncryptRecordField: ak %s\n", ak);
+  printf("\nEncryptRecordField: field %s\n", field);
+
   // Create dk
   unsigned char dk[crypto_secretbox_KEYBYTES];
   randombytes_buf(dk, sizeof dk);
@@ -1705,10 +1708,10 @@ const char *EncryptRecordField(unsigned char *ak, char *field)
   edkTerm[(crypto_box_MACBYTES + crypto_secretbox_KEYBYTES)] = '\0';
 
   // Create dotted quad
-  sds edk_base64 = base64_encodeUrl(edkTerm);
-  sds edkN_base64 = base64_encodeUrl(edkNTerm);
-  sds ef_base64 = base64_encodeUrl(efTerm);
-  sds efN_base64 = base64_encodeUrl(efNTerm);
+  sds edk_base64 = base64_encodeUrl2(edk, crypto_box_MACBYTES + crypto_secretbox_KEYBYTES);
+  sds edkN_base64 = base64_encodeUrl2(edkN, crypto_box_NONCEBYTES);
+  sds ef_base64 = base64_encodeUrl2(ef, crypto_box_MACBYTES + strlen(field));
+  sds efN_base64 = base64_encodeUrl2(efN, crypto_box_NONCEBYTES);
 
   printf(" edk_base64 -->  %s \n\n", edk_base64);
   printf(" edkN_base64 -->  %s \n\n", edkN_base64);
@@ -1716,7 +1719,7 @@ const char *EncryptRecordField(unsigned char *ak, char *field)
   printf(" efN_base64 -->  %s \n\n", efN_base64);
 
   // edk.edkN.ef.efN
-  unsigned char *encryptedField = (char *)malloc(strlen(edk_base64) + strlen(edkN_base64) + strlen(ef_base64) + strlen(efN_base64) + 3);
+  unsigned char *encryptedField = (char *)malloc(strlen(edk_base64) + strlen(edkN_base64) + strlen(ef_base64) + strlen(efN_base64) + 3 + 1);
   strcpy(encryptedField, edk_base64);
   strncat(encryptedField, ".", 1);
   strncat(encryptedField, edkN_base64, strlen(edkN_base64));
@@ -1750,6 +1753,7 @@ E3DB_Op *E3DB_WriteRecord_Begin(
     cJSON_AddStringToObject(encryptedData, temp->string, encryptedField);
     temp = temp->next;
   }
+  printf("\nencryptedData %s\n", cJSON_Print(encryptedData));
 
   result->record_type = record_type;
   result->data = encryptedData;
