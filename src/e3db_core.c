@@ -458,7 +458,7 @@ const char *E3DB_RecordMeta_GetType(E3DB_RecordMeta *meta)
 
 const char *E3DB_RecordMeta_GetPlain(E3DB_RecordMeta *meta)
 {
-  return meta->plain;
+  return cJSON_Print(meta->plain);
 }
 
 const char *E3DB_EAK_GetEAK(E3DB_EAK *eak)
@@ -506,6 +506,7 @@ static char *cJSON_GetSafeObjectItem(cJSON *json, const char *name)
     printf("\ncJSON_GetSafeObjectItem plain = %s\n", plain);
     return plain;
   }
+  return "";
 }
 
 static void E3DB_GetRecordMetaFromJSON(cJSON *json, E3DB_RecordMeta *meta)
@@ -518,7 +519,6 @@ static void E3DB_GetRecordMetaFromJSON(cJSON *json, E3DB_RecordMeta *meta)
   meta->version = cJSON_GetSafeObjectItemString(json, "version");
   meta->created = cJSON_GetSafeObjectItemString(json, "created");
   meta->last_modified = cJSON_GetSafeObjectItemString(json, "last_modified");
-  printf("\nE3DB_GetRecordMetaFromJSON plain %s\n", meta->plain);
 }
 
 static void E3DB_GetSignerSigningKeyFromJSON(cJSON *json, E3DB_SignerSigningKey *signer_signing_key)
@@ -776,8 +776,6 @@ static int E3DB_ListRecords_Response(E3DB_Op *op, int response_code,
 
 static void E3DB_ListRecords_InitOp(E3DB_Op *op)
 {
-  E3DB_ListRecordsResult *result = op->result;
-
   // TODO: Handle the `writer_id' and `types' parameters.
   op->state = E3DB_OP_STATE_HTTP;
   op->request.http.url = sdscatprintf(sdsempty(), "%s/v1/storage/search",
@@ -1069,10 +1067,7 @@ void E3DB_ReadRecordsResultIterator_Next(E3DB_ReadRecordsResultIterator *it)
 /* Return the metadata for the current record in the result set. */
 E3DB_RecordMeta *E3DB_ReadRecordsResultIterator_GetMeta(E3DB_ReadRecordsResultIterator *it)
 {
-  printf("it->pos from E3DB_ReadRecordsResultIterator_GetMeta:\n%s\n", it->pos);
-
   cJSON *meta = cJSON_GetObjectItem(it->pos, "meta");
-  printf("cJSON *meta from E3DB_ReadRecordsResultIterator_GetMeta:\n%s\n", *meta);
 
   if (meta == NULL || meta->type != cJSON_Object)
   {
@@ -1173,10 +1168,10 @@ const char *E3DB_EAK_DecryptEAK(char *eak, char *pubKey, char *privKey)
 {
   unsigned char *ak = (unsigned char *)malloc(32);
   size_t eakLength = strlen(eak);
-  unsigned char *eak_copy = (char *)malloc(eakLength * sizeof(char) + 1);
-  strcpy(eak_copy, eak);
+  unsigned char *eak_copy = (unsigned char *)malloc(eakLength * sizeof(char) + 1);
+  strcpy((char *)eak_copy, eak);
   int i = 0;
-  char *p = strtok(eak_copy, ".");
+  char *p = strtok((char *)eak_copy, ".");
   char *array[2];
 
   while (p != NULL)
@@ -1191,7 +1186,7 @@ const char *E3DB_EAK_DecryptEAK(char *eak, char *pubKey, char *privKey)
 
   unsigned long long clen = strlen((const char *)decodedKey);
   int status = crypto_box_open_easy(ak, decodedKey, clen, decodedNonce, decodedPubKey, decodedPrivKey);
-  ak = (char *)realloc(ak, 32 * sizeof(char) + 1);
+  ak = (unsigned char *)realloc(ak, 32 * sizeof(unsigned char) + 1);
   ak[32] = '\0';
   printf("\n EAK Decryption Status: %d", status);
   free(eak_copy);
@@ -1199,16 +1194,16 @@ const char *E3DB_EAK_DecryptEAK(char *eak, char *pubKey, char *privKey)
   free(decodedNonce);
   free(decodedPubKey);
   free(decodedPrivKey);
-  return ak;
+  return (char *)ak;
 }
 
 const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned char *ak)
 {
-  size_t edataLength = strlen(edata);
-  unsigned char *edata_copy = (char *)malloc(edataLength * sizeof(char) + 1);
-  strcpy(edata_copy, edata);
+  size_t edataLength = strlen((char *)edata);
+  unsigned char *edata_copy = (unsigned char *)malloc(edataLength * sizeof(char) + 1);
+  strcpy((char *)edata_copy, (char *)edata);
   int i = 0;
-  char *p = strtok(edata_copy, ".");
+  char *p = strtok((char *)edata_copy, ".");
   char *array[4];
 
   while (p != NULL)
@@ -1223,7 +1218,6 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
   unsigned char *decodedData = base64_decode(array[2]);
   unsigned char *decodedDataNonce = base64_decode(array[3]);
 
-  unsigned long long clen = strlen((const char *)decodedDataKey);
   // Find length of data key cipher:
   int length = 0;
   while (decodedDataKey[length] != '\0' || decodedDataKey[length + 1] != '\0')
@@ -1236,7 +1230,7 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
   printf("\n DK Decryption Status: %d", status);
 
   unsigned long long dlen = strlen((const char *)decodedData);
-  unsigned char *data = (char *)malloc(dlen * sizeof(char));
+  unsigned char *data = (unsigned char *)malloc(dlen * sizeof(char));
   // Find length of data cipher:
   length = 0;
   while (decodedData[length] != '\0' || decodedData[length + 1] != '\0')
@@ -1252,7 +1246,7 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
   free(decodedData);
   free(decodedDataNonce);
   free(dk);
-  return data;
+  return (char *)data;
 }
 
 static void E3DB_EncryptedAccessKeys_InitOp(E3DB_Op *op)
@@ -1264,13 +1258,13 @@ static void E3DB_EncryptedAccessKeys_InitOp(E3DB_Op *op)
 
   sds url = sdsnew(op->client->options->api_url);
   url = sdscat(url, "/v1/storage/access_keys/");
-  url = sdscat(url, result->writer_id);
+  url = sdscat(url, (const char *)result->writer_id);
   url = sdscat(url, "/");
-  url = sdscat(url, result->writer_id);
+  url = sdscat(url, (const char *)result->writer_id);
   url = sdscat(url, "/");
-  url = sdscat(url, result->writer_id);
+  url = sdscat(url, (const char *)result->writer_id);
   url = sdscat(url, "/");
-  url = sdscat(url, result->type);
+  url = sdscat(url, (const char *)result->type);
 
   printf("\nURL: %s\n", url);
 
@@ -1378,13 +1372,13 @@ static void E3DB_CreateAccessKeys_InitOp(E3DB_Op *op)
 
   sds url = sdsnew(op->client->options->api_url);
   url = sdscat(url, "/v1/storage/access_keys/");
-  url = sdscat(url, result->writer_id);
+  url = sdscat(url,(const char *)result->writer_id);
   url = sdscat(url, "/");
-  url = sdscat(url, result->writer_id);
+  url = sdscat(url, (const char *)result->writer_id);
   url = sdscat(url, "/");
-  url = sdscat(url, result->writer_id);
+  url = sdscat(url, (const char *)result->writer_id);
   url = sdscat(url, "/");
-  url = sdscat(url, result->type);
+  url = sdscat(url, (const char *)result->type);
 
   printf("\nURL: %s\n", url);
 
