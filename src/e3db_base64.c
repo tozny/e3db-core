@@ -1,7 +1,7 @@
 /*
  * e3db_base64.c --- Base64 encoding and decoding.
  *
- * Copyright (C) 2017, Tozny, LLC.
+ * Copyright (C) 2017-2023, Tozny.
  * All Rights Reserved.
  */
 
@@ -107,7 +107,6 @@ sds sdsRemoveBytes(sds str, size_t start, size_t count)
 	return str;
 }
 
-
 sds base64_encodeUrl(const char *s)
 {
 	BIO *bio, *b64;
@@ -200,7 +199,7 @@ sds base64_encodeUrl2(const char *s, size_t size)
 			break;
 		}
 	}
-	//result[size - padding] = '\0';
+	// result[size - padding] = '\0';
 	return result;
 }
 

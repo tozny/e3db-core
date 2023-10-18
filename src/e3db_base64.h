@@ -1,7 +1,7 @@
 /*
  * e3db_base64.h --- Base64 encoding and decoding.
  *
- * Copyright (C) 2017, Tozny, LLC.
+ * Copyright (C) 2017-2023, Tozny.
  * All Rights Reserved.
  */
 

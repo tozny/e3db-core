@@ -1,7 +1,7 @@
 /*
  * e3db_client.c
  *
- * Copyright (C) 2023, Tozny, LLC.
+ * Copyright (C) 2017-2023, Tozny, LLC.
  * All Rights Reserved.
  */
 

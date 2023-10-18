@@ -1,7 +1,7 @@
 /*
  * mem.c --- Memory management utilities.
  *
- * Copyright (C) 2017, Tozny, LLC.
+ * Copyright (C) 2017-2023, Tozny.
  * All Rights Reserved.
  */
 
@@ -19,7 +19,8 @@ static void default_oom_handler(size_t size)
 void *xmalloc(size_t size)
 {
   void *p;
-  if ((p = malloc(size)) == NULL) {
+  if ((p = malloc(size)) == NULL)
+  {
     default_oom_handler(size);
     fprintf(stderr, "Fatal: Return from out-of-memory handler.\n");
     abort();
@@ -30,7 +31,8 @@ void *xmalloc(size_t size)
 
 void *xrealloc(void *p, size_t size)
 {
-  if ((p = realloc(p, size)) == NULL) {
+  if ((p = realloc(p, size)) == NULL)
+  {
     default_oom_handler(size);
     fprintf(stderr, "Fatal: Return from out-of-memory handler.\n");
     abort();

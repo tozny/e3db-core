@@ -1,7 +1,7 @@
 /*
- * main.c
+ * e3db.c
  *
- * Copyright (C) 2023, Tozny.
+ * Copyright (C) 2017-2023, Tozny.
  * All Rights Reserved.
  */
 
@@ -37,7 +37,7 @@ const char usage[] =
 
 /* Get the user's home directory.
  *
- *  */
+ */
 sds get_home_dir(void)
 {
 	char *home;
