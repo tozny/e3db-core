@@ -114,7 +114,6 @@ int curl_run_op(E3DB_Op *op)
 				abort();
 			}
 			curl_easy_setopt(curl, CURLOPT_URL, E3DB_Op_GetHttpUrl(op));
-			curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
 			curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_body);
 			curl_easy_setopt(curl, CURLOPT_WRITEDATA, write_bio);
@@ -192,7 +191,6 @@ int curl_run_op_dont_fail_with_response_code(E3DB_Op *op, long response_code_not
 				abort();
 			}
 			curl_easy_setopt(curl, CURLOPT_URL, E3DB_Op_GetHttpUrl(op));
-			curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
 			curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_body);
 			curl_easy_setopt(curl, CURLOPT_WRITEDATA, write_bio);
@@ -294,7 +292,7 @@ void ReadRecords(E3DB_Record *records, E3DB_Client *client, const char **all_rec
 			E3DB_Legacy_Record *record = E3DB_ReadRecordsResultIterator_GetData(it);
 
 			// Set up Access Keys Fetch
-			E3DB_Op *eakOp = E3DB_GetEncryptedAccessKeys_Begin(client, (const char**)E3DB_RecordMeta_GetWriterId(meta), (const char**)E3DB_RecordMeta_GetUserId(meta), (const char**)E3DB_RecordMeta_GetUserId(meta), (const char**)E3DB_RecordMeta_GetType(meta));
+			E3DB_Op *eakOp = E3DB_GetEncryptedAccessKeys_Begin(client, (const char **)E3DB_RecordMeta_GetWriterId(meta), (const char **)E3DB_RecordMeta_GetUserId(meta), (const char **)E3DB_RecordMeta_GetUserId(meta), (const char **)E3DB_RecordMeta_GetType(meta));
 
 			// Run access keys fetch
 			curl_run_op(eakOp);
@@ -324,7 +322,7 @@ void ReadRecords(E3DB_Record *records, E3DB_Client *client, const char **all_rec
 
 				cJSON_AddStringToObject(decryptedData, name, ddata);
 
-				free((void*)ddata);
+				free((void *)ddata);
 				E3DB_RecordFieldIterator_Next(f_it);
 			}
 			decrypted_record->data = decryptedData;

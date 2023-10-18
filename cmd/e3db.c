@@ -345,11 +345,13 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
+	// Read Record
 	if (!strcmp(argv[1], "read-record"))
 	{
 		int records_read = cmdRead(argc - 1, &argv[1]);
 		return records_read;
 	}
+	// Write Record
 	else if (!strcmp(argv[1], "write-record"))
 	{
 		int records_written = cmdWrite(argc - 1, argv);
