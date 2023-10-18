@@ -230,7 +230,7 @@ int curl_run_op_dont_fail_with_response_code(E3DB_Op *op, long response_code_not
  *
  */
 
-void WriteRecord(E3DB_Record *record, E3DB_Client *client, const char **record_type, cJSON *data, cJSON *meta)
+E3DB_Record *WriteRecord(E3DB_Client *client, const char **record_type, cJSON *data, cJSON *meta)
 {
 	// Set Up Curl to be used
 	curl_global_init(CURL_GLOBAL_DEFAULT);
@@ -297,18 +297,20 @@ void WriteRecord(E3DB_Record *record, E3DB_Client *client, const char **record_t
 	}
 	writtenRecord->rec_sig = cJSON_Print(signObj);
 
-	record = writtenRecord;
 	// printf("kddhfjhsdjfhkjsdhfksd %s", cJSON_Print(record->data));
 	// E3DB_Op_Delete(op);
-	curl_global_cleanup();
+	// curl_global_cleanup();
+
+	return writtenRecord;
 }
 
 /*
  * {ReadRecords}
  *
  */
-void ReadRecords(E3DB_Record *records, E3DB_Client *client, const char **all_record_ids, int argumentCount)
+E3DB_Record *ReadRecords(E3DB_Client *client, const char **all_record_ids, int argumentCount)
 {
+	E3DB_Record *records = (E3DB_Record *)malloc(sizeof(E3DB_Record) * (argumentCount - 1));
 	for (int i = 0; i < argumentCount - 1; i++)
 	{
 		const char **record_ids = (const char **)malloc(sizeof(const char *));
@@ -383,4 +385,5 @@ void ReadRecords(E3DB_Record *records, E3DB_Client *client, const char **all_rec
 		E3DB_Op_Delete(op);
 		curl_global_cleanup();
 	}
+	return records;
 }

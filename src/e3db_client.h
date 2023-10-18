@@ -21,14 +21,14 @@ extern "C"
 	 * {ReadRecords}
 	 *
 	 */
-	void ReadRecords(E3DB_Record *records, E3DB_Client *client, const char **all_record_ids, int argumentCount);
+	E3DB_Record *ReadRecords(E3DB_Client *client, const char **all_record_ids, int argumentCount);
 
 	/*
 	 * {WriteRecord}
 	 *
 	 */
 
-	void WriteRecord(E3DB_Record *record, E3DB_Client *client, const char **record_type, cJSON *data, cJSON *meta);
+	E3DB_Record *WriteRecord(E3DB_Client *client, const char **record_type, cJSON *data, cJSON *meta);
 
 #ifdef __cplusplus
 }

@@ -291,9 +291,10 @@ int cmdWrite(int argc, char **argv)
 	// Set Up Returned Record Wriiten
 	E3DB_Record *record = (E3DB_Record *)malloc(sizeof(E3DB_Record));
 	// Write the Record
-	WriteRecord(record, client, (const char **)record_type, dataJSON, metaJSON);
-	// char *id = E3DB_RecordMeta_GetWriterId(record->meta);
-	// printf("Recod %s", record);
+	record = WriteRecord(client, (const char **)record_type, dataJSON, metaJSON);
+	char *id = E3DB_RecordMeta_GetWriterId(record->meta);
+	printf("Recod %s", id);
+
 	// Clean Up Memory
 	E3DB_Client_Delete(client);
 
@@ -319,7 +320,7 @@ int cmdRead(int argc, char **argv)
 	// Set up paramaters
 	const char **all_record_ids = (const char **)&argv[1];
 	E3DB_Record *records = (E3DB_Record *)malloc(sizeof(E3DB_Record) * (argc - 1));
-	ReadRecords(records, client, all_record_ids, argc);
+	records = ReadRecords(client, all_record_ids, argc);
 
 	// // Display Returned Data
 	// for (int i = 0; i < argc - 1; i++)
