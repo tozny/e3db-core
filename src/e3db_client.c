@@ -264,12 +264,42 @@ void WriteRecord(E3DB_Record *record, E3DB_Client *client, const char **record_t
 	op = E3DB_WriteRecord_Begin(client, record_type, data, meta, ak);
 	curl_run_op(op);
 
-	// Get Results
-	// E3DB_WriteRecordsResult *result = E3DB_WriteRecords_GetResult(op);
+	// Get Result
+	E3DB_WriteRecordsResult *result = E3DB_WriteRecords_GetResult(op);
+	// Create return item
+	E3DB_Record *writtenRecord = (E3DB_Record *)malloc(sizeof(E3DB_Record));
+	E3DB_RecordMeta *writtenMeta = (E3DB_RecordMeta *)malloc(sizeof(E3DB_RecordMeta));
+	cJSON *recordWritten = result->json->child;
+	// Copy over Meta
+	cJSON *metaObj = cJSON_GetObjectItem(recordWritten, "meta");
+	if (metaObj == NULL || metaObj->type != cJSON_Object)
+	{
+		fprintf(stderr, "Error: meta field doesn't exist.\n");
+		abort();
+	}
+	E3DB_GetRecordMetaFromJSON(metaObj, writtenMeta);
+	writtenRecord->meta = writtenMeta;
+	// Copy over data
+	cJSON *dataObj = cJSON_GetObjectItem(recordWritten, "data");
+	if (dataObj == NULL || dataObj->type != cJSON_Object)
+	{
+		fprintf(stderr, "Error: Data field doesn't exist.\n");
+		abort();
+	}
+	writtenRecord->data = dataObj;
+	// printf("Recod %s", cJSON_Print(writtenRecord->data));
+	// Copy over signature
+	cJSON *signObj = cJSON_GetObjectItem(recordWritten, "rec_sig");
+	if (signObj == NULL)
+	{
+		fprintf(stderr, "Error: Signature field doesn't exist.\n");
+		abort();
+	}
+	writtenRecord->rec_sig = cJSON_Print(signObj);
 
-	// TODO Set Record to returned result
-
-	E3DB_Op_Delete(op);
+	record = writtenRecord;
+	// printf("kddhfjhsdjfhkjsdhfksd %s", cJSON_Print(record->data));
+	// E3DB_Op_Delete(op);
 	curl_global_cleanup();
 }
 
