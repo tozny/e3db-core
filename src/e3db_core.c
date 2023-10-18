@@ -648,7 +648,8 @@ static void E3DB_HandleAuthResponse(E3DB_Op *op, int response_code, const char *
 
   sdsfree(op->client->access_token);
   op->client->access_token = sdsnew(cJSON_GetSafeObjectItemString(json, "access_token"));
-  free(json);
+
+  cJSON_Delete(json);
   E3DB_Op_Finish(op);
 }
 

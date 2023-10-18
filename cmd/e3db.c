@@ -327,7 +327,7 @@ int cmdRead(int argc, char **argv)
 	E3DB_Client *client = E3DB_Client_New(load_config());
 
 	// Set up paramaters
-	const char **all_record_ids = (const char **)&argv[1];
+	const char **all_record_ids = (const char **)&argv[1]; // Mem for all_record_ids -> cli args managed by the op sys
 	E3DB_Record *records = (E3DB_Record *)malloc(sizeof(E3DB_Record) * (argc - 1));
 	records = ReadRecords(client, all_record_ids, argc);
 
@@ -348,6 +348,7 @@ int cmdRead(int argc, char **argv)
 	}
 
 	// Clean Up Memory
+	free(records);
 	E3DB_Client_Delete(client);
 	return 0;
 }

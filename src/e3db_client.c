@@ -315,8 +315,8 @@ E3DB_Record *ReadRecords(E3DB_Client *client, const char **all_record_ids, int a
 
 	for (int i = 0; i < argumentCount - 1; i++)
 	{
-		const char **record_ids = (const char **)malloc(sizeof(const char *));
-		record_ids[0] = all_record_ids[i];
+		// const char **record_ids = (const char **)malloc(sizeof(const char *));
+		// record_ids[0] = all_record_ids[i];
 
 		E3DB_Op *op = E3DB_ReadRecords_Begin(client, &all_record_ids[i], 1, NULL, 0);
 		curl_run_op(op);
@@ -325,7 +325,7 @@ E3DB_Record *ReadRecords(E3DB_Client *client, const char **all_record_ids, int a
 		E3DB_ReadRecordsResultIterator *it = E3DB_ReadRecordsResult_GetIterator(result);
 		while (!E3DB_ReadRecordsResultIterator_IsDone(it))
 		{
-			// At this point we have encrypted data
+		// At this point we have encrypted data
 			E3DB_RecordMeta *meta = E3DB_ReadRecordsResultIterator_GetMeta(it);
 			E3DB_Legacy_Record *record = E3DB_ReadRecordsResultIterator_GetData(it);
 
@@ -397,6 +397,8 @@ E3DB_Record *ReadRecords(E3DB_Client *client, const char **all_record_ids, int a
 
 			E3DB_RecordFieldIterator_Delete(f_it);
 			E3DB_ReadRecordsResultIterator_Next(it);
+      cJSON_Delete(decryptedData);
+			E3DB_Op_Delete(eakOp);
 		}
 
 		E3DB_ReadRecordsResultIterator_Delete(it);
