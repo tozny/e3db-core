@@ -488,7 +488,6 @@ static char *cJSON_GetSafeObjectItemString(cJSON *json, const char *name)
   }
 }
 
-
 static void E3DB_GetRecordMetaFromJSON(cJSON *json, E3DB_RecordMeta *meta)
 {
   meta->record_id = cJSON_GetSafeObjectItemString(json, "record_id");
@@ -804,7 +803,6 @@ E3DB_Op *E3DB_ListRecords_Begin(E3DB_Client *client, int limit, int offset,
   {
     E3DB_ListRecords_InitOp(op);
   }
-  printf("AFTR INIT OP");
 
   return op;
 }
@@ -964,7 +962,6 @@ E3DB_Op *E3DB_ReadRecords_Begin(
     E3DB_Client *client, const char **record_ids, size_t num_record_ids,
     const char *fields[], size_t num_fields)
 {
-  printf("\nIn E3DB_ReadRecords_Begin\n");
 
   E3DB_Op *op = E3DB_Op_New(client, E3DB_OP_READ_RECORDS);
   E3DB_ReadRecordsResult *result = xmalloc(sizeof(*result));
@@ -978,12 +975,10 @@ E3DB_Op *E3DB_ReadRecords_Begin(
   // TODO: Also fetch auth token if our access token is expired.
   if (client->access_token == NULL)
   {
-    printf("\nE3DB_ReadRecords_Begin getting access token\n");
     E3DB_InitAuthOp(client, op, E3DB_ReadRecords_Request);
   }
   else
   {
-    printf("\nE3DB_ReadRecords_Begin already have access token\n");
 
     E3DB_ReadRecords_InitOp(op);
   }
@@ -1130,11 +1125,11 @@ E3DB_EAK *E3DB_ResultIterator_GetEAK(E3DB_GetEAKResultIterator *it)
   E3DB_GetSignerSigningKeyFromJSON(signer_signing_key, &it->EAK.signer_signing_key);
   E3DB_GetAuthPubKeyFromJSON(authorizer_public_key, &it->EAK.auth_pub_key);
 
-  printf("\nit->EAK.eak: %s\n", it->EAK.eak);
-  printf("it->EAK.signer_id: %s\n", it->EAK.signer_id);
-  printf("it->EAK.authorizer_id: %s\n", it->EAK.authorizer_id);
-  printf("it->EAK.signer_signing_key.ed25519: %s\n", it->EAK.signer_signing_key.ed25519);
-  printf("it->EAK.auth_pub_key.curve25519: %s\n", it->EAK.auth_pub_key.curve25519);
+  // printf("\nit->EAK.eak: %s\n", it->EAK.eak);
+  // printf("it->EAK.signer_id: %s\n", it->EAK.signer_id);
+  // printf("it->EAK.authorizer_id: %s\n", it->EAK.authorizer_id);
+  // printf("it->EAK.signer_signing_key.ed25519: %s\n", it->EAK.signer_signing_key.ed25519);
+  // printf("it->EAK.auth_pub_key.curve25519: %s\n", it->EAK.auth_pub_key.curve25519);
 
   free(EAK);
   free(signer_id);
@@ -1166,9 +1161,13 @@ const char *E3DB_EAK_DecryptEAK(char *eak, char *pubKey, char *privKey)
 
   unsigned long long clen = strlen((const char *)decodedKey);
   int status = crypto_box_open_easy(ak, decodedKey, clen, decodedNonce, decodedPubKey, decodedPrivKey);
+  if (status < 0)
+  {
+    fprintf(stderr, "Fatal: Decrypting Access Key failed.\n");
+    abort();
+  }
   ak = (unsigned char *)realloc(ak, 32 * sizeof(unsigned char) + 1);
   ak[32] = '\0';
-  printf("\n EAK Decryption Status: %d", status);
   free(eak_copy);
   free(decodedKey);
   free(decodedNonce);
@@ -1204,11 +1203,13 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
   {
     length++;
   }
-  // printf("\n Strlen: %d Custom Length: %d ", clen, length);
   unsigned char *dk = (unsigned char *)malloc(32);
   int status = crypto_secretbox_open_easy(dk, decodedDataKey, length, decodedDataKeyNonce, ak);
-  printf("\n DK Decryption Status: %d", status);
-
+  if (status < 0)
+  {
+    fprintf(stderr, "Fatal: Decrypting Data Key failed.\n");
+    abort();
+  }
   unsigned long long dlen = strlen((const char *)decodedData);
   unsigned char *data = (unsigned char *)malloc(dlen * sizeof(char));
   // Find length of data cipher:
@@ -1217,9 +1218,12 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
   {
     length++;
   }
-  // printf("\n Strlen: %d Custom Length: %d", dlen, length);
   status = crypto_secretbox_open_easy(data, decodedData, length, decodedDataNonce, dk);
-  printf("\n Data Decryption Status: %d", status);
+  if (status < 0)
+  {
+    fprintf(stderr, "Fatal: Decrypting Data  failed.\n");
+    abort();
+  }
   free(edata_copy);
   free(decodedDataKey);
   free(decodedDataKeyNonce);
@@ -1231,10 +1235,9 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
 
 static void E3DB_EncryptedAccessKeys_InitOp(E3DB_Op *op)
 {
-  printf("\nHELLO from E3DB_EncryptedAccessKeys_InitOp\n");
   E3DB_EncryptedAccessKeyResult *result = op->result;
 
-  // TODO: Make sure at least 1 record ID is specified.
+  // TODO: CHANGE TO WRITER ID USER ID AND READER ID
 
   sds url = sdsnew(op->client->options->api_url);
   url = sdscat(url, "/v1/storage/access_keys/");
@@ -1245,10 +1248,6 @@ static void E3DB_EncryptedAccessKeys_InitOp(E3DB_Op *op)
   url = sdscat(url, (const char *)result->writer_id);
   url = sdscat(url, "/");
   url = sdscat(url, (const char *)result->type);
-
-  printf("\nURL: %s\n", url);
-
-  // TODO: Add fields to URL
 
   op->state = E3DB_OP_STATE_HTTP;
   op->request.http.url = url;
@@ -1276,7 +1275,6 @@ static int E3DB_EncryptedAccessKey_Request(E3DB_Op *op, int response_code,
 E3DB_Op *E3DB_GetEncryptedAccessKeys_Begin(
     E3DB_Client *client, const char **writer_id, const char **user_id, const char **client_id, const char **record_type)
 {
-  printf("%s", "At the start of E3DB_GetEncryptedAccessKeys_Begin ");
 
   E3DB_Op *op = E3DB_Op_New(client, E3DB_OP_ENCRYPTED_ACCESS_KEYS);
   E3DB_EncryptedAccessKeyResult *result = xmalloc(sizeof(*result));
@@ -1299,7 +1297,6 @@ E3DB_Op *E3DB_GetEncryptedAccessKeys_Begin(
   {
     E3DB_EncryptedAccessKeys_InitOp(op);
   }
-  printf("%s", "At the end of E3DB_GetEncryptedAccessKeys_Begin ");
 
   return op;
 }
@@ -1311,7 +1308,6 @@ static int E3DB_CreateAccessKeys_Response(
     E3DB_Op *op, int response_code,
     const char *body, E3DB_HttpHeaderList *headers, size_t num_headers)
 {
-  printf("%s", "IN DA RESPONSE ");
 
   if (response_code != 201)
   {
@@ -1345,10 +1341,9 @@ static int E3DB_CreateAccessKeys_Response(
 }
 static void E3DB_CreateAccessKeys_InitOp(E3DB_Op *op)
 {
-  printf("\nHELLO from E3DB_CreateAccessKeys_InitOp\n");
   E3DB_CreateAccessKeyResult *result = op->result;
 
-  // TODO: Make sure at least 1 record ID is specified.
+  // TODO: UPDATE TO USER ID WRIER ID AND READER ID
 
   sds url = sdsnew(op->client->options->api_url);
   url = sdscat(url, "/v1/storage/access_keys/");
@@ -1359,8 +1354,6 @@ static void E3DB_CreateAccessKeys_InitOp(E3DB_Op *op)
   url = sdscat(url, (const char *)result->writer_id);
   url = sdscat(url, "/");
   url = sdscat(url, (const char *)result->type);
-
-  printf("\nURL: %s\n", url);
 
   cJSON *json = cJSON_CreateObject();
   cJSON_AddStringToObject(json, "eak", (const char *)result->ak);
@@ -1440,8 +1433,8 @@ E3DB_Op *E3DB_CreateAccessKeys_Begin(
   int status = crypto_box_easy((unsigned char *)ciphertext, accessKey, SECRET_KEY_SIZE, nonce, publicKey, privateKey);
   if (status < 0)
   {
-    // TODO handle error
-    printf("\nStatus =  %d\n", status);
+    fprintf(stderr, "Fatal: Encrypting Access Key failed.\n");
+    abort();
   }
 
   // Add Null terminator
@@ -1470,12 +1463,10 @@ E3DB_Op *E3DB_CreateAccessKeys_Begin(
   // TODO: Also fetch auth token if our access token is expired.
   if (client->access_token == NULL)
   {
-    printf("%s", "Access key is null");
     E3DB_InitAuthOp(client, op, E3DB_CreateAccessKey_Request);
   }
   else
   {
-    printf("%s", "Access key is NOT null");
     E3DB_CreateAccessKeys_InitOp(op);
   }
 
@@ -1540,7 +1531,6 @@ static int E3DB_WriteRecords_Response(
 {
   if (response_code != 201)
   {
-    // TODO: Handle non-successful responses.
     fprintf(stderr, "Fatal: Error response from E3DB API: %d\n", response_code);
     abort();
   }
@@ -1549,7 +1539,6 @@ static int E3DB_WriteRecords_Response(
 
   if (json == NULL)
   {
-    // TODO: Figure out proper error handling here.
     fprintf(stderr, "Fatal: Parsing ListRecords JSON failed.\n");
     abort();
   }
@@ -1574,8 +1563,7 @@ const char *SignDocumentWithPrivateKey(char *document, char *privateSigningKey)
   unsigned char *decodedPrivateSigningKey = base64_decode(privateSigningKey);
   unsigned char sig[crypto_sign_BYTES];
 
-  int status = crypto_sign_detached(sig, NULL, (const unsigned char *)document, strlen(document), decodedPrivateSigningKey);
-  printf("Status of Signature %d", status);
+  crypto_sign_detached(sig, NULL, (const unsigned char *)document, strlen(document), decodedPrivateSigningKey);
 
   // Add Null terminator
   unsigned char *signedDocument = (unsigned char *)malloc(crypto_sign_BYTES * sizeof(char) + 1);
@@ -1599,8 +1587,6 @@ static void E3DB_WriteRecords_InitOp(E3DB_Op *op)
   cJSON_AddStringToObject(metaJSONObject, "type", (const char *)result->record_type);
   // this is wrong, this needs to be a map[string]string
   cJSON_AddItemToObject(metaJSONObject, "plain", result->meta);
-  char *metaJSON = cJSON_Print(metaJSONObject);
-  printf("META JSON %s \n\n\n", metaJSON);
 
   // Record JSON Object
   cJSON *recordWriteRequestJSON = cJSON_CreateObject();
@@ -1608,13 +1594,10 @@ static void E3DB_WriteRecords_InitOp(E3DB_Op *op)
   cJSON_AddItemToObject(recordWriteRequestJSON, "data", result->data);
   cJSON_AddItemToObject(recordWriteRequestJSON, "meta", metaJSONObject);
   char *request = cJSON_Print(recordWriteRequestJSON);
-  printf("request JSON %s", request);
 
   const char *signature = SignDocumentWithPrivateKey(request, op->client->options->private_signing_key);
   cJSON_AddStringToObject(recordWriteRequestJSON, "rec_sig", signature);
   char *signedRequest = cJSON_Print(recordWriteRequestJSON);
-
-  printf("signed request JSON %s", signedRequest);
 
   op->state = E3DB_OP_STATE_HTTP;
   op->request.http.url = url;
@@ -1640,8 +1623,6 @@ static int E3DB_WriteRecords_Request(E3DB_Op *op, int response_code,
 
 const char *EncryptRecordField(unsigned char *ak, char *field)
 {
-  printf("\nEncryptRecordField: ak %s\n", ak);
-  printf("\nEncryptRecordField: field %s\n", field);
 
   // Create dk
   unsigned char dk[crypto_secretbox_KEYBYTES];
@@ -1661,8 +1642,7 @@ const char *EncryptRecordField(unsigned char *ak, char *field)
 
   // Encrypt Symmetric
   unsigned char ef[crypto_box_MACBYTES + strlen(field)];
-  int status = crypto_secretbox_easy(ef, (unsigned char *)field, strlen(field), efN, dk);
-  printf("Encrypting data field status %d", status);
+  crypto_secretbox_easy(ef, (unsigned char *)field, strlen(field), efN, dk);
   // Add Null terminator
   unsigned char *efTerm = (unsigned char *)malloc((crypto_box_MACBYTES + strlen(field)) + 1);
   memcpy(efTerm, ef, crypto_box_MACBYTES + strlen(field));
@@ -1678,8 +1658,7 @@ const char *EncryptRecordField(unsigned char *ak, char *field)
 
   // Encrypt Symmetric
   unsigned char edk[crypto_box_MACBYTES + crypto_secretbox_KEYBYTES];
-  int status2 = crypto_secretbox_easy(edk, dk, crypto_secretbox_KEYBYTES, edkN, ak);
-  printf("Encrypting data key status %d", status2);
+  crypto_secretbox_easy(edk, dk, crypto_secretbox_KEYBYTES, edkN, ak);
   // Add Null terminator
   unsigned char *edkTerm = (unsigned char *)malloc((crypto_box_MACBYTES + crypto_secretbox_KEYBYTES) + 1);
   memcpy(edkTerm, edk, crypto_box_MACBYTES + crypto_secretbox_KEYBYTES);
@@ -1691,22 +1670,17 @@ const char *EncryptRecordField(unsigned char *ak, char *field)
   sds ef_base64 = base64_encodeUrl2((const char *)ef, crypto_box_MACBYTES + strlen(field));
   sds efN_base64 = base64_encodeUrl2((const char *)efN, crypto_box_NONCEBYTES);
 
-  printf(" edk_base64 -->  %s \n\n", edk_base64);
-  printf(" edkN_base64 -->  %s \n\n", edkN_base64);
-  printf(" ef_base64 -->  %s \n\n", ef_base64);
-  printf(" efN_base64 -->  %s \n\n", efN_base64);
-
   // edk.edkN.ef.efN
   unsigned char *encryptedField = (unsigned char *)malloc(strlen(edk_base64) + strlen(edkN_base64) + strlen(ef_base64) + strlen(efN_base64) + 3 + 1);
-  strcpy((char*)encryptedField, edk_base64);
-  strncat((char*)encryptedField, ".", 1);
-  strncat((char*)encryptedField, edkN_base64, strlen(edkN_base64));
-  strncat((char*)encryptedField, ".", 1);
-  strncat((char*)encryptedField, ef_base64, strlen(ef_base64));
-  strncat((char*)encryptedField, ".", 1);
-  strncat((char*)encryptedField, efN_base64, strlen(efN_base64));
+  strcpy((char *)encryptedField, edk_base64);
+  strncat((char *)encryptedField, ".", 1);
+  strncat((char *)encryptedField, edkN_base64, strlen(edkN_base64));
+  strncat((char *)encryptedField, ".", 1);
+  strncat((char *)encryptedField, ef_base64, strlen(ef_base64));
+  strncat((char *)encryptedField, ".", 1);
+  strncat((char *)encryptedField, efN_base64, strlen(efN_base64));
 
-  return (char*)encryptedField;
+  return (char *)encryptedField;
 }
 
 E3DB_Op *E3DB_WriteRecord_Begin(
@@ -1731,7 +1705,6 @@ E3DB_Op *E3DB_WriteRecord_Begin(
     cJSON_AddStringToObject(encryptedData, temp->string, encryptedField);
     temp = temp->next;
   }
-  printf("\nencryptedData %s\n", cJSON_Print(encryptedData));
 
   result->record_type = record_type;
   result->data = encryptedData;
@@ -1740,7 +1713,6 @@ E3DB_Op *E3DB_WriteRecord_Begin(
   op->result = result;
   op->free_result = E3DB_WriteRecordsResult_Delete;
 
-  // TODO: Also fetch auth token if our access token is expired.
   if (client->access_token == NULL)
   {
     E3DB_InitAuthOp(client, op, E3DB_WriteRecords_Request);

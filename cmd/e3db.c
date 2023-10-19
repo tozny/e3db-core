@@ -294,9 +294,15 @@ int cmdWrite(int argc, char **argv)
 	record->data = (cJSON *)malloc(sizeof(cJSON));
 	// Write the Record
 	record = WriteRecord(client, (const char **)record_type, dataJSON, metaJSON);
-	printf("\n\n\n\n\n\n\n\n\n IN CLI Recod sig %s", record->rec_sig);
-	printf("IN CLI RECORD DATA  %s", cJSON_Print(record->data));
-	printf("IN CLI RECORD meta  %s", record->meta->record_id);
+	printf("\n\nRecord ID: %s\n", record->meta->record_id);
+	printf("Record Type: %s\n", record->meta->type);
+	printf("Record Plain: %s\n", cJSON_Print(record->meta->plain));
+	printf("Record Data:  %s\n", cJSON_Print(record->data));
+	printf("Record Created: %s\n", record->meta->created);
+	printf("Record Last Modified: %s\n", record->meta->last_modified);
+	printf("Record User ID: %s\n", record->meta->user_id);
+	printf("Record Version: %s\n", record->meta->version);
+	printf("Record Writer ID: %s\n", record->meta->writer_id);
 
 	// Clean Up Memory
 	E3DB_Client_Delete(client);
