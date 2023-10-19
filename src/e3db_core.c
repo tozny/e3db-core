@@ -721,6 +721,7 @@ static void E3DB_ListRecordsResult_Delete(void *p)
     if (result->json != NULL)
     {
       cJSON_Delete(result->json);
+      result->json = NULL; // NULL out the pointer
     }
     xfree(result);
   }
@@ -735,6 +736,7 @@ static void E3DB_EncryptedAccessKeyResult_Delete(void *p)
     if (result->json != NULL)
     {
       cJSON_Delete(result->json);
+      result->json = NULL; // NULL out the pointer
     }
     xfree(result);
   }
@@ -893,6 +895,7 @@ static void E3DB_ReadRecordsResult_Delete(void *p)
     if (result->json != NULL)
     {
       cJSON_Delete(result->json);
+      result->json = NULL; // NULL out the pointer
     }
     xfree(result);
   }
@@ -1419,6 +1422,7 @@ static void E3DB_CreateAccessKeyResult_Delete(void *p)
     if (result->json != NULL)
     {
       cJSON_Delete(result->json);
+      result->json = NULL; // NULL out the pointer
     }
     xfree(result);
   }
@@ -1547,6 +1551,17 @@ static void E3DB_WriteRecordsResult_Delete(void *p)
     if (result->json != NULL)
     {
       cJSON_Delete(result->json);
+      result->json = NULL; // NULL out the pointer
+    }
+    // if (result->data != NULL)
+    // {
+    //   cJSON_Delete(result->data);
+    //   result->data = NULL; // NULL out the pointer
+    // }
+    if (result->meta != NULL)
+    {
+      cJSON_Delete(result->meta);
+      result->meta = NULL; // NULL out the pointer
     }
     xfree(result);
   }
@@ -1620,6 +1635,7 @@ static void E3DB_WriteRecords_InitOp(E3DB_Op *op)
   // this is wrong, this needs to be a map[string]string
   cJSON_AddItemToObject(recordWriteRequestJSON, "data", result->data);
   cJSON_AddItemToObject(recordWriteRequestJSON, "meta", metaJSONObject);
+
   char *request = cJSON_Print(recordWriteRequestJSON);
 
   const char *signature = SignDocumentWithPrivateKey(request, op->client->options->private_signing_key);
@@ -1637,6 +1653,9 @@ static void E3DB_WriteRecords_InitOp(E3DB_Op *op)
   auth_header = sdscat(auth_header, op->client->access_token);
   E3DB_HttpHeaderList_Add(op->request.http.headers, "Authorization", auth_header);
   sdsfree(auth_header);
+  free(signedRequest);
+  // cJSON_Delete(metaJSONObject);
+  // cJSON_Delete(recordWriteRequestJSON);
 }
 
 static int E3DB_WriteRecords_Request(E3DB_Op *op, int response_code,
@@ -1654,18 +1673,18 @@ const char *EncryptRecordField(unsigned char *ak, char *field)
   // Create dk
   unsigned char dk[crypto_secretbox_KEYBYTES];
   randombytes_buf(dk, sizeof dk);
-  // Add Null Terminater
-  unsigned char *dkTerm = (unsigned char *)malloc(crypto_secretbox_KEYBYTES + 1);
-  memcpy(dkTerm, dk, crypto_secretbox_KEYBYTES);
-  dkTerm[crypto_secretbox_KEYBYTES] = '\0';
+  // // Add Null Terminater
+  // unsigned char *dkTerm = (unsigned char *)malloc(crypto_secretbox_KEYBYTES + 1);
+  // memcpy(dkTerm, dk, crypto_secretbox_KEYBYTES);
+  // dkTerm[crypto_secretbox_KEYBYTES] = '\0';
 
   // Create efN
   unsigned char efN[crypto_box_NONCEBYTES];
   randombytes_buf(efN, sizeof efN);
-  // Add Null Terminater
-  unsigned char *efNTerm = (unsigned char *)malloc(crypto_box_NONCEBYTES + 1);
-  memcpy(efNTerm, efN, crypto_box_NONCEBYTES);
-  efNTerm[crypto_box_NONCEBYTES] = '\0';
+  // // Add Null Terminater
+  // unsigned char *efNTerm = (unsigned char *)malloc(crypto_box_NONCEBYTES + 1);
+  // memcpy(efNTerm, efN, crypto_box_NONCEBYTES);
+  // efNTerm[crypto_box_NONCEBYTES] = '\0';
 
   // Encrypt Symmetric
   unsigned char ef[crypto_box_MACBYTES + strlen(field)];
@@ -1678,18 +1697,18 @@ const char *EncryptRecordField(unsigned char *ak, char *field)
   // Create edkN
   unsigned char edkN[crypto_box_NONCEBYTES];
   randombytes_buf(edkN, sizeof edkN);
-  // Add Null Terminater
-  unsigned char *edkNTerm = (unsigned char *)malloc(crypto_box_NONCEBYTES + 1);
-  memcpy(edkNTerm, edkN, crypto_box_NONCEBYTES);
-  edkNTerm[crypto_box_NONCEBYTES] = '\0';
+  // // Add Null Terminater
+  // unsigned char *edkNTerm = (unsigned char *)malloc(crypto_box_NONCEBYTES + 1);
+  // memcpy(edkNTerm, edkN, crypto_box_NONCEBYTES);
+  // edkNTerm[crypto_box_NONCEBYTES] = '\0';
 
   // Encrypt Symmetric
   unsigned char edk[crypto_box_MACBYTES + crypto_secretbox_KEYBYTES];
   crypto_secretbox_easy(edk, dk, crypto_secretbox_KEYBYTES, edkN, ak);
-  // Add Null terminator
-  unsigned char *edkTerm = (unsigned char *)malloc((crypto_box_MACBYTES + crypto_secretbox_KEYBYTES) + 1);
-  memcpy(edkTerm, edk, crypto_box_MACBYTES + crypto_secretbox_KEYBYTES);
-  edkTerm[(crypto_box_MACBYTES + crypto_secretbox_KEYBYTES)] = '\0';
+  // // Add Null terminator
+  // unsigned char *edkTerm = (unsigned char *)malloc((crypto_box_MACBYTES + crypto_secretbox_KEYBYTES) + 1);
+  // memcpy(edkTerm, edk, crypto_box_MACBYTES + crypto_secretbox_KEYBYTES);
+  // edkTerm[(crypto_box_MACBYTES + crypto_secretbox_KEYBYTES)] = '\0';
 
   // Create dotted quad
   sds edk_base64 = base64_encodeUrl2((const char *)edk, crypto_box_MACBYTES + crypto_secretbox_KEYBYTES);
@@ -1707,6 +1726,10 @@ const char *EncryptRecordField(unsigned char *ak, char *field)
   strncat((char *)encryptedField, ".", 1);
   strncat((char *)encryptedField, efN_base64, strlen(efN_base64));
 
+  sdsfree(edk_base64);
+  sdsfree(edkN_base64);
+  sdsfree(ef_base64);
+  sdsfree(efN_base64);
   return (char *)encryptedField;
 }
 
@@ -1732,10 +1755,16 @@ E3DB_Op *E3DB_WriteRecord_Begin(
     cJSON_AddStringToObject(encryptedData, temp->string, encryptedField);
     temp = temp->next;
   }
+  // printf("\nencryptedData %s\n", cJSON_Print(encryptedData));
+  char *printData = cJSON_Print(encryptedData);
+  printf("\nEncryptedData %s\n", printData);
+  free(printData);
 
   result->record_type = record_type;
   result->data = encryptedData;
-  result->meta = meta;
+  // result->meta = meta;
+  result->meta = cJSON_Duplicate(meta, 1);
+
 
   op->result = result;
   op->free_result = E3DB_WriteRecordsResult_Delete;
@@ -1748,5 +1777,7 @@ E3DB_Op *E3DB_WriteRecord_Begin(
   {
     E3DB_WriteRecords_InitOp(op);
   }
+
+  // free((char *)encryptedField);  // Free the memory
   return op;
 }

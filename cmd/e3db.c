@@ -306,8 +306,11 @@ int cmdWrite(int argc, char **argv)
 
 	// Clean Up Memory
 	E3DB_Client_Delete(client);
-	cJSON_Delete(metaJSON);
-	cJSON_Delete(dataJSON);
+	
+	// there is mixing going on causing issues with these
+	// free(record);
+	// cJSON_Delete(metaJSON);
+	// cJSON_Delete(dataJSON);
 
 	return 0;
 }

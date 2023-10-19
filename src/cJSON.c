@@ -144,22 +144,33 @@ void cJSON_Delete(cJSON *c)
     while (c)
     {
         next = c->next;
-        if (!(c->type & cJSON_IsReference) && c->child)
+
+        if (!(c->type & cJSON_IsReference))
         {
-            cJSON_Delete(c->child);
+            if (c->child)
+            {
+                cJSON_Delete(c->child);
+                c->child = NULL;  // Nullify the child pointer after deletion
+            }
+
+            if (c->valuestring)
+            {
+                cJSON_free(c->valuestring);
+                c->valuestring = NULL;  // Nullify the pointer after freeing
+            }
         }
-        if (!(c->type & cJSON_IsReference) && c->valuestring)
-        {
-            cJSON_free(c->valuestring);
-        }
+
         if (!(c->type & cJSON_StringIsConst) && c->string)
         {
             cJSON_free(c->string);
+            c->string = NULL;  // Nullify the pointer after freeing
         }
+
         cJSON_free(c);
         c = next;
     }
 }
+
 
 /* Parse the input text to generate a number, and populate the result into item. */
 static const unsigned char *parse_number(cJSON *item, const unsigned char *num)
