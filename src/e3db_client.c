@@ -311,7 +311,6 @@ E3DB_Record *WriteRecord(E3DB_Client *client, const char **record_type, cJSON *d
 E3DB_Record *ReadRecords(E3DB_Client *client, const char **all_record_ids, int argumentCount)
 {
 	E3DB_Record *records = (E3DB_Record *)malloc(sizeof(E3DB_Record) * (argumentCount - 1));
-	E3DB_Record *records2 = (E3DB_Record *)malloc(sizeof(E3DB_Record) * (argumentCount - 1));
 
 	for (int i = 0; i < argumentCount - 1; i++)
 	{
@@ -330,38 +329,38 @@ E3DB_Record *ReadRecords(E3DB_Client *client, const char **all_record_ids, int a
 			E3DB_Legacy_Record *record = E3DB_ReadRecordsResultIterator_GetData(it);
 
 			// Set the record meta
-			records2[i].meta = (E3DB_RecordMeta *)malloc(sizeof(E3DB_RecordMeta));
+			records[i].meta = (E3DB_RecordMeta *)malloc(sizeof(E3DB_RecordMeta));
 			// Set record ID
 			const char *record_id = E3DB_RecordMeta_GetRecordId(meta);
-			records2[i].meta->record_id = (char *)malloc(strlen(record_id) + 1);
-			strcpy(records2[i].meta->record_id, record_id);
+			records[i].meta->record_id = (char *)malloc(strlen(record_id) + 1);
+			strcpy(records[i].meta->record_id, record_id);
 			// Set writer ID
 			const char *writer_id = E3DB_RecordMeta_GetWriterId(meta);
-			records2[i].meta->writer_id = (char *)malloc(strlen(writer_id) + 1);
-			strcpy(records2[i].meta->writer_id, writer_id);
+			records[i].meta->writer_id = (char *)malloc(strlen(writer_id) + 1);
+			strcpy(records[i].meta->writer_id, writer_id);
 			// Set user ID
 			const char *user_id = E3DB_RecordMeta_GetUserId(meta);
-			records2[i].meta->user_id = (char *)malloc(strlen(user_id) + 1);
-			strcpy(records2[i].meta->user_id, user_id);
+			records[i].meta->user_id = (char *)malloc(strlen(user_id) + 1);
+			strcpy(records[i].meta->user_id, user_id);
 			// Set type
 			const char *type = E3DB_RecordMeta_GetType(meta);
-			records2[i].meta->type = (char *)malloc(strlen(type) + 1);
-			strcpy(records2[i].meta->type, type);
+			records[i].meta->type = (char *)malloc(strlen(type) + 1);
+			strcpy(records[i].meta->type, type);
 			// Set version
 			const char *version = E3DB_RecordMeta_GetVersion(meta);
-			records2[i].meta->version = (char *)malloc(strlen(version) + 1);
-			strcpy(records2[i].meta->version, version);
+			records[i].meta->version = (char *)malloc(strlen(version) + 1);
+			strcpy(records[i].meta->version, version);
 			// Set created
 			const char *created = E3DB_RecordMeta_GetCreated(meta);
-			records2[i].meta->created = (char *)malloc(strlen(created) + 1);
-			strcpy(records2[i].meta->created, created);
+			records[i].meta->created = (char *)malloc(strlen(created) + 1);
+			strcpy(records[i].meta->created, created);
 			// Set last modified
 			const char *last_modified = E3DB_RecordMeta_GetLastModified(meta);
-			records2[i].meta->last_modified = (char *)malloc(strlen(last_modified) + 1);
-			strcpy(records2[i].meta->last_modified, last_modified);
+			records[i].meta->last_modified = (char *)malloc(strlen(last_modified) + 1);
+			strcpy(records[i].meta->last_modified, last_modified);
 			// Set last plain
 			cJSON *plain = E3DB_RecordMeta_GetPlain(meta);
-			records2[i].meta->plain = cJSON_Duplicate(plain, 1);
+			records[i].meta->plain = cJSON_Duplicate(plain, 1);
 
 			// Set up Access Keys Fetch
 			E3DB_Op *eakOp = E3DB_GetEncryptedAccessKeys_Begin(client, (const char **)E3DB_RecordMeta_GetWriterId(meta), (const char **)E3DB_RecordMeta_GetUserId(meta), (const char **)E3DB_RecordMeta_GetUserId(meta), (const char **)E3DB_RecordMeta_GetType(meta));
@@ -375,18 +374,12 @@ E3DB_Record *ReadRecords(E3DB_Client *client, const char **all_record_ids, int a
 			char *rawEAK = (char *)E3DB_EAK_GetEAK(eak);
 			char *authPublicKey = (char *)E3DB_EAK_GetAuthPubKey(eak);
 			unsigned char *ak = (unsigned char *)E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, eakOp->client->options->private_key);
-
-			E3DB_Record *decrypted_record = (E3DB_Record *)malloc(sizeof(E3DB_Record));
-			decrypted_record->meta = meta;
-			decrypted_record->rec_sig = E3DB_ReadRecordsResultIterator_GetRecSig(it);
-
 			// Decrypt the record data
 			E3DB_RecordFieldIterator *f_it = E3DB_Record_GetFieldIterator(record);
 			cJSON *decryptedData = cJSON_CreateObject();
 			while (!E3DB_RecordFieldIterator_IsDone(f_it))
 			{
 				unsigned char *edata = (unsigned char *)E3DB_RecordFieldIterator_GetValue(f_it);
-
 				const char *ddata = E3DB_RecordFieldIterator_DecryptValue(edata, ak);
 				const char *name = E3DB_RecordFieldIterator_GetName(f_it);
 
@@ -395,25 +388,10 @@ E3DB_Record *ReadRecords(E3DB_Client *client, const char **all_record_ids, int a
 				free((void *)ddata);
 				E3DB_RecordFieldIterator_Next(f_it);
 			}
-			decrypted_record->data = decryptedData;
-			records[i] = *decrypted_record;
-			records2[i].data = decryptedData;
+			records[i].data = decryptedData;
 			char *rec_sig = E3DB_ReadRecordsResultIterator_GetRecSig(it);
-			records2[i].rec_sig = (char *)malloc(strlen(rec_sig) + 1);
-			strcpy(records2[i].rec_sig, rec_sig);
-
-			// Print the record info
-			printf("\nRECORD INFO FOR RECORD #%d:\n", i + 1);
-			printf("\n%-20s %s\n", "record_id:", records[i].meta->record_id);
-			printf("\n%-20s %s\n", "record_type:", records[i].meta->type);
-			printf("\n%-20s %s\n", "writer_id:", records[i].meta->writer_id);
-			printf("\n%-20s %s\n", "user_id:", records[i].meta->user_id);
-			printf("\n%-20s %s\n", "version:", records[i].meta->version);
-			printf("\n%-20s %s\n", "created:", records[i].meta->created);
-			printf("\n%-20s %s\n", "last_modified:", records[i].meta->last_modified);
-			printf("\n%-20s %s\n", "rec_sig:", records[i].rec_sig);
-			printf("\n%-20s \n%s\n", "plain:", cJSON_Print(records[i].meta->plain));
-			printf("\n%-20s \n%s\n", "data:", cJSON_Print(records[i].data));
+			records[i].rec_sig = (char *)malloc(strlen(rec_sig) + 1);
+			strcpy(records[i].rec_sig, rec_sig);
 
 			E3DB_RecordFieldIterator_Delete(f_it);
 			E3DB_ReadRecordsResultIterator_Next(it);
@@ -423,5 +401,5 @@ E3DB_Record *ReadRecords(E3DB_Client *client, const char **all_record_ids, int a
 		E3DB_Op_Delete(op);
 		curl_global_cleanup();
 	}
-	return records2;
+	return records;
 }
