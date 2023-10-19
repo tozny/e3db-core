@@ -290,10 +290,13 @@ int cmdWrite(int argc, char **argv)
 	}
 	// Set Up Returned Record Wriiten
 	E3DB_Record *record = (E3DB_Record *)malloc(sizeof(E3DB_Record));
+	record->meta = (E3DB_RecordMeta *)malloc(sizeof(E3DB_RecordMeta));
+	record->data = (cJSON *)malloc(sizeof(cJSON));
 	// Write the Record
 	record = WriteRecord(client, (const char **)record_type, dataJSON, metaJSON);
-	char *id = E3DB_RecordMeta_GetWriterId(record->meta);
-	printf("Recod %s", id);
+	printf("\n\n\n\n\n\n\n\n\n IN CLI Recod sig %s", record->rec_sig);
+	printf("IN CLI RECORD DATA  %s", cJSON_Print(record->data));
+	printf("IN CLI RECORD meta  %s", record->meta->record_id);
 
 	// Clean Up Memory
 	E3DB_Client_Delete(client);

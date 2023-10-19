@@ -270,37 +270,50 @@ E3DB_Record *WriteRecord(E3DB_Client *client, const char **record_type, cJSON *d
 	E3DB_Record *writtenRecord = (E3DB_Record *)malloc(sizeof(E3DB_Record));
 	E3DB_RecordMeta *writtenMeta = (E3DB_RecordMeta *)malloc(sizeof(E3DB_RecordMeta));
 	cJSON *recordWritten = result->json->child;
+	char *child = (char *)malloc(sizeof(char));
+	char *copy = cJSON_Print(recordWritten);
+	// memcpy(child, copy, sizeof(char));
+	child = strdup(copy);
+	printf("RecordWRITTEN %s", cJSON_Print(recordWritten));
+	printf("Child %s", child);
+	cJSON *recordCopy = cJSON_Parse(child);
+	printf("COPYYYYY %s", cJSON_Print(recordCopy));
 	// Copy over Meta
-	cJSON *metaObj = cJSON_GetObjectItem(recordWritten, "meta");
+	cJSON *metaObj = cJSON_GetObjectItem(recordCopy, "meta");
 	if (metaObj == NULL || metaObj->type != cJSON_Object)
 	{
 		fprintf(stderr, "Error: meta field doesn't exist.\n");
 		abort();
 	}
 	E3DB_GetRecordMetaFromJSON(metaObj, writtenMeta);
+	writtenRecord->meta = (E3DB_RecordMeta *)malloc(sizeof(E3DB_RecordMeta));
+	// memcpy(writtenRecord->meta, metaObj, sizeof(E3DB_RecordMeta));
 	writtenRecord->meta = writtenMeta;
 	// Copy over data
-	cJSON *dataObj = cJSON_GetObjectItem(recordWritten, "data");
+	cJSON *dataObj = cJSON_GetObjectItem(recordCopy, "data");
 	if (dataObj == NULL || dataObj->type != cJSON_Object)
 	{
 		fprintf(stderr, "Error: Data field doesn't exist.\n");
 		abort();
 	}
+	writtenRecord->data = (cJSON *)malloc(sizeof(cJSON));
+	// memcpy(writtenRecord->data, dataObj, sizeof(cJSON));
 	writtenRecord->data = dataObj;
-	// printf("Recod %s", cJSON_Print(writtenRecord->data));
 	// Copy over signature
-	cJSON *signObj = cJSON_GetObjectItem(recordWritten, "rec_sig");
+	cJSON *signObj = cJSON_GetObjectItem(recordCopy, "rec_sig");
 	if (signObj == NULL)
 	{
 		fprintf(stderr, "Error: Signature field doesn't exist.\n");
 		abort();
 	}
 	writtenRecord->rec_sig = cJSON_Print(signObj);
-
-	// printf("kddhfjhsdjfhkjsdhfksd %s", cJSON_Print(record->data));
-	// E3DB_Op_Delete(op);
-	// curl_global_cleanup();
-
+	printf("RECORD sig beofre %s", writtenRecord->rec_sig);
+	printf("RECORD data beofre %s", cJSON_Print(writtenRecord->data));
+	E3DB_Op_Delete(op);
+	curl_global_cleanup();
+	printf("Child AFTER CLEAN UP  %s", cJSON_Print(recordCopy));
+	printf("RECORD sig after %s", writtenRecord->rec_sig);
+	printf("RECORD data nafter %s", cJSON_Print(writtenRecord->data));
 	return writtenRecord;
 }
 
