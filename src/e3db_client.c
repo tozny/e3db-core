@@ -85,7 +85,7 @@ int curl_run_op(E3DB_Op *op)
 			while (header != NULL)
 			{
 				sds header_text = sdscatprintf(sdsempty(), "%s: %s",
-							       E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
+											   E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
 				chunk = curl_slist_append(chunk, header_text);
 				sdsfree(header_text);
 
@@ -169,7 +169,7 @@ int curl_run_op_dont_fail_with_response_code(E3DB_Op *op, long response_code_not
 			while (header != NULL)
 			{
 				sds header_text = sdscatprintf(sdsempty(), "%s: %s",
-							       E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
+											   E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
 				chunk = curl_slist_append(chunk, header_text);
 				sdsfree(header_text);
 
@@ -311,6 +311,8 @@ E3DB_Record *WriteRecord(E3DB_Client *client, const char **record_type, cJSON *d
 E3DB_Record *ReadRecords(E3DB_Client *client, const char **all_record_ids, int argumentCount)
 {
 	E3DB_Record *records = (E3DB_Record *)malloc(sizeof(E3DB_Record) * (argumentCount - 1));
+	E3DB_Record *records2 = (E3DB_Record *)malloc(sizeof(E3DB_Record) * (argumentCount - 1));
+
 	for (int i = 0; i < argumentCount - 1; i++)
 	{
 		const char **record_ids = (const char **)malloc(sizeof(const char *));
@@ -326,6 +328,40 @@ E3DB_Record *ReadRecords(E3DB_Client *client, const char **all_record_ids, int a
 			// At this point we have encrypted data
 			E3DB_RecordMeta *meta = E3DB_ReadRecordsResultIterator_GetMeta(it);
 			E3DB_Legacy_Record *record = E3DB_ReadRecordsResultIterator_GetData(it);
+
+			// Set the record meta
+			records2[i].meta = (E3DB_RecordMeta *)malloc(sizeof(E3DB_RecordMeta));
+			// Set record ID
+			const char *record_id = E3DB_RecordMeta_GetRecordId(meta);
+			records2[i].meta->record_id = (char *)malloc(strlen(record_id) + 1);
+			strcpy(records2[i].meta->record_id, record_id);
+			// Set writer ID
+			const char *writer_id = E3DB_RecordMeta_GetWriterId(meta);
+			records2[i].meta->writer_id = (char *)malloc(strlen(writer_id) + 1);
+			strcpy(records2[i].meta->writer_id, writer_id);
+			// Set user ID
+			const char *user_id = E3DB_RecordMeta_GetUserId(meta);
+			records2[i].meta->user_id = (char *)malloc(strlen(user_id) + 1);
+			strcpy(records2[i].meta->user_id, user_id);
+			// Set type
+			const char *type = E3DB_RecordMeta_GetType(meta);
+			records2[i].meta->type = (char *)malloc(strlen(type) + 1);
+			strcpy(records2[i].meta->type, type);
+			// Set version
+			const char *version = E3DB_RecordMeta_GetVersion(meta);
+			records2[i].meta->version = (char *)malloc(strlen(version) + 1);
+			strcpy(records2[i].meta->version, version);
+			// Set created
+			const char *created = E3DB_RecordMeta_GetCreated(meta);
+			records2[i].meta->created = (char *)malloc(strlen(created) + 1);
+			strcpy(records2[i].meta->created, created);
+			// Set last modified
+			const char *last_modified = E3DB_RecordMeta_GetLastModified(meta);
+			records2[i].meta->last_modified = (char *)malloc(strlen(last_modified) + 1);
+			strcpy(records2[i].meta->last_modified, last_modified);
+			// Set last plain
+			cJSON *plain = E3DB_RecordMeta_GetPlain(meta);
+			records2[i].meta->plain = cJSON_Duplicate(plain, 1);
 
 			// Set up Access Keys Fetch
 			E3DB_Op *eakOp = E3DB_GetEncryptedAccessKeys_Begin(client, (const char **)E3DB_RecordMeta_GetWriterId(meta), (const char **)E3DB_RecordMeta_GetUserId(meta), (const char **)E3DB_RecordMeta_GetUserId(meta), (const char **)E3DB_RecordMeta_GetType(meta));
@@ -360,8 +396,12 @@ E3DB_Record *ReadRecords(E3DB_Client *client, const char **all_record_ids, int a
 				E3DB_RecordFieldIterator_Next(f_it);
 			}
 			decrypted_record->data = decryptedData;
-
 			records[i] = *decrypted_record;
+			records2[i].data = decryptedData;
+			char *rec_sig = E3DB_ReadRecordsResultIterator_GetRecSig(it);
+			records2[i].rec_sig = (char *)malloc(strlen(rec_sig) + 1);
+			strcpy(records2[i].rec_sig, rec_sig);
+
 			// Print the record info
 			printf("\nRECORD INFO FOR RECORD #%d:\n", i + 1);
 			printf("\n%-20s %s\n", "record_id:", records[i].meta->record_id);
@@ -383,5 +423,5 @@ E3DB_Record *ReadRecords(E3DB_Client *client, const char **all_record_ids, int a
 		E3DB_Op_Delete(op);
 		curl_global_cleanup();
 	}
-	return records;
+	return records2;
 }

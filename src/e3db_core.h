@@ -152,7 +152,11 @@ extern "C"
     const char *E3DB_RecordMeta_GetWriterId(E3DB_RecordMeta *meta);
     const char *E3DB_RecordMeta_GetUserId(E3DB_RecordMeta *meta);
     const char *E3DB_RecordMeta_GetType(E3DB_RecordMeta *meta);
-    const char *E3DB_RecordMeta_GetPlain(E3DB_RecordMeta *meta);
+    const char *E3DB_RecordMeta_GetVersion(E3DB_RecordMeta *meta);
+    const char *E3DB_RecordMeta_GeCreated(E3DB_RecordMeta *meta);
+    const char *E3DB_RecordMeta_GeLastModified(E3DB_RecordMeta *meta);
+
+    cJSON *E3DB_RecordMeta_GetPlain(E3DB_RecordMeta *meta);
     const char *E3DB_EAK_GetEAK(E3DB_EAK *eak);
     const char *E3DB_EAK_GetAuthPubKey(E3DB_EAK *eak);
     const char *E3DB_EAK_DecryptEAK(char *eak, char *pubKey, char *privKey);
