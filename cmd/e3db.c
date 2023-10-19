@@ -347,7 +347,6 @@ int main(int argc, char **argv)
 {
 	printf("e3db-cli\n");
 	printf("E3DB Command Line Interface\n");
-	printf("Instructions: \n");
 
 	// Catches the help option
 	if (argc < 2)
