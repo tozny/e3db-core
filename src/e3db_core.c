@@ -456,9 +456,23 @@ const char *E3DB_RecordMeta_GetType(E3DB_RecordMeta *meta)
   return meta->type;
 }
 
-const char *E3DB_RecordMeta_GetPlain(E3DB_RecordMeta *meta)
+const char *E3DB_RecordMeta_GetVersion(E3DB_RecordMeta *meta)
 {
-  return cJSON_Print(meta->plain);
+  return meta->version;
+}
+
+const char *E3DB_RecordMeta_GetCreated(E3DB_RecordMeta *meta)
+{
+  return meta->created;
+}
+const char *E3DB_RecordMeta_GetLastModified(E3DB_RecordMeta *meta)
+{
+  return meta->last_modified;
+}
+
+cJSON *E3DB_RecordMeta_GetPlain(E3DB_RecordMeta *meta)
+{
+  return meta->plain;
 }
 
 const char *E3DB_EAK_GetEAK(E3DB_EAK *eak)
