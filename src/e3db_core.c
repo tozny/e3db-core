@@ -1206,11 +1206,6 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
     array[i++] = p;
     p = strtok(NULL, ".");
   }
-  printf("\nlilydebug array[0] = %s\n", array[0]);
-  printf("\nlilydebug array[1] = %s\n", array[1]);
-  printf("\nlilydebug array[2] = %s\n", array[2]);
-  printf("\nlilydebug array[3] = %s\n", array[3]);
-  printf("\narray[2] strlen = %d", strlen(array[2]));
 
   unsigned char *decodedDataKey = base64_decode(array[0]);
   unsigned char *decodedDataKeyNonce = base64_decode(array[1]);
@@ -1227,13 +1222,13 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
   }
   printf("\n");
 
-  unsigned char *decodedData = base64_decode(array[2]);
-
-  printf("\ndecodedData = ");
   int count = 0;
-  for (int i = 0; decodedData[i] != '\0' || decodedData[i + 1] != '\0'; i++)
+
+  unsigned char *decodedData = base64_decode2(array[2], &count);
+  count++;
+  printf("\ndecodedData using count = ");
+  for (int i = 0; i < count; i++)
   {
-    count++;
     printf("%d ", decodedData[i]);
   }
   printf("\n");
