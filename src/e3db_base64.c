@@ -197,3 +197,58 @@ unsigned char *base64_decode(const char *base64)
 	free(input);
 	return output;
 }
+
+unsigned char *base64_decode2(const char *base64, int *cnt)
+{
+	unsigned char *input;
+	input = (unsigned char *)malloc(strlen(base64) * sizeof(char) + 1);
+	// Remove double quotes, replace url encoded chars _ with / and - with +.
+	int count = 0;
+	int quotes = 0;
+	for (int i = 0; i < strlen(base64); i++)
+	{
+		if (base64[i] == '_')
+		{
+			input[count] = '/';
+			count++;
+		}
+		else if (base64[i] == '-')
+		{
+			input[count] = '+';
+			count++;
+		}
+		else if (base64[i] != '"')
+		{
+			input[count] = base64[i];
+			count++;
+		}
+		else
+		{
+			quotes++;
+		}
+	}
+	input = (unsigned char *)realloc(input, (strlen(base64) - quotes) * sizeof(unsigned char) + 1);
+	input[count] = '\0';
+	/* set up a destination buffer large enough to hold the encoded data */
+	unsigned char *output = (unsigned char *)malloc(strlen((char *)input) + 1);
+	/* keep track of our decoded position */
+	/* store the number of bytes decoded by a single call */
+	*cnt = 0;
+	/* we need a decoder state */
+	base64_decodestate s;
+
+	/*---------- START DECODING ----------*/
+	/* initialise the decoder state */
+	base64_init_decodestate(&s);
+	/* decode the input data */
+	*cnt = base64_decode_block((char *)input, strlen((char *)input), (char *)output, &s);
+	/* note: there is no base64_decode_blockend! */
+	/*---------- STOP DECODING  ----------*/
+
+	/* we want to print the decoded data, so null-terminate it: */
+	// output[strlen((char *)input)] = '\0';
+	// output = (unsigned char *)realloc(output, cnt + 1);
+
+	free(input);
+	return output;
+}

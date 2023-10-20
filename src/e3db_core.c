@@ -1194,6 +1194,7 @@ const char *E3DB_EAK_DecryptEAK(char *eak, char *pubKey, char *privKey)
 const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned char *ak)
 {
   size_t edataLength = strlen((char *)edata);
+  printf("\nlilydebug edata = %s\n", edata);
   unsigned char *edata_copy = (unsigned char *)malloc(edataLength * sizeof(char) + 1);
   strcpy((char *)edata_copy, (char *)edata);
   int i = 0;
@@ -1209,7 +1210,15 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
   unsigned char *decodedDataKey = base64_decode(array[0]);
   unsigned char *decodedDataKeyNonce = base64_decode(array[1]);
 
-  unsigned char *decodedData = base64_decode(array[2]);
+  int decodedDataLength = 0;
+  unsigned char *decodedData = base64_decode2(array[2], &decodedDataLength);
+  printf("\ndecodedData using decodedDataLength = ");
+  for (int i = 0; i < decodedDataLength; i++)
+  {
+    printf("%d ", decodedData[i]);
+  }
+  printf("\n");
+
   unsigned char *decodedDataNonce = base64_decode(array[3]);
 
   // Find length of data key cipher:
@@ -1225,8 +1234,8 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
     fprintf(stderr, "Fatal: Decrypting Data Key failed.\n");
     abort();
   }
-  unsigned long long dlen = strlen((const char *)decodedData);
-  unsigned char *data = (unsigned char *)malloc(dlen * sizeof(char));
+  // unsigned long long dlen = strlen((const char *)decodedData);
+  unsigned char *data = (unsigned char *)malloc(decodedDataLength * sizeof(char));
   // Find length of data cipher:
   length = 0;
   while (decodedData[length] != '\0' || decodedData[length + 1] != '\0')
@@ -1237,7 +1246,7 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
   if (status < 0)
   {
     fprintf(stderr, "Fatal: Decrypting Data  failed.\n");
-    abort();
+    // abort();
   }
   free(edata_copy);
   free(decodedDataKey);

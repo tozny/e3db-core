@@ -132,7 +132,7 @@ int curl_run_op(E3DB_Op *op)
 			BIO_write(write_bio, "\0", 1);
 			BIO_get_mem_data(write_bio, &body);
 			E3DB_Op_FinishHttpState(op, response_code, body, NULL, 0);
-			// printf("\nBody Returned %s\n", body);
+			printf("\nBody Returned %s\n", body);
 			BIO_free_all(write_bio);
 			curl_slist_free_all(chunk);
 		}
