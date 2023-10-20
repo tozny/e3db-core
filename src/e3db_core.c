@@ -1207,8 +1207,10 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
     p = strtok(NULL, ".");
   }
 
-  unsigned char *decodedDataKey = base64_decode(array[0]);
-  unsigned char *decodedDataKeyNonce = base64_decode(array[1]);
+  int decodedDataKeyLength = 0;
+  unsigned char *decodedDataKey = base64_decode2(array[0], &decodedDataKeyLength);
+  int decodedDataKeyNonceLength = 0;
+  unsigned char *decodedDataKeyNonce = base64_decode2(array[1], &decodedDataKeyNonceLength);
 
   int decodedDataLength = 0;
   unsigned char *decodedData = base64_decode2(array[2], &decodedDataLength);
@@ -1228,7 +1230,7 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
     length++;
   }
   unsigned char *dk = (unsigned char *)malloc(32);
-  int status = crypto_secretbox_open_easy(dk, decodedDataKey, length, decodedDataKeyNonce, ak);
+  int status = crypto_secretbox_open_easy(dk, decodedDataKey, decodedDataKeyLength, decodedDataKeyNonce, ak);
   if (status < 0)
   {
     fprintf(stderr, "Fatal: Decrypting Data Key failed.\n");
@@ -1242,7 +1244,7 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
   {
     length++;
   }
-  status = crypto_secretbox_open_easy(data, decodedData, length, decodedDataNonce, dk);
+  status = crypto_secretbox_open_easy(data, decodedData, decodedDataLength, decodedDataNonce, dk);
   if (status < 0)
   {
     fprintf(stderr, "Fatal: Decrypting Data  failed.\n");
