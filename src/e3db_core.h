@@ -274,6 +274,7 @@ extern "C"
     /* Return the metadata for the current record in the result set. */
     E3DB_RecordMeta *E3DB_ReadRecordsResultIterator_GetMeta(E3DB_ReadRecordsResultIterator *it);
 
+
     /* Return the record record data for the current record in the result set. */
     E3DB_Legacy_Record *E3DB_ReadRecordsResultIterator_GetData(E3DB_ReadRecordsResultIterator *it);
 

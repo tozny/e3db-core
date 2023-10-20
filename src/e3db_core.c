@@ -502,16 +502,55 @@ static char *cJSON_GetSafeObjectItemString(cJSON *json, const char *name)
   }
 }
 
-static void E3DB_GetRecordMetaFromJSON(cJSON *json, E3DB_RecordMeta *meta)
+// static void E3DB_GetRecordMetaFromJSON(cJSON *json, E3DB_RecordMeta *meta)
+// {
+//   meta->record_id = cJSON_GetSafeObjectItemString(json, "record_id");
+//   meta->writer_id = cJSON_GetSafeObjectItemString(json, "writer_id");
+//   meta->user_id = cJSON_GetSafeObjectItemString(json, "user_id");
+//   meta->type = cJSON_GetSafeObjectItemString(json, "type");
+//   meta->plain = cJSON_GetObjectItem(json, "plain");
+//   meta->version = cJSON_GetSafeObjectItemString(json, "version");
+//   meta->created = cJSON_GetSafeObjectItemString(json, "created");
+//   meta->last_modified = cJSON_GetSafeObjectItemString(json, "last_modified");
+// }
+void E3DB_GetRecordMetaFromJSON(cJSON *json, E3DB_RecordMeta *meta)
 {
-  meta->record_id = cJSON_GetSafeObjectItemString(json, "record_id");
-  meta->writer_id = cJSON_GetSafeObjectItemString(json, "writer_id");
-  meta->user_id = cJSON_GetSafeObjectItemString(json, "user_id");
-  meta->type = cJSON_GetSafeObjectItemString(json, "type");
-  meta->plain = cJSON_GetObjectItem(json, "plain");
-  meta->version = cJSON_GetSafeObjectItemString(json, "version");
-  meta->created = cJSON_GetSafeObjectItemString(json, "created");
-  meta->last_modified = cJSON_GetSafeObjectItemString(json, "last_modified");
+  char *tempStr = NULL;
+
+  tempStr = cJSON_GetSafeObjectItemString(json, "record_id");
+  meta->record_id = tempStr ? strdup(tempStr) : NULL;
+
+  tempStr = cJSON_GetSafeObjectItemString(json, "writer_id");
+  meta->writer_id = tempStr ? strdup(tempStr) : NULL;
+
+  tempStr = cJSON_GetSafeObjectItemString(json, "user_id");
+  meta->user_id = tempStr ? strdup(tempStr) : NULL;
+
+  tempStr = cJSON_GetSafeObjectItemString(json, "type");
+  meta->type = tempStr ? strdup(tempStr) : NULL;
+
+  // NOTE: Be careful with this one. If `plain` is a cJSON object and you're
+  // directly assigning it, ensure its lifetime is managed properly.
+  // meta->plain = cJSON_GetObjectItem(json, "plain");
+
+  cJSON *plainObj = cJSON_GetObjectItem(json, "plain");
+  if (plainObj)
+  {
+    meta->plain = cJSON_Duplicate(plainObj, 1); // 1 indicates it should also copy the children.
+  }
+  else
+  {
+    meta->plain = NULL;
+  }
+
+  tempStr = cJSON_GetSafeObjectItemString(json, "version");
+  meta->version = tempStr ? strdup(tempStr) : NULL;
+
+  tempStr = cJSON_GetSafeObjectItemString(json, "created");
+  meta->created = tempStr ? strdup(tempStr) : NULL;
+
+  tempStr = cJSON_GetSafeObjectItemString(json, "last_modified");
+  meta->last_modified = tempStr ? strdup(tempStr) : NULL;
 }
 
 static void E3DB_GetSignerSigningKeyFromJSON(cJSON *json, E3DB_SignerSigningKey *signer_signing_key)
@@ -614,6 +653,8 @@ const char *E3DB_RecordFieldIterator_GetValue(E3DB_RecordFieldIterator *it)
 static sds E3DB_GetAuthHeader(E3DB_Client *client)
 {
   sds credentials = sdscatprintf(sdsempty(), "%s:%s", client->options->api_key, client->options->api_secret);
+  credentials[sdslen(credentials)] = '\0';
+
   sds credentials_base64 = base64_encode(credentials);
   sds auth_header = sdsnew("Basic ");
   auth_header = sdscat(auth_header, credentials_base64);
@@ -739,6 +780,7 @@ static void E3DB_EncryptedAccessKeyResult_Delete(void *p)
       result->json = NULL; // NULL out the pointer
     }
     xfree(result);
+    result = NULL;
   }
 }
 
@@ -1149,11 +1191,11 @@ E3DB_EAK *E3DB_ResultIterator_GetEAK(E3DB_GetEAKResultIterator *it)
   // printf("it->EAK.signer_signing_key.ed25519: %s\n", it->EAK.signer_signing_key.ed25519);
   // printf("it->EAK.auth_pub_key.curve25519: %s\n", it->EAK.auth_pub_key.curve25519);
 
-  free(EAK);
-  free(signer_id);
-  free(authorizer_id);
-  free(signer_signing_key);
-  free(authorizer_public_key);
+  // free(EAK);
+  // free(signer_id);
+  // free(authorizer_id);
+  // free(signer_signing_key);
+  // free(authorizer_public_key);
   return &it->EAK;
 }
 
@@ -1398,6 +1440,9 @@ static void E3DB_CreateAccessKeys_InitOp(E3DB_Op *op)
   op->request.http.next_state = E3DB_CreateAccessKeys_Response;
   op->request.http.headers = E3DB_HttpHeaderList_New();
 
+  cJSON_Delete(json);
+  free(json_str);
+
   sds auth_header = sdsnew("Bearer ");
   auth_header = sdscat(auth_header, op->client->access_token);
   E3DB_HttpHeaderList_Add(op->request.http.headers, "Authorization", auth_header);
@@ -1423,6 +1468,11 @@ static void E3DB_CreateAccessKeyResult_Delete(void *p)
     {
       cJSON_Delete(result->json);
       result->json = NULL; // NULL out the pointer
+    }
+    if(result->ak != NULL)
+    {
+      free(result->ak);
+      result->ak = NULL;
     }
     xfree(result);
   }
@@ -1467,6 +1517,9 @@ E3DB_Op *E3DB_CreateAccessKeys_Begin(
     fprintf(stderr, "Fatal: Encrypting Access Key failed.\n");
     abort();
   }
+  free(accessKey);
+  free(publicKey);
+  free(privateKey);
 
   // Add Null terminator
   unsigned char *newCipher = (unsigned char *)malloc((crypto_box_MACBYTES + SECRET_KEY_SIZE) * sizeof(char) + 1);
@@ -1476,12 +1529,18 @@ E3DB_Op *E3DB_CreateAccessKeys_Begin(
   sds ciphertext_base64 = base64_encodeUrl((char *)newCipher);
   sds nonce_base64 = base64_encodeUrl((char *)nonce);
 
+  free(newCipher);
+  free(nonce);
+
   // Set up EAK
   // Join the EAK.Nonce
   unsigned char *encryptedAccessKey = (unsigned char *)malloc(strlen(ciphertext_base64) + strlen(nonce_base64) + 1);
   strcpy((char *)encryptedAccessKey, (char *)ciphertext_base64);
   strncat((char *)encryptedAccessKey, ".", 1);
   strncat((char *)encryptedAccessKey, nonce_base64, strlen(nonce_base64) + 1);
+
+  sdsfree(nonce_base64);
+  sdsfree(ciphertext_base64);
 
   result->writer_id = writer_id;
   result->user_id = user_id;
@@ -1553,16 +1612,6 @@ static void E3DB_WriteRecordsResult_Delete(void *p)
       cJSON_Delete(result->json);
       result->json = NULL; // NULL out the pointer
     }
-    // if (result->data != NULL)
-    // {
-    //   cJSON_Delete(result->data);
-    //   result->data = NULL; // NULL out the pointer
-    // }
-    if (result->meta != NULL)
-    {
-      cJSON_Delete(result->meta);
-      result->meta = NULL; // NULL out the pointer
-    }
     xfree(result);
   }
 }
@@ -1606,13 +1655,17 @@ const char *SignDocumentWithPrivateKey(char *document, char *privateSigningKey)
   unsigned char sig[crypto_sign_BYTES];
 
   crypto_sign_detached(sig, NULL, (const unsigned char *)document, strlen(document), decodedPrivateSigningKey);
+  free(decodedPrivateSigningKey);
 
   // Add Null terminator
   unsigned char *signedDocument = (unsigned char *)malloc(crypto_sign_BYTES * sizeof(char) + 1);
-  strcpy((char *)signedDocument, (char *)sig);
+  // strcpy((char *)signedDocument, (char *)sig);
+  memcpy(signedDocument, sig, crypto_sign_BYTES);
   signedDocument[crypto_sign_BYTES * sizeof(char)] = '\0';
 
-  return base64_encodeUrl((char *)signedDocument);
+  char *result = base64_encodeUrl((char *)signedDocument);
+  free(signedDocument);
+  return result;
 }
 
 static void E3DB_WriteRecords_InitOp(E3DB_Op *op)
@@ -1639,6 +1692,7 @@ static void E3DB_WriteRecords_InitOp(E3DB_Op *op)
   char *request = cJSON_Print(recordWriteRequestJSON);
 
   const char *signature = SignDocumentWithPrivateKey(request, op->client->options->private_signing_key);
+  free(request);
   cJSON_AddStringToObject(recordWriteRequestJSON, "rec_sig", signature);
   char *signedRequest = cJSON_Print(recordWriteRequestJSON);
 
@@ -1654,8 +1708,9 @@ static void E3DB_WriteRecords_InitOp(E3DB_Op *op)
   E3DB_HttpHeaderList_Add(op->request.http.headers, "Authorization", auth_header);
   sdsfree(auth_header);
   free(signedRequest);
-  // cJSON_Delete(metaJSONObject);
-  // cJSON_Delete(recordWriteRequestJSON);
+  sdsfree((sds)signature);
+  cJSON_Delete(recordWriteRequestJSON);
+  recordWriteRequestJSON = NULL;
 }
 
 static int E3DB_WriteRecords_Request(E3DB_Op *op, int response_code,
@@ -1667,7 +1722,7 @@ static int E3DB_WriteRecords_Request(E3DB_Op *op, int response_code,
   return 0;
 }
 
-const char *EncryptRecordField(unsigned char *ak, char *field)
+char *EncryptRecordField(unsigned char *ak, char *field)
 {
 
   // Create dk
@@ -1689,10 +1744,10 @@ const char *EncryptRecordField(unsigned char *ak, char *field)
   // Encrypt Symmetric
   unsigned char ef[crypto_box_MACBYTES + strlen(field)];
   crypto_secretbox_easy(ef, (unsigned char *)field, strlen(field), efN, dk);
-  // Add Null terminator
-  unsigned char *efTerm = (unsigned char *)malloc((crypto_box_MACBYTES + strlen(field)) + 1);
-  memcpy(efTerm, ef, crypto_box_MACBYTES + strlen(field));
-  efTerm[(crypto_box_MACBYTES + strlen(field))] = '\0';
+  // // Add Null terminator
+  // unsigned char *efTerm = (unsigned char *)malloc((crypto_box_MACBYTES + strlen(field)) + 1);
+  // memcpy(efTerm, ef, crypto_box_MACBYTES + strlen(field));
+  // efTerm[(crypto_box_MACBYTES + strlen(field))] = '\0';
 
   // Create edkN
   unsigned char edkN[crypto_box_NONCEBYTES];
@@ -1744,13 +1799,14 @@ E3DB_Op *E3DB_WriteRecord_Begin(
   cJSON *encryptedData = cJSON_CreateObject();
 
   // Base Case
-  const char *encryptedField = EncryptRecordField(accessKey, temp->child->valuestring);
+  char *encryptedField = EncryptRecordField(accessKey, temp->child->valuestring);
   cJSON_AddStringToObject(encryptedData, temp->child->string, encryptedField);
 
   // Recursive Case
   temp = temp->child->next;
   while (temp != NULL)
   {
+    free(encryptedField);
     encryptedField = EncryptRecordField(accessKey, temp->valuestring);
     cJSON_AddStringToObject(encryptedData, temp->string, encryptedField);
     temp = temp->next;
@@ -1762,9 +1818,7 @@ E3DB_Op *E3DB_WriteRecord_Begin(
 
   result->record_type = record_type;
   result->data = encryptedData;
-  // result->meta = meta;
-  result->meta = cJSON_Duplicate(meta, 1);
-
+  result->meta = meta;
 
   op->result = result;
   op->free_result = E3DB_WriteRecordsResult_Delete;
@@ -1778,6 +1832,52 @@ E3DB_Op *E3DB_WriteRecord_Begin(
     E3DB_WriteRecords_InitOp(op);
   }
 
-  // free((char *)encryptedField);  // Free the memory
+  free((char *)encryptedField); // Free the memory
   return op;
+}
+
+void E3DB_FreeRecordMeta(E3DB_RecordMeta *meta)
+{
+  printf("helloWORLDDDDD\n");
+
+  if (meta->record_id)
+  {
+    printf("Freeing record_id\n");
+    free(meta->record_id);
+  }
+  if (meta->writer_id)
+  {
+    printf("Freeing writer_id\n");
+    free(meta->writer_id);
+  }
+  if (meta->user_id)
+  {
+    printf("Freeing user_id\n");
+    free(meta->user_id);
+  }
+  if (meta->type)
+  {
+    printf("Freeing type\n");
+    free(meta->type);
+  }
+  if(meta->version) {
+      printf("Freeing version\n");
+      free(meta->version);
+  }
+  if(meta->created) {
+      printf("Freeing created\n");
+      free(meta->created);
+  }
+  if(meta->last_modified) {
+      printf("Freeing last_modified\n");
+      free(meta->last_modified);
+  }
+  if (meta->plain)
+  {
+    printf("Freeing plain\n");
+    cJSON_Delete(meta->plain);
+  }
+  printf("Freeing meta structure\n");
+  free(meta);
+  meta = NULL;
 }

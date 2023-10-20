@@ -207,7 +207,9 @@ int curl_run_op_dont_fail_with_response_code(E3DB_Op *op, long response_code_not
 			curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
 			if (response_code == response_code_not_errored)
 			{
-								curl_easy_cleanup(curl);
+				curl_easy_cleanup(curl);
+				BIO_free_all(write_bio);
+				curl_slist_free_all(chunk);
 				return response_code_not_errored;
 			}
 
@@ -246,6 +248,7 @@ E3DB_Record *WriteRecord(E3DB_Client *client, const char **record_type, cJSON *d
 		E3DB_Op *operationCreateAccessKey = E3DB_CreateAccessKeys_Begin(client, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)record_type, (const char **)client->options->public_key);
 		curl_run_op(operationCreateAccessKey);
 		// Fetch Encrypted Access Key
+		// free(op->ak);
 		E3DB_Op_Delete(op);
 		op = E3DB_GetEncryptedAccessKeys_Begin(client, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)record_type);
 		curl_run_op(op);
@@ -258,23 +261,37 @@ E3DB_Record *WriteRecord(E3DB_Client *client, const char **record_type, cJSON *d
 	E3DB_EAK *eak = E3DB_ResultIterator_GetEAK(EAKIt);
 	char *rawEAK = (char *)E3DB_EAK_GetEAK(eak);
 	char *authPublicKey = (char *)E3DB_EAK_GetAuthPubKey(eak);
+
+	// ak needs to be deallocated at some point?
 	unsigned char *ak = (unsigned char *)E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, op->client->options->private_key);
+
+	free(eak->eak);
+	free(eak->signer_id);
+	free(eak->authorizer_id);
+	// E3DB_SignerSigningKey signer_signing_key;
+	// E3DB_AuthPubKey auth_pub_key;
 
 	// Write Record
 	// E3DB_Op *op3 = E3DB_WriteRecord_Begin(client, record_type, data, meta, ak);
-	E3DB_Op *op3 = E3DB_WriteRecord_Begin(client, record_type, data, meta, ak);
-	curl_run_op(op3);
+	E3DB_Op_Delete(op);
+	op = E3DB_WriteRecord_Begin(client, record_type, data, meta, ak);
+	curl_run_op(op);
+
+	free(ak);
+
 
 	// Get Result
-	E3DB_WriteRecordsResult *result = E3DB_WriteRecords_GetResult(op3);
+	E3DB_WriteRecordsResult *result = E3DB_WriteRecords_GetResult(op);
 	// Create return item
 	E3DB_Record *writtenRecord = (E3DB_Record *)malloc(sizeof(E3DB_Record));
 	E3DB_RecordMeta *writtenMeta = (E3DB_RecordMeta *)malloc(sizeof(E3DB_RecordMeta));
 	cJSON *recordWritten = result->json->child;
-	char *child = (char *)malloc(sizeof(char));
+	// char *child = (char *)malloc(sizeof(char));
 	char *copy = cJSON_Print(recordWritten);
-	child = strdup(copy);
+	char *child = strdup(copy);
+	free(copy);
 	cJSON *recordCopy = cJSON_Parse(child);
+	free(child);
 	// Copy over Meta
 	cJSON *metaObj = cJSON_GetObjectItem(recordCopy, "meta");
 	if (metaObj == NULL || metaObj->type != cJSON_Object)
@@ -282,9 +299,18 @@ E3DB_Record *WriteRecord(E3DB_Client *client, const char **record_type, cJSON *d
 		fprintf(stderr, "Error: meta field doesn't exist.\n");
 		abort();
 	}
-	E3DB_GetRecordMetaFromJSON(metaObj, writtenMeta);
-	writtenRecord->meta = (E3DB_RecordMeta *)malloc(sizeof(E3DB_RecordMeta));
+	// E3DB_GetRecordMetaFromJSON(metaObj, writtenMeta);
+
+	// Deep copy metaObj
+	char *metaStr = cJSON_Print(metaObj);
+	cJSON *metaObjCopy = cJSON_Parse(metaStr);
+	free(metaStr);
+	E3DB_GetRecordMetaFromJSON(metaObjCopy, writtenMeta);
+	cJSON_Delete(metaObjCopy);
+
+	// writtenRecord->meta = (E3DB_RecordMeta *)malloc(sizeof(E3DB_RecordMeta));
 	writtenRecord->meta = writtenMeta;
+	
 	// Copy over data
 	cJSON *dataObj = cJSON_GetObjectItem(recordCopy, "data");
 	if (dataObj == NULL || dataObj->type != cJSON_Object)
@@ -292,8 +318,15 @@ E3DB_Record *WriteRecord(E3DB_Client *client, const char **record_type, cJSON *d
 		fprintf(stderr, "Error: Data field doesn't exist.\n");
 		abort();
 	}
-	writtenRecord->data = (cJSON *)malloc(sizeof(cJSON));
-	writtenRecord->data = dataObj;
+
+	// writtenRecord->data = (cJSON *)malloc(sizeof(cJSON));
+	// writtenRecord->data = dataObj;
+
+	// deep copy
+	char *dataStr = cJSON_Print(dataObj);				// Serialize dataObj to string
+	writtenRecord->data = cJSON_Parse(dataStr); // Deserialize to create a new cJSON object
+	free(dataStr);															// Free the serialized string
+
 	// Copy over signature
 	cJSON *signObj = cJSON_GetObjectItem(recordCopy, "rec_sig");
 	if (signObj == NULL)
@@ -304,11 +337,13 @@ E3DB_Record *WriteRecord(E3DB_Client *client, const char **record_type, cJSON *d
 	writtenRecord->rec_sig = cJSON_Print(signObj);
 
 	// printf("kddhfjhsdjfhkjsdhfksd %s", cJSON_Print(record->data));
-	E3DB_Op_Delete(op3);
+	// there is mixing going on causing double frees.
+	cJSON_Delete(recordCopy);
+	free(EAKIt);
 
-	// there is mixing going on causing double frees. 
-	if(op) {
-		// E3DB_Op_Delete(op);
+	if (op)
+	{
+		E3DB_Op_Delete(op);
 	}
 
 	curl_global_cleanup();

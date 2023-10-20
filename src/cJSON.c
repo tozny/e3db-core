@@ -144,28 +144,21 @@ void cJSON_Delete(cJSON *c)
     while (c)
     {
         next = c->next;
-
-        if (!(c->type & cJSON_IsReference))
+        if (!(c->type & cJSON_IsReference) && c->child)
         {
-            if (c->child)
-            {
-                cJSON_Delete(c->child);
-                c->child = NULL;  // Nullify the child pointer after deletion
-            }
-
-            if (c->valuestring)
-            {
-                cJSON_free(c->valuestring);
-                c->valuestring = NULL;  // Nullify the pointer after freeing
-            }
+            cJSON_Delete(c->child);
+            c->child = NULL;
         }
-
+        if (!(c->type & cJSON_IsReference) && c->valuestring)
+        {
+            cJSON_free(c->valuestring);
+            c->valuestring = NULL;
+        }
         if (!(c->type & cJSON_StringIsConst) && c->string)
         {
             cJSON_free(c->string);
-            c->string = NULL;  // Nullify the pointer after freeing
+            c->string = NULL;
         }
-
         cJSON_free(c);
         c = next;
     }

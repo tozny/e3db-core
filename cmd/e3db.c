@@ -288,16 +288,19 @@ int cmdWrite(int argc, char **argv)
 		}
 		metaJSON = json;
 	}
-	// Set Up Returned Record Wriiten
-	E3DB_Record *record = (E3DB_Record *)malloc(sizeof(E3DB_Record));
-	record->meta = (E3DB_RecordMeta *)malloc(sizeof(E3DB_RecordMeta));
-	record->data = (cJSON *)malloc(sizeof(cJSON));
 	// Write the Record
-	record = WriteRecord(client, (const char **)record_type, dataJSON, metaJSON);
+	E3DB_Record *record = WriteRecord(client, (const char **)record_type, dataJSON, metaJSON);
 	printf("\n\nRecord ID: %s\n", record->meta->record_id);
 	printf("Record Type: %s\n", record->meta->type);
-	printf("Record Plain: %s\n", cJSON_Print(record->meta->plain));
-	printf("Record Data:  %s\n", cJSON_Print(record->data));
+
+	char * recordPlain = cJSON_Print(record->meta->plain);
+	printf("Record Plain: %s\n", recordPlain);
+	free(recordPlain);
+
+	char * recordData = cJSON_Print(record->data);
+	printf("Record Data:  %s\n", recordData);
+	free(recordData);
+
 	printf("Record Created: %s\n", record->meta->created);
 	printf("Record Last Modified: %s\n", record->meta->last_modified);
 	printf("Record User ID: %s\n", record->meta->user_id);
@@ -308,10 +311,14 @@ int cmdWrite(int argc, char **argv)
 	E3DB_Client_Delete(client);
 	
 	// there is mixing going on causing issues with these
-	// free(record);
-	// cJSON_Delete(metaJSON);
-	// cJSON_Delete(dataJSON);
+	E3DB_FreeRecordMeta(record->meta);
 
+	cJSON_Delete(record->data);
+	free(record->rec_sig);
+	free(record);
+	if(dataJSON){
+		cJSON_Delete(dataJSON);
+	}
 	return 0;
 }
 
