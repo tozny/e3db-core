@@ -232,7 +232,6 @@ unsigned char *base64_decode2(const char *base64, int *cnt)
 	/* set up a destination buffer large enough to hold the encoded data */
 	unsigned char *output = (unsigned char *)malloc(strlen((char *)input) + 1);
 	/* keep track of our decoded position */
-	unsigned char *c = output;
 	/* store the number of bytes decoded by a single call */
 	*cnt = 0;
 	/* we need a decoder state */
@@ -242,14 +241,14 @@ unsigned char *base64_decode2(const char *base64, int *cnt)
 	/* initialise the decoder state */
 	base64_init_decodestate(&s);
 	/* decode the input data */
-	*cnt = base64_decode_block((char *)input, strlen((char *)input), (char *)c, &s);
-	c += *cnt;
+	*cnt = base64_decode_block((char *)input, strlen((char *)input), (char *)output, &s);
 	/* note: there is no base64_decode_blockend! */
 	/*---------- STOP DECODING  ----------*/
 
 	/* we want to print the decoded data, so null-terminate it: */
-	*c = 0;
-	output[strlen((char *)input)] = '\0';
+	// output[strlen((char *)input)] = '\0';
+	// output = (unsigned char *)realloc(output, cnt + 1);
+
 	free(input);
 	return output;
 }
