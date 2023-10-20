@@ -1209,25 +1209,11 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
 
   unsigned char *decodedDataKey = base64_decode(array[0]);
   unsigned char *decodedDataKeyNonce = base64_decode(array[1]);
-  printf("\ndecodedDataKey = ");
-  for (int i = 0; decodedDataKey[i] != '\0'; i++)
-  {
-    printf("%d ", decodedDataKey[i]);
-  }
-  printf("\n");
-  printf("\ndecodedDataKeyNonce = ");
-  for (int i = 0; decodedDataKeyNonce[i] != '\0'; i++)
-  {
-    printf("%d ", decodedDataKeyNonce[i]);
-  }
-  printf("\n");
 
-  int count = 0;
-
-  unsigned char *decodedData = base64_decode2(array[2], &count);
-  count++;
-  printf("\ndecodedData using count = ");
-  for (int i = 0; i < count; i++)
+  int decodedDataLength = 0;
+  unsigned char *decodedData = base64_decode2(array[2], &decodedDataLength);
+  printf("\ndecodedData using decodedDataLength = ");
+  for (int i = 0; i < decodedDataLength; i++)
   {
     printf("%d ", decodedData[i]);
   }
@@ -1249,7 +1235,7 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
     abort();
   }
   // unsigned long long dlen = strlen((const char *)decodedData);
-  unsigned char *data = (unsigned char *)malloc(count * sizeof(char));
+  unsigned char *data = (unsigned char *)malloc(decodedDataLength * sizeof(char));
   // Find length of data cipher:
   length = 0;
   while (decodedData[length] != '\0' || decodedData[length + 1] != '\0')
