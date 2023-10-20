@@ -1222,6 +1222,7 @@ const char *E3DB_EAK_DecryptEAK(char *eak, char *pubKey, char *privKey)
   // unsigned long long clen = strlen((const char *)decodedKey);
   unsigned long long clen = crypto_box_MACBYTES + SECRET_KEY_SIZE;
   int status = crypto_box_open_easy(ak, decodedKey, clen, decodedNonce, decodedPubKey, decodedPrivKey);
+  printf("\naccess key status: %d\n", status);
   if (status < 0)
   {
     fprintf(stderr, "Fatal: Decrypting Access Key failed.\n");
@@ -1277,6 +1278,7 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
   }
   unsigned char *dk = (unsigned char *)malloc(32);
   int status = crypto_secretbox_open_easy(dk, decodedDataKey, decodedDataKeyLength, decodedDataKeyNonce, ak);
+  printf("\ndata key status: %d\n", status);
   if (status < 0)
   {
     fprintf(stderr, "Fatal: Decrypting Data Key failed.\n");
@@ -1291,6 +1293,7 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
     length++;
   }
   status = crypto_secretbox_open_easy(data, decodedData, decodedDataLength, decodedDataNonce, dk);
+  printf("\ndata status: %d\n", status);
   if (status < 0)
   {
     fprintf(stderr, "Fatal: Decrypting Data  failed.\n");

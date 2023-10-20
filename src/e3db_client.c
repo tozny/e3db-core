@@ -425,6 +425,7 @@ E3DB_Record *ReadRecords(E3DB_Client *client, const char **all_record_ids, int a
 			{
 				unsigned char *edata = (unsigned char *)E3DB_RecordFieldIterator_GetValue(f_it);
 				const char *ddata = E3DB_RecordFieldIterator_DecryptValue(edata, ak);
+  			printf("\nddata: %s\n", ddata);
 				const char *name = E3DB_RecordFieldIterator_GetName(f_it);
 
 				cJSON_AddStringToObject(decryptedData, name, ddata);
@@ -439,8 +440,8 @@ E3DB_Record *ReadRecords(E3DB_Client *client, const char **all_record_ids, int a
 
 			E3DB_RecordFieldIterator_Delete(f_it);
 			E3DB_ReadRecordsResultIterator_Next(it);
-			cJSON_Delete(decryptedData);
-			E3DB_Op_Delete(eakOp);
+			// cJSON_Delete(decryptedData);
+			// E3DB_Op_Delete(eakOp);
 		}
 
 		E3DB_ReadRecordsResultIterator_Delete(it);
