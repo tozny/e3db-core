@@ -1248,7 +1248,7 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
   if (status < 0)
   {
     fprintf(stderr, "Fatal: Decrypting Data  failed.\n");
-    // abort();
+    abort();
   }
   free(edata_copy);
   free(decodedDataKey);
