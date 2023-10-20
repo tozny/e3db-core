@@ -1155,7 +1155,7 @@ E3DB_EAK *E3DB_ResultIterator_GetEAK(E3DB_GetEAKResultIterator *it)
 
 const char *E3DB_EAK_DecryptEAK(char *eak, char *pubKey, char *privKey)
 {
-  unsigned char *ak = (unsigned char *)malloc(32);
+  unsigned char *ak = (unsigned char *)malloc(SECRET_KEY_SIZE);
   size_t eakLength = strlen(eak);
   unsigned char *eak_copy = (unsigned char *)malloc(eakLength * sizeof(char) + 1);
   strcpy((char *)eak_copy, eak);
@@ -1172,16 +1172,17 @@ const char *E3DB_EAK_DecryptEAK(char *eak, char *pubKey, char *privKey)
   unsigned char *decodedNonce = base64_decode(array[1]);
   unsigned char *decodedPubKey = base64_decode(pubKey);
   unsigned char *decodedPrivKey = base64_decode(privKey);
-
-  unsigned long long clen = strlen((const char *)decodedKey);
+  // We know it should always be the length of key size and macbytes, but for some reason sometimes if zeros are present length doesn't ignore them
+  // unsigned long long clen = strlen((const char *)decodedKey);
+  unsigned long long clen = crypto_box_MACBYTES + SECRET_KEY_SIZE;
   int status = crypto_box_open_easy(ak, decodedKey, clen, decodedNonce, decodedPubKey, decodedPrivKey);
   if (status < 0)
   {
     fprintf(stderr, "Fatal: Decrypting Access Key failed.\n");
     abort();
   }
-  ak = (unsigned char *)realloc(ak, 32 * sizeof(unsigned char) + 1);
-  ak[32] = '\0';
+  ak = (unsigned char *)realloc(ak, SECRET_KEY_SIZE * sizeof(unsigned char) + 1);
+  ak[SECRET_KEY_SIZE] = '\0';
   free(eak_copy);
   free(decodedKey);
   free(decodedNonce);

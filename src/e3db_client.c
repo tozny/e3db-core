@@ -85,7 +85,7 @@ int curl_run_op(E3DB_Op *op)
 			while (header != NULL)
 			{
 				sds header_text = sdscatprintf(sdsempty(), "%s: %s",
-											   E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
+							       E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
 				chunk = curl_slist_append(chunk, header_text);
 				sdsfree(header_text);
 
@@ -169,7 +169,7 @@ int curl_run_op_dont_fail_with_response_code(E3DB_Op *op, long response_code_not
 			while (header != NULL)
 			{
 				sds header_text = sdscatprintf(sdsempty(), "%s: %s",
-											   E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
+							       E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
 				chunk = curl_slist_append(chunk, header_text);
 				sdsfree(header_text);
 
@@ -248,6 +248,7 @@ E3DB_Record *WriteRecord(E3DB_Client *client, const char **record_type, cJSON *d
 		// Fetch Encrypted Access Key
 		op = E3DB_GetEncryptedAccessKeys_Begin(client, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)record_type);
 		curl_run_op(op);
+		E3DB_Op_Delete(operationCreateAccessKey);
 	}
 
 	// Step 2: Decrypt Access Key
@@ -374,6 +375,7 @@ E3DB_Record *ReadRecords(E3DB_Client *client, const char **all_record_ids, int a
 			char *rawEAK = (char *)E3DB_EAK_GetEAK(eak);
 			char *authPublicKey = (char *)E3DB_EAK_GetAuthPubKey(eak);
 			unsigned char *ak = (unsigned char *)E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, eakOp->client->options->private_key);
+
 			// Decrypt the record data
 			E3DB_RecordFieldIterator *f_it = E3DB_Record_GetFieldIterator(record);
 			cJSON *decryptedData = cJSON_CreateObject();
