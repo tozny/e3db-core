@@ -55,10 +55,12 @@ E3DB_ClientOptions *load_config(char *configLocation)
 	sds config_file = NULL;
 	if (!configLocation)
 	{
+		printf("\nconfigLocation is null \n");
 		config_file = sdscat(get_home_dir(), "/.tozny/e3db.json");
 	}
 	else
 	{
+		printf("\nconfigLocation is not null: %s \n", configLocation);
 		config_file = sdsnew(configLocation);
 	}
 
@@ -164,8 +166,6 @@ int cmdWrite(int argc, char **argv)
 			stderr);
 		return 1;
 	}
-	// Load up the client
-	E3DB_Client *client = E3DB_Client_New(load_config(NULL));
 
 	// Grab the argument data
 	const char *record_type = NULL;
@@ -173,9 +173,11 @@ int cmdWrite(int argc, char **argv)
 	const char *meta = NULL;
 	cJSON *dataJSON = NULL;
 	cJSON *metaJSON = NULL;
+	char *configLocation = NULL;
 
 	for (int i = 1; i <= argc; i++)
 	{
+		printf("\nargv[i] = %s\n", argv[i]);
 		if (strcmp(argv[i], "-t") == 0)
 		{
 			if (i + 1 <= argc && argv[i + 1][0] != '-')
@@ -197,7 +199,15 @@ int cmdWrite(int argc, char **argv)
 				meta = argv[i + 1];
 			}
 		}
+		else if (strcmp(argv[i], "-c") == 0)
+		{
+			printf("\n-c found\n", argv[i]);
+			configLocation = (char *)xmalloc(strlen(argv[i + 1]) + 1);
+			strcpy(configLocation, argv[i + 1]);
+		}
 	}
+	// Load up the client
+	E3DB_Client *client = E3DB_Client_New(load_config(configLocation));
 
 	if (record_type == NULL || data == NULL || meta == NULL)
 	{
@@ -212,7 +222,7 @@ int cmdWrite(int argc, char **argv)
 		FILE *fp = fopen(data + 1, "r");
 		if (fp == NULL)
 		{
-			printf("Error %s ", ": Unable to open the file.\n");
+			printf("Error %s ", ": 1 Unable to open the file.\n");
 			return 1;
 		}
 
@@ -258,7 +268,7 @@ int cmdWrite(int argc, char **argv)
 		FILE *fp = fopen(meta + 1, "r");
 		if (fp == NULL)
 		{
-			printf("Error %s ", ": Unable to open the file.\n");
+			printf("Error %s ", ": 2 Unable to open the file.\n");
 			return 1;
 		}
 
@@ -364,7 +374,7 @@ int cmdRead(int argc, char **argv)
 	if (!configLocation)
 	{
 		all_record_ids = (const char **)&argv[1]; // Mem for all_record_ids -> cli args managed by the op sys
-		count = argc-1;
+		count = argc - 1;
 	}
 	else
 	{
