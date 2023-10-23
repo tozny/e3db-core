@@ -13,16 +13,16 @@
 #include "cJSON.h"
 
 const char usage[] =
-    "Usage: e3db [OPTIONS] COMMAND [ARGS...]\n"
-    "Tozny E3DB Command Line Interface\n"
-    "\n"
-    "Available options:\n"
-    "  -h, --help           print this help and exit\n"
-    "      --version        output version info and exit\n"
-    "\n"
-    "Available commands:\n"
-    " read-record          read records\n"
-    " write-record         write record\n";
+	"Usage: e3db [OPTIONS] COMMAND [ARGS...]\n"
+	"Tozny E3DB Command Line Interface\n"
+	"\n"
+	"Available options:\n"
+	"  -h, --help           print this help and exit\n"
+	"      --version        output version info and exit\n"
+	"\n"
+	"Available commands:\n"
+	" read-record          read records\n"
+	" write-record         write record\n";
 
 /* Get the user's home directory.
  *
@@ -146,13 +146,13 @@ int cmdWrite(int argc, char **argv)
 	if (argc < 2)
 	{
 		fputs(
-		    "Usage: e3db write [OPTIONS] -t TYPE -d @filename or JSON  -m @filename or JSON \n"
-		    "Write a record to E3DB.\n"
-		    "Pass in as JSON or fileName"
-		    "\n"
-		    "Available options:\n"
-		    "  -h, --help           print this help and exit\n",
-		    stderr);
+			"Usage: e3db write [OPTIONS] -t TYPE -d @filename or JSON  -m @filename or JSON \n"
+			"Write a record to E3DB.\n"
+			"Pass in as JSON or fileName"
+			"\n"
+			"Available options:\n"
+			"  -h, --help           print this help and exit\n",
+			stderr);
 		return 1;
 	}
 	// Load up the client
@@ -288,16 +288,19 @@ int cmdWrite(int argc, char **argv)
 		}
 		metaJSON = json;
 	}
-	// Set Up Returned Record Wriiten
-	E3DB_Record *record = (E3DB_Record *)malloc(sizeof(E3DB_Record));
-	record->meta = (E3DB_RecordMeta *)malloc(sizeof(E3DB_RecordMeta));
-	record->data = (cJSON *)malloc(sizeof(cJSON));
 	// Write the Record
-	record = WriteRecord(client, (const char **)record_type, dataJSON, metaJSON);
+	E3DB_Record *record = WriteRecord(client, (const char **)record_type, dataJSON, metaJSON);
 	printf("\n\nRecord ID: %s\n", record->meta->record_id);
 	printf("Record Type: %s\n", record->meta->type);
-	printf("Record Plain: %s\n", cJSON_Print(record->meta->plain));
-	printf("Record Data:  %s\n", cJSON_Print(record->data));
+
+	char *recordPlain = cJSON_Print(record->meta->plain);
+	printf("Record Plain: %s\n", recordPlain);
+	free(recordPlain);
+
+	char *recordData = cJSON_Print(record->data);
+	printf("Record Data:  %s\n", recordData);
+	free(recordData);
+
 	printf("Record Created: %s\n", record->meta->created);
 	printf("Record Last Modified: %s\n", record->meta->last_modified);
 	printf("Record User ID: %s\n", record->meta->user_id);
@@ -307,6 +310,16 @@ int cmdWrite(int argc, char **argv)
 	// Clean Up Memory
 	E3DB_Client_Delete(client);
 
+	// there is mixing going on causing issues with these
+	E3DB_FreeRecordMeta(record->meta);
+
+	cJSON_Delete(record->data);
+	free(record->rec_sig);
+	free(record);
+	if (dataJSON)
+	{
+		cJSON_Delete(dataJSON);
+	}
 	return 0;
 }
 
@@ -315,21 +328,20 @@ int cmdRead(int argc, char **argv)
 	if (argc < 2)
 	{
 		fputs(
-		    "Usage: e3db read [OPTIONS] RECORD_ID...\n"
-		    "Read one or more records from E3DB.\n"
-		    "\n"
-		    "Available options:\n"
-		    "  -h, --help           print this help and exit\n",
-		    stderr);
+				"Usage: e3db read [OPTIONS] RECORD_ID...\n"
+				"Read one or more records from E3DB.\n"
+				"\n"
+				"Available options:\n"
+				"  -h, --help           print this help and exit\n",
+				stderr);
 		return 1;
 	}
 	// Load up the client
 	E3DB_Client *client = E3DB_Client_New(load_config());
 
 	// Set up paramaters
-	const char **all_record_ids = (const char **)&argv[1];
-	E3DB_Record *records = (E3DB_Record *)malloc(sizeof(E3DB_Record) * (argc - 1));
-	records = ReadRecords(client, all_record_ids, argc);
+	const char **all_record_ids = (const char **)&argv[1]; // Mem for all_record_ids -> cli args managed by the op sys
+	E3DB_Record *records = ReadRecords(client, all_record_ids, argc);
 
 	// Display Returned Data
 	for (int i = 0; i < argc - 1; i++)
@@ -343,11 +355,18 @@ int cmdRead(int argc, char **argv)
 		printf("\n%-20s %s\n", "created:", records[i].meta->created);
 		printf("\n%-20s %s\n", "last_modified:", records[i].meta->last_modified);
 		printf("\n%-20s %s\n", "rec_sig:", records[i].rec_sig);
-		printf("\n%-20s \n%s\n", "plain:", cJSON_Print(records[i].meta->plain));
-		printf("\n%-20s \n%s\n", "data:", cJSON_Print(records[i].data));
+
+		char *plain_str = cJSON_Print(records[i].meta->plain);
+		printf("\n%-20s \n%s\n", "plain:", plain_str);
+		free(plain_str);
+
+		char *data_str = cJSON_Print(records[i].data);
+		printf("\n%-20s \n%s\n", "data:", data_str);
+		free(data_str);
 	}
 
 	// Clean Up Memory
+	E3DB_CleanupRecords(records, argc - 1);
 	E3DB_Client_Delete(client);
 	return 0;
 }

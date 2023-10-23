@@ -17,6 +17,10 @@ LIB            := $(BUILD_DIR)/libe3db.a
 CFLAGS         := -Wall -g
 LDFLAGS        :=
 
+# switch above CFLAGS and LDFLAGS for below to debug memory access issues
+# CFLAGS         := -Wall -g -O1 -fsanitize=address
+# LDFLAGS        := -fsanitize=address 
+
 CMD_SOURCES    := $(wildcard cmd/*.c)
 CMD_OBJECTS    := $(patsubst %.c,$(BUILD_DIR)/%.o,$(CMD_SOURCES))
 CMD_HEADERS    := $(wildcard cmd/*.h)

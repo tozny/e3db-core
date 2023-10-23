@@ -85,7 +85,7 @@ int curl_run_op(E3DB_Op *op)
 			while (header != NULL)
 			{
 				sds header_text = sdscatprintf(sdsempty(), "%s: %s",
-							       E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
+																			 E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
 				chunk = curl_slist_append(chunk, header_text);
 				sdsfree(header_text);
 
@@ -169,7 +169,7 @@ int curl_run_op_dont_fail_with_response_code(E3DB_Op *op, long response_code_not
 			while (header != NULL)
 			{
 				sds header_text = sdscatprintf(sdsempty(), "%s: %s",
-							       E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
+																			 E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
 				chunk = curl_slist_append(chunk, header_text);
 				sdsfree(header_text);
 
@@ -208,6 +208,8 @@ int curl_run_op_dont_fail_with_response_code(E3DB_Op *op, long response_code_not
 			if (response_code == response_code_not_errored)
 			{
 				curl_easy_cleanup(curl);
+				BIO_free_all(write_bio);
+				curl_slist_free_all(chunk);
 				return response_code_not_errored;
 			}
 
@@ -246,6 +248,7 @@ E3DB_Record *WriteRecord(E3DB_Client *client, const char **record_type, cJSON *d
 		E3DB_Op *operationCreateAccessKey = E3DB_CreateAccessKeys_Begin(client, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)record_type, (const char **)client->options->public_key);
 		curl_run_op(operationCreateAccessKey);
 		// Fetch Encrypted Access Key
+		E3DB_Op_Delete(op);
 		op = E3DB_GetEncryptedAccessKeys_Begin(client, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)record_type);
 		curl_run_op(op);
 		E3DB_Op_Delete(operationCreateAccessKey);
@@ -257,11 +260,20 @@ E3DB_Record *WriteRecord(E3DB_Client *client, const char **record_type, cJSON *d
 	E3DB_EAK *eak = E3DB_ResultIterator_GetEAK(EAKIt);
 	char *rawEAK = (char *)E3DB_EAK_GetEAK(eak);
 	char *authPublicKey = (char *)E3DB_EAK_GetAuthPubKey(eak);
+
+	// ak needs to be deallocated at some point?
 	unsigned char *ak = (unsigned char *)E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, op->client->options->private_key);
 
+
 	// Write Record
+	E3DB_Op_Delete(op);
 	op = E3DB_WriteRecord_Begin(client, record_type, data, meta, ak);
 	curl_run_op(op);
+
+	free(eak->eak);
+	free(eak->signer_id);
+	free(eak->authorizer_id);
+	free(ak);
 
 	// Get Result
 	E3DB_WriteRecordsResult *result = E3DB_WriteRecords_GetResult(op);
@@ -269,10 +281,14 @@ E3DB_Record *WriteRecord(E3DB_Client *client, const char **record_type, cJSON *d
 	E3DB_Record *writtenRecord = (E3DB_Record *)malloc(sizeof(E3DB_Record));
 	E3DB_RecordMeta *writtenMeta = (E3DB_RecordMeta *)malloc(sizeof(E3DB_RecordMeta));
 	cJSON *recordWritten = result->json->child;
-	char *child = (char *)malloc(sizeof(char));
+	// char *child = (char *)malloc(sizeof(char));
 	char *copy = cJSON_Print(recordWritten);
-	child = strdup(copy);
+	char *child = strdup(copy);
 	cJSON *recordCopy = cJSON_Parse(child);
+	// cleanup
+	free(copy);
+	free(child);
+
 	// Copy over Meta
 	cJSON *metaObj = cJSON_GetObjectItem(recordCopy, "meta");
 	if (metaObj == NULL || metaObj->type != cJSON_Object)
@@ -280,9 +296,15 @@ E3DB_Record *WriteRecord(E3DB_Client *client, const char **record_type, cJSON *d
 		fprintf(stderr, "Error: meta field doesn't exist.\n");
 		abort();
 	}
-	E3DB_GetRecordMetaFromJSON(metaObj, writtenMeta);
-	writtenRecord->meta = (E3DB_RecordMeta *)malloc(sizeof(E3DB_RecordMeta));
+
+	// Deep copy metaObj
+	cJSON *metaObjCopy = cJSON_Duplicate(metaObj, 1);
+
+	E3DB_GetRecordMetaFromJSON(metaObjCopy, writtenMeta);
+	cJSON_Delete(metaObjCopy);
+
 	writtenRecord->meta = writtenMeta;
+
 	// Copy over data
 	cJSON *dataObj = cJSON_GetObjectItem(recordCopy, "data");
 	if (dataObj == NULL || dataObj->type != cJSON_Object)
@@ -290,8 +312,11 @@ E3DB_Record *WriteRecord(E3DB_Client *client, const char **record_type, cJSON *d
 		fprintf(stderr, "Error: Data field doesn't exist.\n");
 		abort();
 	}
-	writtenRecord->data = (cJSON *)malloc(sizeof(cJSON));
-	writtenRecord->data = dataObj;
+
+	// deep copy
+	writtenRecord->data = cJSON_Duplicate(dataObj, 1);
+
+
 	// Copy over signature
 	cJSON *signObj = cJSON_GetObjectItem(recordCopy, "rec_sig");
 	if (signObj == NULL)
@@ -300,7 +325,14 @@ E3DB_Record *WriteRecord(E3DB_Client *client, const char **record_type, cJSON *d
 		abort();
 	}
 	writtenRecord->rec_sig = cJSON_Print(signObj);
-	E3DB_Op_Delete(op);
+
+	// cleanup
+	cJSON_Delete(recordCopy);
+	free(EAKIt);
+	if (op)
+	{
+		E3DB_Op_Delete(op);
+	}
 	curl_global_cleanup();
 	return writtenRecord;
 }
@@ -315,9 +347,6 @@ E3DB_Record *ReadRecords(E3DB_Client *client, const char **all_record_ids, int a
 
 	for (int i = 0; i < argumentCount - 1; i++)
 	{
-		const char **record_ids = (const char **)malloc(sizeof(const char *));
-		record_ids[0] = all_record_ids[i];
-
 		E3DB_Op *op = E3DB_ReadRecords_Begin(client, &all_record_ids[i], 1, NULL, 0);
 		curl_run_op(op);
 
@@ -330,38 +359,7 @@ E3DB_Record *ReadRecords(E3DB_Client *client, const char **all_record_ids, int a
 			E3DB_Legacy_Record *record = E3DB_ReadRecordsResultIterator_GetData(it);
 
 			// Set the record meta
-			records[i].meta = (E3DB_RecordMeta *)malloc(sizeof(E3DB_RecordMeta));
-			// Set record ID
-			const char *record_id = E3DB_RecordMeta_GetRecordId(meta);
-			records[i].meta->record_id = (char *)malloc(strlen(record_id) + 1);
-			strcpy(records[i].meta->record_id, record_id);
-			// Set writer ID
-			const char *writer_id = E3DB_RecordMeta_GetWriterId(meta);
-			records[i].meta->writer_id = (char *)malloc(strlen(writer_id) + 1);
-			strcpy(records[i].meta->writer_id, writer_id);
-			// Set user ID
-			const char *user_id = E3DB_RecordMeta_GetUserId(meta);
-			records[i].meta->user_id = (char *)malloc(strlen(user_id) + 1);
-			strcpy(records[i].meta->user_id, user_id);
-			// Set type
-			const char *type = E3DB_RecordMeta_GetType(meta);
-			records[i].meta->type = (char *)malloc(strlen(type) + 1);
-			strcpy(records[i].meta->type, type);
-			// Set version
-			const char *version = E3DB_RecordMeta_GetVersion(meta);
-			records[i].meta->version = (char *)malloc(strlen(version) + 1);
-			strcpy(records[i].meta->version, version);
-			// Set created
-			const char *created = E3DB_RecordMeta_GetCreated(meta);
-			records[i].meta->created = (char *)malloc(strlen(created) + 1);
-			strcpy(records[i].meta->created, created);
-			// Set last modified
-			const char *last_modified = E3DB_RecordMeta_GetLastModified(meta);
-			records[i].meta->last_modified = (char *)malloc(strlen(last_modified) + 1);
-			strcpy(records[i].meta->last_modified, last_modified);
-			// Set last plain
-			cJSON *plain = E3DB_RecordMeta_GetPlain(meta);
-			records[i].meta->plain = cJSON_Duplicate(plain, 1);
+			records[i].meta = meta;
 
 			// Set up Access Keys Fetch
 			E3DB_Op *eakOp = E3DB_GetEncryptedAccessKeys_Begin(client, (const char **)E3DB_RecordMeta_GetWriterId(meta), (const char **)E3DB_RecordMeta_GetUserId(meta), (const char **)E3DB_RecordMeta_GetUserId(meta), (const char **)E3DB_RecordMeta_GetType(meta));
@@ -397,6 +395,12 @@ E3DB_Record *ReadRecords(E3DB_Client *client, const char **all_record_ids, int a
 
 			E3DB_RecordFieldIterator_Delete(f_it);
 			E3DB_ReadRecordsResultIterator_Next(it);
+			E3DB_Op_Delete(eakOp);
+			free(eak->eak);
+			free(eak->signer_id);
+			free(eak->authorizer_id);
+			free(EAKIt);
+			free(ak);
 		}
 
 		E3DB_ReadRecordsResultIterator_Delete(it);

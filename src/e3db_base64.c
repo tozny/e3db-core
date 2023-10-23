@@ -27,13 +27,18 @@ sds base64_encode(const char *s)
 
 	BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
 	BIO_write(bio, s, strlen(s));
-	BIO_write(bio, "\0", 1);
-	BIO_flush(bio);
 
-	BIO_get_mem_data(bio, &buf);
-	result = sdsnew(buf);
+	BIO_flush(bio);
+	long len = BIO_get_mem_data(bio, &buf);
+	char *null_terminated_buffer = (char *)malloc(len + 1); // one extra byte for null terminator
+	memcpy(null_terminated_buffer, buf, len);
+	null_terminated_buffer[len] = '\0'; // ensure null-termination
+	
+	result = sdsnew(null_terminated_buffer);
 
 	BIO_free_all(bio);
+	free(null_terminated_buffer);
+
 	return result;
 }
 
@@ -71,13 +76,18 @@ sds base64_encodeUrl(const char *s)
 
 	BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
 	BIO_write(bio, s, strlen(s));
-	// BIO_write(bio, "\0", 1);
 	BIO_flush(bio);
 
-	BIO_get_mem_data(bio, &buf);
-	result = sdsnew(buf);
+
+	long len = BIO_get_mem_data(bio, &buf);
+	char *null_terminated_buffer = (char *)malloc(len + 1); // one extra byte for null terminator
+	memcpy(null_terminated_buffer, buf, len);
+	null_terminated_buffer[len] = '\0'; // ensure null-termination
+
+	result = sdsnew(null_terminated_buffer);
 
 	BIO_free_all(bio);
+	free(null_terminated_buffer);
 
 	for (int i = 0; i < strlen(result); i++)
 	{
@@ -119,13 +129,17 @@ sds base64_encodeUrl2(const char *s, size_t size)
 
 	BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
 	BIO_write(bio, s, size);
-	// BIO_write(bio, "\0", 1);
 	BIO_flush(bio);
 
-	BIO_get_mem_data(bio, &buf);
-	result = sdsnew(buf);
+	long len = BIO_get_mem_data(bio, &buf);
+	char *null_terminated_buffer = (char *)malloc(len + 1); // one extra byte for null terminator
+	memcpy(null_terminated_buffer, buf, len);
+	null_terminated_buffer[len] = '\0'; // ensure null-termination
+
+	result = sdsnew(null_terminated_buffer);
 
 	BIO_free_all(bio);
+	free(null_terminated_buffer);
 
 	for (int i = 0; i < size; i++)
 	{

@@ -61,7 +61,7 @@ const char *cJSON_GetErrorPtr(void)
 extern const char *cJSON_Version(void)
 {
     static char version[15];
-    sprintf(version, "%i.%i.%i", CJSON_VERSION_MAJOR, CJSON_VERSION_MINOR, CJSON_VERSION_PATCH);
+    snprintf(version, sizeof(version), "%i.%i.%i", CJSON_VERSION_MAJOR, CJSON_VERSION_MINOR, CJSON_VERSION_PATCH);
 
     return version;
 }
@@ -147,19 +147,23 @@ void cJSON_Delete(cJSON *c)
         if (!(c->type & cJSON_IsReference) && c->child)
         {
             cJSON_Delete(c->child);
+            c->child = NULL;
         }
         if (!(c->type & cJSON_IsReference) && c->valuestring)
         {
             cJSON_free(c->valuestring);
+            c->valuestring = NULL;
         }
         if (!(c->type & cJSON_StringIsConst) && c->string)
         {
             cJSON_free(c->string);
+            c->string = NULL;
         }
         cJSON_free(c);
         c = next;
     }
 }
+
 
 /* Parse the input text to generate a number, and populate the result into item. */
 static const unsigned char *parse_number(cJSON *item, const unsigned char *num)
@@ -343,7 +347,7 @@ static unsigned char *print_number(const cJSON *item, printbuffer *p)
         }
         if (str)
         {
-            sprintf((char *)str, "%d", item->valueint);
+            snprintf((char *)str, 21,  "%d", item->valueint);
         }
     }
     /* value is a floating point number */
@@ -364,19 +368,19 @@ static unsigned char *print_number(const cJSON *item, printbuffer *p)
             /* This checks for NaN and Infinity */
             if ((d * 0) != 0)
             {
-                sprintf((char *)str, "null");
+                snprintf((char *)str, 64, "null");
             }
             else if ((fabs(floor(d) - d) <= DBL_EPSILON) && (fabs(d) < 1.0e60))
             {
-                sprintf((char *)str, "%.0f", d);
+                snprintf((char *)str, 64, "%.0f", d);
             }
             else if ((fabs(d) < 1.0e-6) || (fabs(d) > 1.0e9))
             {
-                sprintf((char *)str, "%e", d);
+                snprintf((char *)str, 64, "%e", d);
             }
             else
             {
-                sprintf((char *)str, "%f", d);
+                snprintf((char *)str, 64, "%f", d);
             }
         }
     }
@@ -755,7 +759,8 @@ static unsigned char *print_string_ptr(const unsigned char *str, printbuffer *p)
                 break;
             default:
                 /* escape and print as unicode codepoint */
-                sprintf((char *)ptr2, "u%04x", token);
+                // sprintf((char *)ptr2, "u%04x", token);
+                snprintf((char *)ptr2, 5, "u%04x", token); 
                 ptr2 += 5;
                 break;
             }
