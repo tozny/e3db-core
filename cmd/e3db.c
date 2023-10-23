@@ -376,6 +376,8 @@ int cmdRead(int argc, char **argv)
 
 	E3DB_Record *records = ReadRecords(client, all_record_ids, count);
 
+	printf("\ncount %d\n", count);
+
 	// Display Returned Data
 	for (int i = 0; i < count - 1; i++)
 	{
@@ -398,7 +400,7 @@ int cmdRead(int argc, char **argv)
 	}
 
 	// Clean Up Memory
-	E3DB_CleanupRecords(records, argc - 1);
+	E3DB_CleanupRecords(records, count-1);
 	E3DB_Client_Delete(client);
 	return 0;
 }
