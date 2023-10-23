@@ -13,16 +13,16 @@
 #include "cJSON.h"
 
 const char usage[] =
-	"Usage: e3db [OPTIONS] COMMAND [ARGS...]\n"
-	"Tozny E3DB Command Line Interface\n"
-	"\n"
-	"Available options:\n"
-	"  -h, --help           print this help and exit\n"
-	"      --version        output version info and exit\n"
-	"\n"
-	"Available commands:\n"
-	" read-record          read records\n"
-	" write-record         write record\n";
+    "Usage: e3db [OPTIONS] COMMAND [ARGS...]\n"
+    "Tozny E3DB Command Line Interface\n"
+    "\n"
+    "Available options:\n"
+    "  -h, --help           print this help and exit\n"
+    "      --version        output version info and exit\n"
+    "\n"
+    "Available commands:\n"
+    " read-record          read records\n"
+    " write-record         write record\n";
 
 /* Get the user's home directory.
  *
@@ -141,18 +141,17 @@ E3DB_ClientOptions *load_config(void)
 
 int cmdWrite(int argc, char **argv)
 {
-
 	// Not Enough Arguments
 	if (argc < 2)
 	{
 		fputs(
-			"Usage: e3db write [OPTIONS] -t TYPE -d @filename or JSON  -m @filename or JSON \n"
-			"Write a record to E3DB.\n"
-			"Pass in as JSON or fileName"
-			"\n"
-			"Available options:\n"
-			"  -h, --help           print this help and exit\n",
-			stderr);
+		    "Usage: e3db write [OPTIONS] -t TYPE -d @filename or JSON  -m @filename or JSON \n"
+		    "Write a record to E3DB.\n"
+		    "Pass in as JSON or fileName"
+		    "\n"
+		    "Available options:\n"
+		    "  -h, --help           print this help and exit\n",
+		    stderr);
 		return 1;
 	}
 	// Load up the client
@@ -328,12 +327,12 @@ int cmdRead(int argc, char **argv)
 	if (argc < 2)
 	{
 		fputs(
-				"Usage: e3db read [OPTIONS] RECORD_ID...\n"
-				"Read one or more records from E3DB.\n"
-				"\n"
-				"Available options:\n"
-				"  -h, --help           print this help and exit\n",
-				stderr);
+		    "Usage: e3db read [OPTIONS] RECORD_ID...\n"
+		    "Read one or more records from E3DB.\n"
+		    "\n"
+		    "Available options:\n"
+		    "  -h, --help           print this help and exit\n",
+		    stderr);
 		return 1;
 	}
 	// Load up the client
@@ -346,7 +345,6 @@ int cmdRead(int argc, char **argv)
 	// Display Returned Data
 	for (int i = 0; i < argc - 1; i++)
 	{
-		printf("\nRECORD INFO FOR RECORD #%d:\n", i + 1);
 		printf("\n%-20s %s\n", "record_id:", records[i].meta->record_id);
 		printf("\n%-20s %s\n", "record_type:", records[i].meta->type);
 		printf("\n%-20s %s\n", "writer_id:", records[i].meta->writer_id);

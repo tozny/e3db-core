@@ -1182,25 +1182,22 @@ E3DB_EAK *E3DB_ResultIterator_GetEAK(E3DB_GetEAKResultIterator *it)
 
 const char *E3DB_EAK_DecryptEAK(char *eak, char *pubKey, char *privKey)
 {
-  
-  // TODO: find out why we cant set it to -1 without breaking write exisiting
-  // int status = -1;  // Declare and initialize status at the start.
-  int status = 0;  // Declare and initialize status at the start.
+  int status = -1; // Declare and initialize status at the start.
   unsigned char *ak = NULL;
   unsigned char *eak_copy = NULL;
   unsigned char *decodedKey = NULL;
   unsigned char *decodedNonce = NULL;
   unsigned char *decodedPubKey = NULL;
   unsigned char *decodedPrivKey = NULL;
-    
-  ak = (unsigned char *)malloc(SECRET_KEY_SIZE);
+
+  ak = (unsigned char *)xmalloc(SECRET_KEY_SIZE);
   if (!ak)
   {
     fprintf(stderr, "Fatal: Memory allocation failed.\n");
     goto cleanup;
   }
   size_t eakLength = strlen(eak);
-  eak_copy = (unsigned char *)malloc(eakLength * sizeof(char) + 1);
+  eak_copy = (unsigned char *)xmalloc(eakLength * sizeof(char) + 1);
   strcpy((char *)eak_copy, eak);
   int i = 0;
   char *p = strtok((char *)eak_copy, ".");
@@ -1257,8 +1254,7 @@ cleanup:
 const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned char *ak)
 {
   size_t edataLength = strlen((char *)edata);
-  printf("\nlilydebug edata = %s\n", edata);
-  unsigned char *edata_copy = (unsigned char *)malloc(edataLength * sizeof(char) + 1);
+  unsigned char *edata_copy = (unsigned char *)xmalloc(edataLength * sizeof(char) + 1);
   strcpy((char *)edata_copy, (char *)edata);
   int i = 0;
   char *p = strtok((char *)edata_copy, ".");
@@ -1277,22 +1273,9 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
 
   int decodedDataLength = 0;
   unsigned char *decodedData = base64_decode2(array[2], &decodedDataLength);
-  printf("\ndecodedData using decodedDataLength = ");
-  for (int i = 0; i < decodedDataLength; i++)
-  {
-    printf("%d ", decodedData[i]);
-  }
-  printf("\n");
-
   unsigned char *decodedDataNonce = base64_decode(array[3]);
 
-  // Find length of data key cipher:
-  int length = 0;
-  while (decodedDataKey[length] != '\0' || decodedDataKey[length + 1] != '\0')
-  {
-    length++;
-  }
-  unsigned char *dk = (unsigned char *)malloc(32);
+  unsigned char *dk = (unsigned char *)xmalloc(32);
   int status = crypto_secretbox_open_easy(dk, decodedDataKey, decodedDataKeyLength, decodedDataKeyNonce, ak);
   if (status < 0)
   {
@@ -1300,13 +1283,8 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
     goto cleanup;
   }
   // unsigned long long dlen = strlen((const char *)decodedData);
-  unsigned char *data = (unsigned char *)malloc(decodedDataLength + 1);
+  unsigned char *data = (unsigned char *)xmalloc(decodedDataLength + 1);
   // Find length of data cipher:
-  length = 0;
-  while (decodedData[length] != '\0' || decodedData[length + 1] != '\0')
-  {
-    length++;
-  }
   status = crypto_secretbox_open_easy(data, decodedData, decodedDataLength, decodedDataNonce, dk);
   data[decodedDataLength] = '\0';
   if (status < 0)
@@ -1535,7 +1513,7 @@ E3DB_Op *E3DB_CreateAccessKeys_Begin(
   unsigned char key[SECRET_KEY_SIZE];
   randombytes_buf(key, SECRET_KEY_SIZE);
 
-  accessKey = (unsigned char *)malloc(SECRET_KEY_SIZE + 1);
+  accessKey = (unsigned char *)xmalloc(SECRET_KEY_SIZE + 1);
   if (!accessKey)
     goto cleanup;
 
@@ -1556,7 +1534,7 @@ E3DB_Op *E3DB_CreateAccessKeys_Begin(
   unsigned char generateNonce[crypto_box_NONCEBYTES];
   randombytes_buf(generateNonce, crypto_box_NONCEBYTES);
 
-  nonce = (unsigned char *)malloc(crypto_box_NONCEBYTES + 1);
+  nonce = (unsigned char *)xmalloc(crypto_box_NONCEBYTES + 1);
   if (!nonce)
     goto cleanup;
 
@@ -1572,7 +1550,7 @@ E3DB_Op *E3DB_CreateAccessKeys_Begin(
     goto cleanup;
   }
 
-  newCipher = (unsigned char *)malloc(crypto_box_MACBYTES + SECRET_KEY_SIZE + 1);
+  newCipher = (unsigned char *)xmalloc(crypto_box_MACBYTES + SECRET_KEY_SIZE + 1);
   if (!newCipher)
     goto cleanup;
 
@@ -1584,7 +1562,7 @@ E3DB_Op *E3DB_CreateAccessKeys_Begin(
   nonce_base64 = base64_encodeUrl((char *)nonce);
 
   // Set up EAK
-  encryptedAccessKey = (unsigned char *)malloc(strlen(ciphertext_base64) + strlen(nonce_base64) + 2);
+  encryptedAccessKey = (unsigned char *)xmalloc(strlen(ciphertext_base64) + strlen(nonce_base64) + 2);
   if (!encryptedAccessKey)
     goto cleanup;
 
@@ -1740,7 +1718,7 @@ const char *SignDocumentWithPrivateKey(char *document, char *privateSigningKey)
   free(decodedPrivateSigningKey);
 
   // Add Null terminator
-  unsigned char *signedDocument = (unsigned char *)malloc(crypto_sign_BYTES * sizeof(char) + 1);
+  unsigned char *signedDocument = (unsigned char *)xmalloc(crypto_sign_BYTES * sizeof(char) + 1);
   memcpy(signedDocument, sig, crypto_sign_BYTES);
   signedDocument[crypto_sign_BYTES * sizeof(char)] = '\0';
 
@@ -1835,7 +1813,7 @@ char *EncryptRecordField(unsigned char *ak, char *field)
   sds efN_base64 = base64_encodeUrl2((const char *)efN, crypto_box_NONCEBYTES);
 
   // edk.edkN.ef.efN
-  unsigned char *encryptedField = (unsigned char *)malloc(strlen(edk_base64) + strlen(edkN_base64) + strlen(ef_base64) + strlen(efN_base64) + 3 + 1);
+  unsigned char *encryptedField = (unsigned char *)xmalloc(strlen(edk_base64) + strlen(edkN_base64) + strlen(ef_base64) + strlen(efN_base64) + 3 + 1);
   strcpy((char *)encryptedField, edk_base64);
   strncat((char *)encryptedField, ".", 1);
   strncat((char *)encryptedField, edkN_base64, strlen(edkN_base64));
@@ -1875,7 +1853,6 @@ E3DB_Op *E3DB_WriteRecord_Begin(
     temp = temp->next;
   }
   char *printData = cJSON_Print(encryptedData);
-  printf("\nEncryptedData %s\n", printData);
   free(printData);
 
   result->record_type = record_type;

@@ -85,7 +85,7 @@ int curl_run_op(E3DB_Op *op)
 			while (header != NULL)
 			{
 				sds header_text = sdscatprintf(sdsempty(), "%s: %s",
-																			 E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
+							       E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
 				chunk = curl_slist_append(chunk, header_text);
 				sdsfree(header_text);
 
@@ -132,7 +132,7 @@ int curl_run_op(E3DB_Op *op)
 			BIO_write(write_bio, "\0", 1);
 			BIO_get_mem_data(write_bio, &body);
 			E3DB_Op_FinishHttpState(op, response_code, body, NULL, 0);
-			printf("\nBody Returned %s\n", body);
+			// printf("\nBody Returned %s\n", body);
 			BIO_free_all(write_bio);
 			curl_slist_free_all(chunk);
 		}
@@ -169,7 +169,7 @@ int curl_run_op_dont_fail_with_response_code(E3DB_Op *op, long response_code_not
 			while (header != NULL)
 			{
 				sds header_text = sdscatprintf(sdsempty(), "%s: %s",
-																			 E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
+							       E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
 				chunk = curl_slist_append(chunk, header_text);
 				sdsfree(header_text);
 
@@ -264,7 +264,6 @@ E3DB_Record *WriteRecord(E3DB_Client *client, const char **record_type, cJSON *d
 	// ak needs to be deallocated at some point?
 	unsigned char *ak = (unsigned char *)E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, op->client->options->private_key);
 
-
 	// Write Record
 	E3DB_Op_Delete(op);
 	op = E3DB_WriteRecord_Begin(client, record_type, data, meta, ak);
@@ -278,10 +277,10 @@ E3DB_Record *WriteRecord(E3DB_Client *client, const char **record_type, cJSON *d
 	// Get Result
 	E3DB_WriteRecordsResult *result = E3DB_WriteRecords_GetResult(op);
 	// Create return item
-	E3DB_Record *writtenRecord = (E3DB_Record *)malloc(sizeof(E3DB_Record));
-	E3DB_RecordMeta *writtenMeta = (E3DB_RecordMeta *)malloc(sizeof(E3DB_RecordMeta));
+	E3DB_Record *writtenRecord = (E3DB_Record *)xmalloc(sizeof(E3DB_Record));
+	E3DB_RecordMeta *writtenMeta = (E3DB_RecordMeta *)xmalloc(sizeof(E3DB_RecordMeta));
 	cJSON *recordWritten = result->json->child;
-	// char *child = (char *)malloc(sizeof(char));
+	// char *child = (char *)xmalloc(sizeof(char));
 	char *copy = cJSON_Print(recordWritten);
 	char *child = strdup(copy);
 	cJSON *recordCopy = cJSON_Parse(child);
@@ -316,7 +315,6 @@ E3DB_Record *WriteRecord(E3DB_Client *client, const char **record_type, cJSON *d
 	// deep copy
 	writtenRecord->data = cJSON_Duplicate(dataObj, 1);
 
-
 	// Copy over signature
 	cJSON *signObj = cJSON_GetObjectItem(recordCopy, "rec_sig");
 	if (signObj == NULL)
@@ -343,7 +341,7 @@ E3DB_Record *WriteRecord(E3DB_Client *client, const char **record_type, cJSON *d
  */
 E3DB_Record *ReadRecords(E3DB_Client *client, const char **all_record_ids, int argumentCount)
 {
-	E3DB_Record *records = (E3DB_Record *)malloc(sizeof(E3DB_Record) * (argumentCount - 1));
+	E3DB_Record *records = (E3DB_Record *)xmalloc(sizeof(E3DB_Record) * (argumentCount - 1));
 
 	for (int i = 0; i < argumentCount - 1; i++)
 	{
@@ -390,7 +388,7 @@ E3DB_Record *ReadRecords(E3DB_Client *client, const char **all_record_ids, int a
 			}
 			records[i].data = decryptedData;
 			char *rec_sig = E3DB_ReadRecordsResultIterator_GetRecSig(it);
-			records[i].rec_sig = (char *)malloc(strlen(rec_sig) + 1);
+			records[i].rec_sig = (char *)xmalloc(strlen(rec_sig) + 1);
 			strcpy(records[i].rec_sig, rec_sig);
 
 			E3DB_RecordFieldIterator_Delete(f_it);
