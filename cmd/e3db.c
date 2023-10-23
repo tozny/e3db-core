@@ -364,12 +364,12 @@ int cmdRead(int argc, char **argv)
 	if (!configLocation)
 	{
 		all_record_ids = (const char **)&argv[1]; // Mem for all_record_ids -> cli args managed by the op sys
-		count = argc;
+		count = argc-1;
 	}
 	else
 	{
 		all_record_ids = (const char **)&argv[3];
-		count = argc - 2;
+		count = argc - 3;
 	}
 	printf("\nrecord ID 1 = %s\n", all_record_ids[0]);
 	printf("\nrecord ID 2 = %s\n", all_record_ids[1]);
@@ -379,7 +379,7 @@ int cmdRead(int argc, char **argv)
 	printf("\ncount %d\n", count);
 
 	// Display Returned Data
-	for (int i = 0; i < count - 1; i++)
+	for (int i = 0; i < count; i++)
 	{
 		printf("\n%-20s %s\n", "record_id:", records[i].meta->record_id);
 		printf("\n%-20s %s\n", "record_type:", records[i].meta->type);
@@ -400,7 +400,7 @@ int cmdRead(int argc, char **argv)
 	}
 
 	// Clean Up Memory
-	E3DB_CleanupRecords(records, count-1);
+	E3DB_CleanupRecords(records, count);
 	E3DB_Client_Delete(client);
 	return 0;
 }
