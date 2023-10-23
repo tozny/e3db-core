@@ -207,7 +207,7 @@ int cmdWrite(int argc, char **argv)
 		}
 	}
 	// Load up the client
-	E3DB_Client *client = E3DB_Client_New(load_config(configLocation));
+	E3DB_Client *client = E3DB_Client_New(load_config(configLocation + 1));
 
 	if (record_type == NULL || data == NULL || meta == NULL)
 	{
@@ -366,7 +366,7 @@ int cmdRead(int argc, char **argv)
 	}
 
 	// Load up the client
-	E3DB_Client *client = E3DB_Client_New(load_config(configLocation));
+	E3DB_Client *client = E3DB_Client_New(load_config(configLocation + 1));
 
 	// Set up paramaters
 	const char **all_record_ids = NULL;

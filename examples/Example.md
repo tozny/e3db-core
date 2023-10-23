@@ -30,7 +30,7 @@ To run Write Record
 
 ./build/e3db write-record -t recordTypeWanted -d @<PathToJSON>/examples/example_data.json  -m @<PathToJSON>/examples/example_meta.json
 
-./build/e3db write-record -t recordTypeWanted -d @<PathToJSON>/examples/example_data.json  -m @<PathToJSON>/examples/example_meta.json -c <PathToJSON>/examples/config.json
+./build/e3db write-record -t recordTypeWanted -d @<PathToJSON>/examples/example_data.json  -m @<PathToJSON>/examples/example_meta.json -c @<PathToJSON>/examples/config.json
 
 ./build/e3db write-record -t recordTypeWanted -d '{"key": "value"}'  -m '{"key": "value"}'
 
@@ -42,7 +42,7 @@ To run Read Record
 
 ./build/e3db read-record 4d289c9d-ffe4-45a9-a423-c8fdcf76ddd1
 
-./build/e3db read-record -c <PathToJSON>/examples/config.json 4d289c9d-ffe4-45a9-a423-c8fdcf76ddd1
+./build/e3db read-record -c @<PathToJSON>/examples/config.json 4d289c9d-ffe4-45a9-a423-c8fdcf76ddd1
 
 ./build/e3db read-record 4d289c9d-ffe4-45a9-a423-c8fdcf76ddd1 b8a79ca6-c1c2-4bc4-9906-739e772ae110
 
