@@ -55,16 +55,13 @@ E3DB_ClientOptions *load_config(char *configLocation)
 	sds config_file = NULL;
 	if (!configLocation)
 	{
-		printf("\nconfigLocation is null \n");
 		config_file = sdscat(get_home_dir(), "/.tozny/e3db.json");
 	}
 	else
 	{
-		printf("\nconfigLocation is not null: %s \n", configLocation);
 		config_file = sdsnew(configLocation);
 	}
 
-	printf("\nconfig_file = %s\n", config_file);
 	FILE *in;
 
 	if ((in = fopen(config_file, "r")) == NULL)
@@ -177,7 +174,6 @@ int cmdWrite(int argc, char **argv)
 
 	for (int i = 1; i <= argc; i++)
 	{
-		printf("\nargv[i] = %s\n", argv[i]);
 		if (strcmp(argv[i], "-t") == 0)
 		{
 			if (i + 1 <= argc && argv[i + 1][0] != '-')
@@ -201,7 +197,6 @@ int cmdWrite(int argc, char **argv)
 		}
 		else if (strcmp(argv[i], "-c") == 0)
 		{
-			printf("\n-c found\n", argv[i]);
 			configLocation = (char *)xmalloc(strlen(argv[i + 1]) + 1);
 			strcpy(configLocation, argv[i + 1]);
 		}
@@ -222,7 +217,7 @@ int cmdWrite(int argc, char **argv)
 		FILE *fp = fopen(data + 1, "r");
 		if (fp == NULL)
 		{
-			printf("Error %s ", ": 1 Unable to open the file.\n");
+			printf("Error %s ", ": Unable to open the file.\n");
 			return 1;
 		}
 
@@ -268,7 +263,7 @@ int cmdWrite(int argc, char **argv)
 		FILE *fp = fopen(meta + 1, "r");
 		if (fp == NULL)
 		{
-			printf("Error %s ", ": 2 Unable to open the file.\n");
+			printf("Error %s ", ": Unable to open the file.\n");
 			return 1;
 		}
 
@@ -360,7 +355,6 @@ int cmdRead(int argc, char **argv)
 	// Check if a config location was passed in
 	if (!strcmp(argv[1], "-c"))
 	{
-		printf("\nconfig file = %s\n", argv[2]);
 		configLocation = (char *)xmalloc(strlen(argv[2]) + 1);
 		strcpy(configLocation, argv[2]);
 	}
@@ -381,8 +375,6 @@ int cmdRead(int argc, char **argv)
 		all_record_ids = (const char **)&argv[3];
 		count = argc - 3;
 	}
-	printf("\nrecord ID 1 = %s\n", all_record_ids[0]);
-	printf("\nrecord ID 2 = %s\n", all_record_ids[1]);
 
 	E3DB_Record *records = ReadRecords(client, all_record_ids, count);
 
