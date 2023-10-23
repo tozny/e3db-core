@@ -511,7 +511,7 @@ static char *cJSON_GetSafeObjectItemString(cJSON *json, const char *name)
 //   meta->plain = cJSON_GetObjectItem(json, "plain");
 //   meta->version = cJSON_GetSafeObjectItemString(json, "version");
 //   meta->created = cJSON_GetSafeObjectItemString(json, "created");
-//   meta->last_modified = cJSON_GetSafeObjectItemString(json, "last_modified");
+  // meta->last_modified = cJSON_GetSafeObjectItemString(json, "last_modified");
 // }
 void E3DB_GetRecordMetaFromJSON(cJSON *json, E3DB_RecordMeta *meta)
 {
@@ -537,6 +537,7 @@ void E3DB_GetRecordMetaFromJSON(cJSON *json, E3DB_RecordMeta *meta)
   if (plainObj)
   {
     meta->plain = cJSON_Duplicate(plainObj, 1); // 1 indicates it should also copy the children.
+    // meta->plain = plainObj;
   }
   else
   {
@@ -1110,8 +1111,13 @@ E3DB_RecordMeta *E3DB_ReadRecordsResultIterator_GetMeta(E3DB_ReadRecordsResultIt
     abort();
   }
 
-  E3DB_GetRecordMetaFromJSON(meta, &it->meta);
-  return &it->meta;
+   // Dynamically allocate memory for a new E3DB_RecordMeta
+    E3DB_RecordMeta *newMeta = (E3DB_RecordMeta *)xmalloc(sizeof(E3DB_RecordMeta));
+    
+    E3DB_GetRecordMetaFromJSON(meta, newMeta);
+    return newMeta;
+  // E3DB_GetRecordMetaFromJSON(meta, &it->meta);
+  // return &it->meta;
 }
 
 /* Return the record record data for the current record in the result set. */
@@ -1285,7 +1291,7 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
     abort();
   }
   // unsigned long long dlen = strlen((const char *)decodedData);
-  unsigned char *data = (unsigned char *)malloc(decodedDataLength * sizeof(char));
+  unsigned char *data = (unsigned char *)malloc(decodedDataLength + 1);
   // Find length of data cipher:
   length = 0;
   while (decodedData[length] != '\0' || decodedData[length + 1] != '\0')
@@ -1293,10 +1299,17 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
     length++;
   }
   status = crypto_secretbox_open_easy(data, decodedData, decodedDataLength, decodedDataNonce, dk);
+  data[decodedDataLength] = '\0';
   printf("\ndata status: %d\n", status);
   if (status < 0)
   {
     fprintf(stderr, "Fatal: Decrypting Data  failed.\n");
+    free(edata_copy);
+    free(decodedDataKey);
+    free(decodedDataKeyNonce);
+    free(decodedData);
+    free(decodedDataNonce);
+    free(dk);
     abort();
   }
   free(edata_copy);
@@ -1472,7 +1485,7 @@ static void E3DB_CreateAccessKeyResult_Delete(void *p)
       cJSON_Delete(result->json);
       result->json = NULL; // NULL out the pointer
     }
-    if(result->ak != NULL)
+    if (result->ak != NULL)
     {
       free(result->ak);
       result->ak = NULL;
@@ -1841,44 +1854,57 @@ E3DB_Op *E3DB_WriteRecord_Begin(
 
 void E3DB_FreeRecordMeta(E3DB_RecordMeta *meta)
 {
+  if(!meta) return;
+
   printf("helloWORLDDDDD\n");
 
   if (meta->record_id)
   {
     printf("Freeing record_id\n");
     free(meta->record_id);
+    meta->record_id = NULL;
   }
   if (meta->writer_id)
   {
     printf("Freeing writer_id\n");
     free(meta->writer_id);
+    meta->writer_id = NULL;
   }
   if (meta->user_id)
   {
     printf("Freeing user_id\n");
     free(meta->user_id);
+    meta->user_id = NULL;
   }
   if (meta->type)
   {
     printf("Freeing type\n");
     free(meta->type);
+    meta->type = NULL;
   }
-  if(meta->version) {
-      printf("Freeing version\n");
-      free(meta->version);
+  if (meta->version)
+  {
+    printf("Freeing version\n");
+    free(meta->version);
+    meta->version = NULL;
   }
-  if(meta->created) {
-      printf("Freeing created\n");
-      free(meta->created);
+  if (meta->created)
+  {
+    printf("Freeing created\n");
+    free(meta->created);
+    meta->created= NULL;
   }
-  if(meta->last_modified) {
-      printf("Freeing last_modified\n");
-      free(meta->last_modified);
+  if (meta->last_modified)
+  {
+    printf("Freeing last_modified\n");
+    free(meta->last_modified);
+    meta->last_modified= NULL;
   }
   if (meta->plain)
   {
     printf("Freeing plain\n");
     cJSON_Delete(meta->plain);
+    meta->plain = NULL;
   }
   printf("Freeing meta structure\n");
   free(meta);
