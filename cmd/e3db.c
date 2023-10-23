@@ -13,16 +13,16 @@
 #include "cJSON.h"
 
 const char usage[] =
-		"Usage: e3db [OPTIONS] COMMAND [ARGS...]\n"
-		"Tozny E3DB Command Line Interface\n"
-		"\n"
-		"Available options:\n"
-		"  -h, --help           print this help and exit\n"
-		"      --version        output version info and exit\n"
-		"\n"
-		"Available commands:\n"
-		" read-record          read records\n"
-		" write-record         write record\n";
+	"Usage: e3db [OPTIONS] COMMAND [ARGS...]\n"
+	"Tozny E3DB Command Line Interface\n"
+	"\n"
+	"Available options:\n"
+	"  -h, --help           print this help and exit\n"
+	"      --version        output version info and exit\n"
+	"\n"
+	"Available commands:\n"
+	" read-record          read records\n"
+	" write-record         write record\n";
 
 /* Get the user's home directory.
  *
@@ -146,13 +146,13 @@ int cmdWrite(int argc, char **argv)
 	if (argc < 2)
 	{
 		fputs(
-				"Usage: e3db write [OPTIONS] -t TYPE -d @filename or JSON  -m @filename or JSON \n"
-				"Write a record to E3DB.\n"
-				"Pass in as JSON or fileName"
-				"\n"
-				"Available options:\n"
-				"  -h, --help           print this help and exit\n",
-				stderr);
+			"Usage: e3db write [OPTIONS] -t TYPE -d @filename or JSON  -m @filename or JSON \n"
+			"Write a record to E3DB.\n"
+			"Pass in as JSON or fileName"
+			"\n"
+			"Available options:\n"
+			"  -h, --help           print this help and exit\n",
+			stderr);
 		return 1;
 	}
 	// Load up the client
@@ -362,28 +362,11 @@ int cmdRead(int argc, char **argv)
 
 		char *data_str = cJSON_Print(records[i].data);
 		printf("\n%-20s \n%s\n", "data:", data_str);
-		free(data_str); 
+		free(data_str);
 	}
 
 	// Clean Up Memory
-	for (int i = 0; i < argc - 1; i++)
-	{
-		if (records[i].data)
-		{
-			cJSON_Delete(records[i].data);
-		}
-		if (records[i].rec_sig)
-		{
-			free(records[i].rec_sig);
-		}
-		if(records[i].meta) {
-			E3DB_FreeRecordMeta(records[i].meta);
-		}
-	}
-
-	free(records);
-	records = NULL;
-	printf("\nrecords = NULL");
+	E3DB_CleanupRecords(records, argc - 1);
 	E3DB_Client_Delete(client);
 	return 0;
 }

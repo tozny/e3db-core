@@ -16,6 +16,8 @@ HEADERS        := $(wildcard src/*.h)
 LIB            := $(BUILD_DIR)/libe3db.a
 CFLAGS         := -Wall -g
 LDFLAGS        :=
+
+# switch above CFLAGS and LDFLAGS for below to debug memory access issues
 # CFLAGS         := -Wall -g -O1 -fsanitize=address
 # LDFLAGS        := -fsanitize=address 
 
