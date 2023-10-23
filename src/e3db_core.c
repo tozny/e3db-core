@@ -1182,10 +1182,7 @@ E3DB_EAK *E3DB_ResultIterator_GetEAK(E3DB_GetEAKResultIterator *it)
 
 const char *E3DB_EAK_DecryptEAK(char *eak, char *pubKey, char *privKey)
 {
-  
-  // TODO: find out why we cant set it to -1 without breaking write exisiting
-  // int status = -1;  // Declare and initialize status at the start.
-  int status = 0;  // Declare and initialize status at the start.
+  int status = -1;  // Declare and initialize status at the start.
   unsigned char *ak = NULL;
   unsigned char *eak_copy = NULL;
   unsigned char *decodedKey = NULL;
