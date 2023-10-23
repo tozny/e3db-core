@@ -338,11 +338,11 @@ E3DB_Record *WriteRecord(E3DB_Client *client, const char **record_type, cJSON *d
  * {ReadRecords}
  *
  */
-E3DB_Record *ReadRecords(E3DB_Client *client, const char **all_record_ids, int argumentCount)
+E3DB_Record *ReadRecords(E3DB_Client *client, const char **all_record_ids, int recordCount)
 {
-	E3DB_Record *records = (E3DB_Record *)xmalloc(sizeof(E3DB_Record) * (argumentCount - 1));
+	E3DB_Record *records = (E3DB_Record *)xmalloc(sizeof(E3DB_Record) * (recordCount));
 
-	for (int i = 0; i < argumentCount - 1; i++)
+	for (int i = 0; i < recordCount; i++)
 	{
 		E3DB_Op *op = E3DB_ReadRecords_Begin(client, &all_record_ids[i], 1, NULL, 0);
 		curl_run_op(op);
