@@ -280,7 +280,6 @@ E3DB_Record *WriteRecord(E3DB_Client *client, const char **record_type, cJSON *d
 	E3DB_Record *writtenRecord = (E3DB_Record *)xmalloc(sizeof(E3DB_Record));
 	E3DB_RecordMeta *writtenMeta = (E3DB_RecordMeta *)xmalloc(sizeof(E3DB_RecordMeta));
 	cJSON *recordWritten = result->json->child;
-	// char *child = (char *)xmalloc(sizeof(char));
 	char *copy = cJSON_Print(recordWritten);
 	char *child = strdup(copy);
 	cJSON *recordCopy = cJSON_Parse(child);
