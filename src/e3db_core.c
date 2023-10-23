@@ -1197,7 +1197,7 @@ const char *E3DB_EAK_DecryptEAK(char *eak, char *pubKey, char *privKey)
     goto cleanup;
   }
   size_t eakLength = strlen(eak);
-  eak_copy = (unsigned char *)malloc(eakLength * sizeof(char) + 1);
+  eak_copy = (unsigned char *)malloc(eakLength + 1);
   strcpy((char *)eak_copy, eak);
   int i = 0;
   char *p = strtok((char *)eak_copy, ".");
@@ -1255,7 +1255,7 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
 {
   size_t edataLength = strlen((char *)edata);
   printf("\nlilydebug edata = %s\n", edata);
-  unsigned char *edata_copy = (unsigned char *)malloc(edataLength * sizeof(char) + 1);
+  unsigned char *edata_copy = (unsigned char *)malloc(edataLength + 1);
   strcpy((char *)edata_copy, (char *)edata);
   int i = 0;
   char *p = strtok((char *)edata_copy, ".");
@@ -1737,9 +1737,9 @@ const char *SignDocumentWithPrivateKey(char *document, char *privateSigningKey)
   free(decodedPrivateSigningKey);
 
   // Add Null terminator
-  unsigned char *signedDocument = (unsigned char *)malloc(crypto_sign_BYTES * sizeof(char) + 1);
+  unsigned char *signedDocument = (unsigned char *)malloc(crypto_sign_BYTES + 1);
   memcpy(signedDocument, sig, crypto_sign_BYTES);
-  signedDocument[crypto_sign_BYTES * sizeof(char)] = '\0';
+  signedDocument[crypto_sign_BYTES] = '\0';
 
   char *result = base64_encodeUrl((char *)signedDocument);
   free(signedDocument);

@@ -159,7 +159,7 @@ sds base64_encodeUrl2(const char *s, size_t size)
 unsigned char *base64_decode(const char *base64)
 {
 	unsigned char *input;
-	input = (unsigned char *)malloc(strlen(base64) * sizeof(char) + 1);
+	input = (unsigned char *)malloc(strlen(base64) + 1);
 	// Remove double quotes, replace url encoded chars _ with / and - with +.
 	int count = 0;
 	int quotes = 0;
@@ -215,7 +215,7 @@ unsigned char *base64_decode(const char *base64)
 unsigned char *base64_decode2(const char *base64, int *cnt)
 {
 	unsigned char *input;
-	input = (unsigned char *)malloc(strlen(base64) * sizeof(char) + 1);
+	input = (unsigned char *)malloc(strlen(base64) + 1);
 	// Remove double quotes, replace url encoded chars _ with / and - with +.
 	int count = 0;
 	int quotes = 0;
