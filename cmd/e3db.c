@@ -322,6 +322,10 @@ int cmdWrite(int argc, char **argv)
 	printf("Record Writer ID: %s\n", record->meta->writer_id);
 
 	// Clean Up Memory
+	if (configLocation)
+	{
+		free(configLocation);
+	}
 	E3DB_Client_Delete(client);
 
 	// there is mixing going on causing issues with these
@@ -400,6 +404,10 @@ int cmdRead(int argc, char **argv)
 	}
 
 	// Clean Up Memory
+	if (configLocation)
+	{
+		free(configLocation);
+	}
 	E3DB_CleanupRecords(records, count);
 	E3DB_Client_Delete(client);
 	return 0;
