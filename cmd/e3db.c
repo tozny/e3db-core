@@ -13,16 +13,16 @@
 #include "cJSON.h"
 
 const char usage[] =
-    "Usage: e3db [OPTIONS] COMMAND [ARGS...]\n"
-    "Tozny E3DB Command Line Interface\n"
-    "\n"
-    "Available options:\n"
-    "  -h, --help           print this help and exit\n"
-    "      --version        output version info and exit\n"
-    "\n"
-    "Available commands:\n"
-    " read-record          read records\n"
-    " write-record         write record\n";
+	"Usage: e3db [OPTIONS] COMMAND [ARGS...]\n"
+	"Tozny E3DB Command Line Interface\n"
+	"\n"
+	"Available options:\n"
+	"  -h, --help           print this help and exit\n"
+	"      --version        output version info and exit\n"
+	"\n"
+	"Available commands:\n"
+	" read-record          read records\n"
+	" write-record         write record\n";
 
 /* Get the user's home directory.
  *
@@ -49,10 +49,20 @@ sds get_home_dir(void)
 }
 
 /* Load the user's e3db configuration into an E3DB_ClientOptions. */
-E3DB_ClientOptions *load_config(void)
+E3DB_ClientOptions *load_config(char *configLocation)
 {
 
-	sds config_file = sdscat(get_home_dir(), "/.tozny/e3db.json");
+	sds config_file = NULL;
+	if (!configLocation)
+	{
+		config_file = sdscat(get_home_dir(), "/.tozny/e3db.json");
+	}
+	else
+	{
+		config_file = sdsnew(configLocation);
+	}
+
+	printf("\nconfig_file = %s\n", config_file);
 	FILE *in;
 
 	if ((in = fopen(config_file, "r")) == NULL)
@@ -145,17 +155,17 @@ int cmdWrite(int argc, char **argv)
 	if (argc < 2)
 	{
 		fputs(
-		    "Usage: e3db write [OPTIONS] -t TYPE -d @filename or JSON  -m @filename or JSON \n"
-		    "Write a record to E3DB.\n"
-		    "Pass in as JSON or fileName"
-		    "\n"
-		    "Available options:\n"
-		    "  -h, --help           print this help and exit\n",
-		    stderr);
+			"Usage: e3db write [OPTIONS] -t TYPE -d @filename or JSON  -m @filename or JSON \n"
+			"Write a record to E3DB.\n"
+			"Pass in as JSON or fileName"
+			"\n"
+			"Available options:\n"
+			"  -h, --help           print this help and exit\n",
+			stderr);
 		return 1;
 	}
 	// Load up the client
-	E3DB_Client *client = E3DB_Client_New(load_config());
+	E3DB_Client *client = E3DB_Client_New(load_config(NULL));
 
 	// Grab the argument data
 	const char *record_type = NULL;
@@ -327,23 +337,47 @@ int cmdRead(int argc, char **argv)
 	if (argc < 2)
 	{
 		fputs(
-		    "Usage: e3db read [OPTIONS] RECORD_ID...\n"
-		    "Read one or more records from E3DB.\n"
-		    "\n"
-		    "Available options:\n"
-		    "  -h, --help           print this help and exit\n",
-		    stderr);
+			"Usage: e3db read [OPTIONS] RECORD_ID...\n"
+			"Read one or more records from E3DB.\n"
+			"\n"
+			"Available options:\n"
+			"  -h, --help           print this help and exit\n",
+			stderr);
 		return 1;
 	}
+
+	char *configLocation = NULL;
+	// Check if a config location was passed in
+	if (!strcmp(argv[1], "-c"))
+	{
+		printf("\nconfig file = %s\n", argv[2]);
+		configLocation = (char *)xmalloc(strlen(argv[2]) + 1);
+		strcpy(configLocation, argv[2]);
+	}
+
 	// Load up the client
-	E3DB_Client *client = E3DB_Client_New(load_config());
+	E3DB_Client *client = E3DB_Client_New(load_config(configLocation));
 
 	// Set up paramaters
-	const char **all_record_ids = (const char **)&argv[1]; // Mem for all_record_ids -> cli args managed by the op sys
-	E3DB_Record *records = ReadRecords(client, all_record_ids, argc);
+	const char **all_record_ids = NULL;
+	int count = 0;
+	if (!configLocation)
+	{
+		all_record_ids = (const char **)&argv[1]; // Mem for all_record_ids -> cli args managed by the op sys
+		count = argc;
+	}
+	else
+	{
+		all_record_ids = (const char **)&argv[3];
+		count = argc - 2;
+	}
+	printf("\nrecord ID 1 = %s\n", all_record_ids[0]);
+	printf("\nrecord ID 2 = %s\n", all_record_ids[1]);
+
+	E3DB_Record *records = ReadRecords(client, all_record_ids, count);
 
 	// Display Returned Data
-	for (int i = 0; i < argc - 1; i++)
+	for (int i = 0; i < count - 1; i++)
 	{
 		printf("\n%-20s %s\n", "record_id:", records[i].meta->record_id);
 		printf("\n%-20s %s\n", "record_type:", records[i].meta->type);
