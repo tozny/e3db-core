@@ -1,7 +1,7 @@
 /*
  * mem.h --- Memory management utilities.
  *
- * Copyright (C) 2017, Tozny, LLC.
+ * Copyright (C) 2017-2023, Tozny.
  * All Rights Reserved.
  */
 
@@ -9,15 +9,16 @@
 #define E3DB_MEM_H_INCLUDED
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-void *xmalloc(size_t size);
-void *xrealloc(void *p, size_t size);
-void xfree(void *p);
+	void *xmalloc(size_t size);
+	void *xrealloc(void *p, size_t size);
+	void xfree(void *p);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif   /* !defined E3DB_MEM_H_INCLUDED */
+#endif /* !defined E3DB_MEM_H_INCLUDED */
