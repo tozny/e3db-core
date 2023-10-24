@@ -62,3 +62,22 @@ Read record takes a space separated list of record ids to fetch
 ```
 
 # Example Simple Program
+
+Prequesite: Must have a Tozny Client Configuration File Located @ ~/.tozny/e3db.json 
+
+## How to Build
+
+To build a small example project
+
+```bash
+git clone https://github.com/tozny/e3db-core
+make simple
+```
+
+## How to Run
+
+To run the following example project
+
+```bash
+./simple/simple 
+```

@@ -49,6 +49,45 @@ all: $(LIB) $(CMD)
 
 dist: $(DIST_ZIP)
 
+
+SIMPLE_BUILD_DIR      := simple
+
+SIMPLE_SOURCES        := $(wildcard src/*.c)
+SIMPLE_OBJECTS        := $(patsubst %.c,$(SIMPLE_BUILD_DIR)/%.o,$(SIMPLE_SOURCES))
+SIMPLE_HEADERS        := $(wildcard src/*.h)
+SIMPLE_LIB            := $(SIMPLE_BUILD_DIR)/lib_simple.a
+
+
+EXAMPLES_SOURCES    := $(wildcard examples/*.c)
+EXAMPLES_OBJECTS    := $(patsubst %.c,$(SIMPLE_BUILD_DIR)/%.o,$(EXAMPLES_SOURCES))
+EXAMPLES_HEADERS    := $(wildcard examples/*.h)
+EXAMPLES            := $(SIMPLE_BUILD_DIR)/simple
+
+
+
+simple: $(SIMPLE_LIB) $(EXAMPLES)
+
+$(SIMPLE_LIB): $(SIMPLE_OBJECTS)
+	@printf "%-10s %s\n" "AR" "$@"
+	@ar cru $(SIMPLE_LIB) $(SIMPLE_OBJECTS)
+
+$(EXAMPLES): $(EXAMPLES_OBJECTS) $(EXAMPLES_HEADERS) $(SIMPLE_LIB) $(SIMPLE_HEADERS)
+	@printf "%-10s %s\n" "LINK" "$@"
+	@-mkdir -p $(dir $@)
+	@gcc $(CFLAGS) $(LDFLAGS) -o $@ -Isrc $< $(SIMPLE_LIB) -lcurl -lssl -lcrypto -lm -lsodium
+
+$(SIMPLE_BUILD_DIR)/%.o: %.c $(SIMPLE_HEADERS)
+	@printf "%-10s %s\n" "CC" "$@"
+	@-mkdir -p $(dir $@)
+	@gcc $(CFLAGS) -Isrc -c -o $@ $<
+
+clean-simple:
+	rm -rf $(SIMPLE_BUILD_DIR)
+
+# Stop GNU Make from removing object files resulting from chains
+# of implicit rules.
+.SECONDARY: $(SIMPLE_OBJECTS) $(CMD_OBJECTS)
+
 $(DIST_ZIP): $(LIB) $(CMD) $(PUBLIC_HEADERS)
 	@printf "%-10s %s\n" "ZIP" "$@"
 	@rm -rf $(DIST_ZIP) $(DIST_BASE)
@@ -73,7 +112,7 @@ $(BUILD_DIR)/%.o: %.c $(HEADERS)
 	@gcc $(CFLAGS) -Isrc -c -o $@ $<
 
 clean:
-	rm -rf $(BUILD_DIR) $(DIST_ZIP)
+	rm -rf $(BUILD_DIR) $(DIST_ZIP) $(SIMPLE_BUILD_DIR)
 
 # Stop GNU Make from removing object files resulting from chains
 # of implicit rules.

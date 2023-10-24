@@ -13,16 +13,16 @@
 #include "cJSON.h"
 
 const char usage[] =
-	"Usage: e3db [OPTIONS] COMMAND [ARGS...]\n"
-	"Tozny E3DB Command Line Interface\n"
-	"\n"
-	"Available options:\n"
-	"  -h, --help           print this help and exit\n"
-	"      --version        output version info and exit\n"
-	"\n"
-	"Available commands:\n"
-	" read-record          read records\n"
-	" write-record         write record\n";
+    "Usage: e3db [OPTIONS] COMMAND [ARGS...]\n"
+    "Tozny E3DB Command Line Interface\n"
+    "\n"
+    "Available options:\n"
+    "  -h, --help           print this help and exit\n"
+    "      --version        output version info and exit\n"
+    "\n"
+    "Available commands:\n"
+    " read-record          read records\n"
+    " write-record         write record\n";
 
 /* Get the user's home directory.
  *
@@ -154,13 +154,14 @@ int cmdWrite(int argc, char **argv)
 	if (argc < 2)
 	{
 		fputs(
-			"Usage: e3db write [OPTIONS] -t TYPE -d @filename or JSON  -m @filename or JSON \n"
-			"Write a record to E3DB.\n"
-			"Pass in as JSON or fileName"
-			"\n"
-			"Available options:\n"
-			"  -h, --help           print this help and exit\n",
-			stderr);
+		    "Usage: e3db write [OPTIONS] -t TYPE -d @filename or JSON  -m @filename or JSON \n"
+		    "Write a record to E3DB.\n"
+		    "Pass in as JSON or fileName"
+		    "\n"
+		    "Available options:\n"
+		    "-c 		       config File Path\n"
+		    " -h, --help           print this help and exit\n",
+		    stderr);
 		return 1;
 	}
 
@@ -346,12 +347,13 @@ int cmdRead(int argc, char **argv)
 	if (argc < 2)
 	{
 		fputs(
-			"Usage: e3db read [OPTIONS] RECORD_ID...\n"
-			"Read one or more records from E3DB.\n"
-			"\n"
-			"Available options:\n"
-			"  -h, --help           print this help and exit\n",
-			stderr);
+		    "Usage: e3db read [OPTIONS] RECORD_ID...\n"
+		    "Read one or more records from E3DB.\n"
+		    "\n"
+		    "Available options:\n"
+		    "-c 		       config File Path\n"
+		    "  -h, --help           print this help and exit\n",
+		    stderr);
 		return 1;
 	}
 
