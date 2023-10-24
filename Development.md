@@ -7,7 +7,7 @@ Software Development Kit (SDK) for interacting with Tozny products and services 
 ## Build
 
 ```bash
-make build
+make dist
 ```
 
 
