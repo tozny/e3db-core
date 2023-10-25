@@ -13,6 +13,30 @@ git clone https://github.com/tozny/e3db-core
 make all
 ```
 
+#### Debug Build
+
+For a debug build with Address Sanitizer enabled:
+
+```bash
+make debug
+```
+
+The debug build uses Address Sanitizer, a fast memory error detector. It's useful for detecting memory access issues in the code, such as buffer overflows, use-after-free, and memory leaks.
+
+### How to Clean and Build
+
+To clean and build the project:
+
+```bash
+make clean all
+```
+
+For a clean debug build:
+
+```bash
+make clean debug
+```
+
 ## How to Run
 
 To run the following library
@@ -63,7 +87,9 @@ Read record takes a space separated list of record ids to fetch
 
 # Example Simple Program
 
-Prequesite: Must have a Tozny Client Configuration File Located @ ~/.tozny/e3db.json 
+### Prerequisite
+
+Must have a Tozny Client Configuration File Located @ `~/.tozny/e3db.json`.
 
 ## How to Build
 
@@ -72,6 +98,26 @@ To build a small example project
 ```bash
 git clone https://github.com/tozny/e3db-core
 make simple
+```
+
+For a debug build of the simple project with Address Sanitizer enabled:
+
+```bash
+make debug-simple
+```
+
+### How to Clean and Build Simple Project
+
+To clean and build the simple project:
+
+```bash
+make clean simple
+```
+
+For a clean debug build of the simple project:
+
+```bash
+make clean debug-simple
 ```
 
 ## How to Run

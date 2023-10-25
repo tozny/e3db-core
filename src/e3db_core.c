@@ -1197,7 +1197,7 @@ const char *E3DB_EAK_DecryptEAK(char *eak, char *pubKey, char *privKey)
     goto cleanup;
   }
   size_t eakLength = strlen(eak);
-  eak_copy = (unsigned char *)xmalloc(eakLength * sizeof(char) + 1);
+  eak_copy = (unsigned char *)xmalloc(eakLength + 1);
   strcpy((char *)eak_copy, eak);
   int i = 0;
   char *p = strtok((char *)eak_copy, ".");
@@ -1254,7 +1254,7 @@ cleanup:
 const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned char *ak)
 {
   size_t edataLength = strlen((char *)edata);
-  unsigned char *edata_copy = (unsigned char *)xmalloc(edataLength * sizeof(char) + 1);
+  unsigned char *edata_copy = (unsigned char *)xmalloc(edataLength + 1);
   strcpy((char *)edata_copy, (char *)edata);
   int i = 0;
   char *p = strtok((char *)edata_copy, ".");
@@ -1267,12 +1267,12 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
   }
 
   int decodedDataKeyLength = 0;
-  unsigned char *decodedDataKey = base64_decode2(array[0], &decodedDataKeyLength);
+  unsigned char *decodedDataKey = base64_decode_with_count(array[0], &decodedDataKeyLength);
   int decodedDataKeyNonceLength = 0;
-  unsigned char *decodedDataKeyNonce = base64_decode2(array[1], &decodedDataKeyNonceLength);
+  unsigned char *decodedDataKeyNonce = base64_decode_with_count(array[1], &decodedDataKeyNonceLength);
 
   int decodedDataLength = 0;
-  unsigned char *decodedData = base64_decode2(array[2], &decodedDataLength);
+  unsigned char *decodedData = base64_decode_with_count(array[2], &decodedDataLength);
   unsigned char *decodedDataNonce = base64_decode(array[3]);
 
   unsigned char *dk = (unsigned char *)xmalloc(32);
@@ -1717,10 +1717,9 @@ const char *SignDocumentWithPrivateKey(char *document, char *privateSigningKey)
   crypto_sign_detached(sig, NULL, (const unsigned char *)document, strlen(document), decodedPrivateSigningKey);
   free(decodedPrivateSigningKey);
 
-  // Add Null terminator
-  unsigned char *signedDocument = (unsigned char *)xmalloc(crypto_sign_BYTES * sizeof(char) + 1);
+  // Add null terminator using xmalloc
+  unsigned char *signedDocument = (unsigned char *)xmalloc(crypto_sign_BYTES + 1);
   memcpy(signedDocument, sig, crypto_sign_BYTES);
-  signedDocument[crypto_sign_BYTES * sizeof(char)] = '\0';
 
   char *result = base64_encodeUrl((char *)signedDocument);
   free(signedDocument);

@@ -337,10 +337,7 @@ int cmdWrite(int argc, char **argv)
 		free(configLocation);
 	}
 	E3DB_Client_Delete(client);
-
-	// there is mixing going on causing issues with these
 	E3DB_FreeRecordMeta(record->meta);
-
 	cJSON_Delete(record->data);
 	free(record->rec_sig);
 	free(record);

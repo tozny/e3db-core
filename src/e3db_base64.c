@@ -14,6 +14,7 @@
 #include "sds.h"
 #include "cdecode.h"
 #include "cdecode.h"
+#include "e3db_mem.h"
 
 sds base64_encode(const char *s)
 {
@@ -30,10 +31,9 @@ sds base64_encode(const char *s)
 
 	BIO_flush(bio);
 	long len = BIO_get_mem_data(bio, &buf);
-	char *null_terminated_buffer = (char *)malloc(len + 1); // one extra byte for null terminator
+	char *null_terminated_buffer = (char *)xmalloc(len + 1); // one extra byte for null terminator
 	memcpy(null_terminated_buffer, buf, len);
-	null_terminated_buffer[len] = '\0'; // ensure null-termination
-	
+
 	result = sdsnew(null_terminated_buffer);
 
 	BIO_free_all(bio);
@@ -78,31 +78,32 @@ sds base64_encodeUrl(const char *s)
 	BIO_write(bio, s, strlen(s));
 	BIO_flush(bio);
 
-
 	long len = BIO_get_mem_data(bio, &buf);
-	char *null_terminated_buffer = (char *)malloc(len + 1); // one extra byte for null terminator
+	char *null_terminated_buffer = (char *)xmalloc(len + 1); // one extra byte for null terminator
 	memcpy(null_terminated_buffer, buf, len);
-	null_terminated_buffer[len] = '\0'; // ensure null-termination
 
 	result = sdsnew(null_terminated_buffer);
 
 	BIO_free_all(bio);
 	free(null_terminated_buffer);
 
-	for (int i = 0; i < strlen(result); i++)
+	int result_len = sdslen(result);
+	for (int i = 0; i < result_len; i++)
 	{
-		if (result[i] == '/')
+		switch (result[i])
 		{
+		case '/':
 			result[i] = '_';
-		}
-		else if (result[i] == '+')
-		{
+			break;
+		case '+':
 			result[i] = '-';
+			break;
 		}
 	}
+
 	// Remove padding characters '='
 	int padding = 0;
-	for (int i = strlen(result) - 1; i >= 0; i--)
+	for (int i = result_len - 1; i >= 0; i--)
 	{
 		if (result[i] == '=')
 		{
@@ -113,7 +114,7 @@ sds base64_encodeUrl(const char *s)
 			break;
 		}
 	}
-	result[strlen(result) - padding] = '\0';
+	result[result_len - padding] = '\0';
 	return result;
 }
 
@@ -132,9 +133,8 @@ sds base64_encodeUrl2(const char *s, size_t size)
 	BIO_flush(bio);
 
 	long len = BIO_get_mem_data(bio, &buf);
-	char *null_terminated_buffer = (char *)malloc(len + 1); // one extra byte for null terminator
+	char *null_terminated_buffer = (char *)xmalloc(len + 1); // one extra byte for null terminator
 	memcpy(null_terminated_buffer, buf, len);
-	null_terminated_buffer[len] = '\0'; // ensure null-termination
 
 	result = sdsnew(null_terminated_buffer);
 
@@ -143,13 +143,14 @@ sds base64_encodeUrl2(const char *s, size_t size)
 
 	for (int i = 0; i < size; i++)
 	{
-		if (result[i] == '/')
+		switch (result[i])
 		{
+		case '/':
 			result[i] = '_';
-		}
-		else if (result[i] == '+')
-		{
+			break;
+		case '+':
 			result[i] = '-';
+			break;
 		}
 	}
 
@@ -158,41 +159,50 @@ sds base64_encodeUrl2(const char *s, size_t size)
 
 unsigned char *base64_decode(const char *base64)
 {
-	unsigned char *input;
-	input = (unsigned char *)malloc(strlen(base64) * sizeof(char) + 1);
+	int len = strlen(base64);
+	unsigned char *input = (unsigned char *)xmalloc(len + 1);
+	if (!input)
+	{
+		fprintf(stderr, "Error: Failed to allocate memory for 'input'.\n");
+		return NULL;
+	}
 	// Remove double quotes, replace url encoded chars _ with / and - with +.
 	int count = 0;
-	int quotes = 0;
-	for (int i = 0; i < strlen(base64); i++)
+	for (int i = 0; i < len; i++)
 	{
-		if (base64[i] == '_')
+		switch (base64[i])
 		{
-			input[count] = '/';
-			count++;
-		}
-		else if (base64[i] == '-')
-		{
-			input[count] = '+';
-			count++;
-		}
-		else if (base64[i] != '"')
-		{
-			input[count] = base64[i];
-			count++;
-		}
-		else
-		{
-			quotes++;
+		case '_':
+			input[count++] = '/';
+			break;
+		case '-':
+			input[count++] = '+';
+			break;
+		case '"':
+			break;
+		default:
+			input[count++] = base64[i];
 		}
 	}
-	input = (unsigned char *)realloc(input, (strlen(base64) - quotes) * sizeof(unsigned char) + 1);
-	input[count] = '\0';
+	unsigned char *new_input = xrealloc(input, count + 1);
+	if (!new_input)
+	{
+		fprintf(stderr, "Error: Failed to reallocate memory for 'input'.\n");
+		free(input);
+		return NULL;
+	}
+	input = new_input;
 	/* set up a destination buffer large enough to hold the encoded data */
-	unsigned char *output = (unsigned char *)malloc(strlen((char *)input) + 1);
+	unsigned char *output = (unsigned char *)xmalloc(count + 1);
+	if (!output)
+	{
+		fprintf(stderr, "Error: Failed to allocate memory for 'output'.\n");
+		free(input);
+		return NULL;
+	}
+
 	/* keep track of our decoded position */
 	unsigned char *c = output;
-	/* store the number of bytes decoded by a single call */
-	int cnt = 0;
 	/* we need a decoder state */
 	base64_decodestate s;
 
@@ -200,51 +210,61 @@ unsigned char *base64_decode(const char *base64)
 	/* initialise the decoder state */
 	base64_init_decodestate(&s);
 	/* decode the input data */
-	cnt = base64_decode_block((char *)input, strlen((char *)input), (char *)c, &s);
-	c += cnt;
+	base64_decode_block((char *)input, count, (char *)c, &s);
 	/* note: there is no base64_decode_blockend! */
 	/*---------- STOP DECODING  ----------*/
 
-	/* we want to print the decoded data, so null-terminate it: */
-	*c = 0;
-	output[strlen((char *)input)] = '\0';
 	free(input);
 	return output;
 }
 
-unsigned char *base64_decode2(const char *base64, int *cnt)
+unsigned char *base64_decode_with_count(const char *base64, int *cnt)
 {
-	unsigned char *input;
-	input = (unsigned char *)malloc(strlen(base64) * sizeof(char) + 1);
+	int len = strlen(base64);
+	unsigned char *input = (unsigned char *)xmalloc(len + 1);
+	if (!input)
+	{
+		fprintf(stderr, "Error: Failed to allocate memory for 'input'.\n");
+		return NULL;
+	}
+
 	// Remove double quotes, replace url encoded chars _ with / and - with +.
 	int count = 0;
-	int quotes = 0;
-	for (int i = 0; i < strlen(base64); i++)
+	for (int i = 0; i < len; i++)
 	{
-		if (base64[i] == '_')
+		switch (base64[i])
 		{
-			input[count] = '/';
-			count++;
-		}
-		else if (base64[i] == '-')
-		{
-			input[count] = '+';
-			count++;
-		}
-		else if (base64[i] != '"')
-		{
-			input[count] = base64[i];
-			count++;
-		}
-		else
-		{
-			quotes++;
+		case '_':
+			input[count++] = '/';
+			break;
+		case '-':
+			input[count++] = '+';
+			break;
+		case '"':
+			break;
+		default:
+			input[count++] = base64[i];
 		}
 	}
-	input = (unsigned char *)realloc(input, (strlen(base64) - quotes) * sizeof(unsigned char) + 1);
-	input[count] = '\0';
+
+	unsigned char *new_input = xrealloc(input, count + 1);
+	if (!new_input)
+	{
+		fprintf(stderr, "Error: Failed to reallocate memory for 'input'.\n");
+		free(input);
+		return NULL;
+	}
+	input = new_input;
+
 	/* set up a destination buffer large enough to hold the encoded data */
-	unsigned char *output = (unsigned char *)malloc(strlen((char *)input) + 1);
+	unsigned char *output = (unsigned char *)xmalloc(count + 1);
+	if (!output)
+	{
+		fprintf(stderr, "Error: Failed to allocate memory for 'output'.\n");
+		free(input);
+		return NULL;
+	}
+
 	/* keep track of our decoded position */
 	/* store the number of bytes decoded by a single call */
 	*cnt = 0;
@@ -255,13 +275,9 @@ unsigned char *base64_decode2(const char *base64, int *cnt)
 	/* initialise the decoder state */
 	base64_init_decodestate(&s);
 	/* decode the input data */
-	*cnt = base64_decode_block((char *)input, strlen((char *)input), (char *)output, &s);
+	*cnt = base64_decode_block((char *)input, count, (char *)output, &s);
 	/* note: there is no base64_decode_blockend! */
 	/*---------- STOP DECODING  ----------*/
-
-	/* we want to print the decoded data, so null-terminate it: */
-	// output[strlen((char *)input)] = '\0';
-	// output = (unsigned char *)realloc(output, cnt + 1);
 
 	free(input);
 	return output;
