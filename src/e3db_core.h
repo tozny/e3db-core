@@ -146,7 +146,7 @@ extern "C"
     typedef struct _E3DB_EAK E3DB_EAK;
 
     // Delete record objects
-    void E3DB_CleanupRecords(E3DB_Record *records, int count)
+    void E3DB_CleanupRecords(E3DB_Record *records, int count);
 
     // TODO: Setters
 
