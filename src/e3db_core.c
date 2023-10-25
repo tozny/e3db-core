@@ -1717,10 +1717,9 @@ const char *SignDocumentWithPrivateKey(char *document, char *privateSigningKey)
   crypto_sign_detached(sig, NULL, (const unsigned char *)document, strlen(document), decodedPrivateSigningKey);
   free(decodedPrivateSigningKey);
 
-  // Add Null terminator
+  // Add null terminator using xmalloc
   unsigned char *signedDocument = (unsigned char *)xmalloc(crypto_sign_BYTES + 1);
   memcpy(signedDocument, sig, crypto_sign_BYTES);
-  signedDocument[crypto_sign_BYTES] = '\0';
 
   char *result = base64_encodeUrl((char *)signedDocument);
   free(signedDocument);
