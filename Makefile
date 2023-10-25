@@ -17,9 +17,11 @@ LIB            := $(BUILD_DIR)/libe3db.a
 CFLAGS         := -Wall -g
 LDFLAGS        :=
 
-# switch above CFLAGS and LDFLAGS for below to debug memory access issues
-# CFLAGS         := -Wall -g -O1 -fsanitize=address
-# LDFLAGS        := -fsanitize=address 
+# CFLAGS and LDFLAGS for below to debug memory access issues
+ifdef DEBUG
+CFLAGS := -Wall -g -O1 -fsanitize=address
+LDFLAGS := -fsanitize=address 
+endif
 
 CMD_SOURCES    := $(wildcard cmd/*.c)
 CMD_OBJECTS    := $(patsubst %.c,$(BUILD_DIR)/%.o,$(CMD_SOURCES))
@@ -48,6 +50,10 @@ DIST_BASE := $(DIST_DIR)/$(DIST_NAME)
 all: $(LIB) $(CMD)
 
 dist: $(DIST_ZIP)
+
+debug: 
+	@$(MAKE) DEBUG=1 all
+
 
 
 SIMPLE_BUILD_DIR      := simple
@@ -83,6 +89,9 @@ $(SIMPLE_BUILD_DIR)/%.o: %.c $(SIMPLE_HEADERS)
 
 clean-simple:
 	rm -rf $(SIMPLE_BUILD_DIR)
+
+debug-simple:
+	@$(MAKE) DEBUG=1 simple
 
 # Stop GNU Make from removing object files resulting from chains
 # of implicit rules.

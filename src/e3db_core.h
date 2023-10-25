@@ -145,7 +145,9 @@ extern "C"
 
     typedef struct _E3DB_EAK E3DB_EAK;
 
-    // TODO: Create and delete record meta objects.
+    // Delete record objects
+    void E3DB_CleanupRecords(E3DB_Record *records, int count)
+
     // TODO: Setters
 
     const char *E3DB_RecordMeta_GetRecordId(E3DB_RecordMeta *meta);
@@ -157,6 +159,10 @@ extern "C"
     const char *E3DB_RecordMeta_GeLastModified(E3DB_RecordMeta *meta);
 
     cJSON *E3DB_RecordMeta_GetPlain(E3DB_RecordMeta *meta);
+
+    void E3DB_FreeRecordMeta(E3DB_RecordMeta *meta);
+
+
     const char *E3DB_EAK_GetEAK(E3DB_EAK *eak);
     const char *E3DB_EAK_GetAuthPubKey(E3DB_EAK *eak);
     const char *E3DB_EAK_DecryptEAK(char *eak, char *pubKey, char *privKey);
@@ -165,7 +171,8 @@ extern "C"
     typedef struct _E3DB_Legacy_Record E3DB_Legacy_Record;
     typedef struct _E3DB_RecordFieldIterator E3DB_RecordFieldIterator;
 
-    // TODO: Create and delete record objects
+
+
     // TODO: Setters
     // TODO: Consider an adaptor to JSON?
 
