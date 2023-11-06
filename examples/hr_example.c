@@ -148,9 +148,11 @@ int main(void)
 	// See e3db.c file for examples on how to read this in from a file
 	char *configFile = NULL;
 	E3DB_Client *client = E3DB_Client_New(load_config(configFile));
+	printf("%s", "Loaded Client");
 
 	// Set up Record Type Bucket
 	char *record_type = "employees";
+	printf("Record Type %s", record_type);
 	const char *EmployeeRecords[4];
 
 	// ----------------------------------------- Kate Williams
@@ -158,6 +160,7 @@ int main(void)
 	cJSON *meta = cJSON_CreateObject();
 
 	// Data remains encrypted end to end
+	printf("%s", "Writing Record 1");
 	cJSON_AddStringToObject(data, "First Name", "Katie");
 	cJSON_AddStringToObject(data, "Last Name", "Williams");
 	cJSON_AddStringToObject(data, "Phone Number", "111-222-3333");
@@ -169,6 +172,7 @@ int main(void)
 	cJSON_AddStringToObject(meta, "Company", "Tozny");
 	cJSON_AddStringToObject(meta, "Team", "Software");
 	E3DB_Record *record = WriteRecord(client, (const char **)record_type, data, meta);
+	printf("Written Record: %s", cJSON_Print(record->data));
 	EmployeeRecords[0] = strdup(record->meta->record_id);
 
 	// Clean up
@@ -183,6 +187,7 @@ int main(void)
 	meta = cJSON_CreateObject();
 
 	// Data remains encrypted end to end
+	printf("%s", "Writing Record 2");
 	cJSON_AddStringToObject(data, "First Name", "Liliana");
 	cJSON_AddStringToObject(data, "Last Name", "Perez");
 	cJSON_AddStringToObject(data, "Phone Number", "111-222-3333");
@@ -195,6 +200,7 @@ int main(void)
 	cJSON_AddStringToObject(meta, "Team", "Sales");
 
 	record = WriteRecord(client, (const char **)record_type, data, meta);
+	printf("Written Record: %s", cJSON_Print(record->data));
 	EmployeeRecords[1] = strdup(record->meta->record_id);
 
 	// Clean up
@@ -209,6 +215,7 @@ int main(void)
 	meta = cJSON_CreateObject();
 
 	// Data remains encrypted end to end
+	printf("%s", "Writing Record 3");
 	cJSON_AddStringToObject(data, "First Name", "Jason");
 	cJSON_AddStringToObject(data, "Last Name", "Smith");
 	cJSON_AddStringToObject(data, "Phone Number", "111-222-3333");
@@ -221,6 +228,7 @@ int main(void)
 	cJSON_AddStringToObject(meta, "Team", "Design");
 
 	record = WriteRecord(client, (const char **)record_type, data, meta);
+	printf("Written Record: %s", cJSON_Print(record->data));
 	EmployeeRecords[2] = strdup(record->meta->record_id);
 
 	// Clean up
@@ -235,6 +243,7 @@ int main(void)
 	meta = cJSON_CreateObject();
 
 	// Data remains encrypted end to end
+	printf("%s", "Writing Record 4");
 	cJSON_AddStringToObject(data, "First Name", "Meredith");
 	cJSON_AddStringToObject(data, "Last Name", "Yang");
 	cJSON_AddStringToObject(data, "Phone Number", "111-222-3333");
@@ -246,6 +255,7 @@ int main(void)
 	cJSON_AddStringToObject(meta, "Company", "Tozny");
 	cJSON_AddStringToObject(meta, "Team", "Hardware");
 	record = WriteRecord(client, (const char **)record_type, data, meta);
+	printf("Written Record: %s", cJSON_Print(record->data));
 	EmployeeRecords[3] = strdup(record->meta->record_id);
 
 	// Clean up
@@ -256,6 +266,7 @@ int main(void)
 	free(record);
 
 	// View all Records
+	printf("%s", "Reading Record Starts now");
 	E3DB_Record *records = ReadRecords(client, EmployeeRecords, 4);
 
 	// Display Returned Data
@@ -282,7 +293,7 @@ int main(void)
 	for (int i = 0; i < 4; i++)
 	{
 		free((void *)EmployeeRecords[i]); // Cast to void* because the array is of type const char*
-		EmployeeRecords[i] = NULL;				
+		EmployeeRecords[i] = NULL;
 	}
 	E3DB_CleanupRecords(records, 4);
 	E3DB_Client_Delete(client);
