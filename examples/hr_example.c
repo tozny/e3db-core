@@ -160,7 +160,7 @@ int main(void)
 	cJSON *meta = cJSON_CreateObject();
 
 	// Data remains encrypted end to end
-	printf("%s", "Writing Record 1");
+	printf("%s \n", "Writing Record 1");
 	cJSON_AddStringToObject(data, "First Name", "Katie");
 	cJSON_AddStringToObject(data, "Last Name", "Williams");
 	cJSON_AddStringToObject(data, "Phone Number", "111-222-3333");
@@ -172,15 +172,16 @@ int main(void)
 	cJSON_AddStringToObject(meta, "Company", "Tozny");
 	cJSON_AddStringToObject(meta, "Team", "Software");
 	E3DB_Record *record = WriteRecord(client, (const char **)record_type, data, meta);
-	printf("Written Record: %s", cJSON_Print(record->data));
+	printf("Written Record: %s \n", cJSON_Print(record->data));
+	printf("\n\nRecord ID: %s\n", record->meta->record_id);
 	EmployeeRecords[0] = strdup(record->meta->record_id);
 
 	// Clean up
-	cJSON_Delete(data);
-	E3DB_FreeRecordMeta(record->meta);
-	cJSON_Delete(record->data);
-	free(record->rec_sig);
-	free(record);
+	// cJSON_Delete(data);
+	// E3DB_FreeRecordMeta(record->meta);
+	// cJSON_Delete(record->data);
+	// free(record->rec_sig);
+	// free(record);
 
 	// -----------------------------------------  Liliana Perez
 	data = cJSON_CreateObject();
@@ -200,15 +201,16 @@ int main(void)
 	cJSON_AddStringToObject(meta, "Team", "Sales");
 
 	record = WriteRecord(client, (const char **)record_type, data, meta);
-	printf("Written Record: %s", cJSON_Print(record->data));
+	printf("Written Record: %s\n", cJSON_Print(record->data));
+	printf("\n\nRecord ID: %s\n", record->meta->record_id);
 	EmployeeRecords[1] = strdup(record->meta->record_id);
 
 	// Clean up
-	cJSON_Delete(data);
-	E3DB_FreeRecordMeta(record->meta);
-	cJSON_Delete(record->data);
-	free(record->rec_sig);
-	free(record);
+	// cJSON_Delete(data);
+	// E3DB_FreeRecordMeta(record->meta);
+	// cJSON_Delete(record->data);
+	// free(record->rec_sig);
+	// free(record);
 
 	// ----------------------------------------- Jason Smith
 	data = cJSON_CreateObject();
@@ -229,14 +231,15 @@ int main(void)
 
 	record = WriteRecord(client, (const char **)record_type, data, meta);
 	printf("Written Record: %s", cJSON_Print(record->data));
+	printf("\n\nRecord ID: %s\n", record->meta->record_id);
 	EmployeeRecords[2] = strdup(record->meta->record_id);
 
 	// Clean up
-	cJSON_Delete(data);
-	E3DB_FreeRecordMeta(record->meta);
-	cJSON_Delete(record->data);
-	free(record->rec_sig);
-	free(record);
+	// cJSON_Delete(data);
+	// E3DB_FreeRecordMeta(record->meta);
+	// cJSON_Delete(record->data);
+	// free(record->rec_sig);
+	// free(record);
 
 	// -----------------------------------------  Meredith Yang
 	data = cJSON_CreateObject();
@@ -256,14 +259,15 @@ int main(void)
 	cJSON_AddStringToObject(meta, "Team", "Hardware");
 	record = WriteRecord(client, (const char **)record_type, data, meta);
 	printf("Written Record: %s", cJSON_Print(record->data));
+	printf("\n\nRecord ID: %s\n", record->meta->record_id);
 	EmployeeRecords[3] = strdup(record->meta->record_id);
 
-	// Clean up
-	cJSON_Delete(data);
-	E3DB_FreeRecordMeta(record->meta);
-	cJSON_Delete(record->data);
-	free(record->rec_sig);
-	free(record);
+	// // Clean up
+	// cJSON_Delete(data);
+	// E3DB_FreeRecordMeta(record->meta);
+	// cJSON_Delete(record->data);
+	// free(record->rec_sig);
+	// free(record);
 
 	// View all Records
 	printf("%s", "Reading Record Starts now");

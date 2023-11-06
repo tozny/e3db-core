@@ -4,6 +4,7 @@ build
 e3db-core-*.zip
 .vscode/
 simple
+simple.zip
 ### C ###
 # Prerequisites
 *.d
