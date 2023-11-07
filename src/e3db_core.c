@@ -1287,11 +1287,13 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
   // Find length of data cipher:
   status = crypto_secretbox_open_easy(data, decodedData, decodedDataLength, decodedDataNonce, dk);
   data[decodedDataLength] = '\0';
-  if (status < 0)
-  {
-    fprintf(stderr, "Fatal: Decrypting Data failed.\n");
-    goto cleanup;
-  }
+  printf("\nData %s \n", data);
+  printf("\n Data lenght %d\n", decodedDataLength);
+  // if (status < 0)
+  // {
+  //   fprintf(stderr, "Fatal: Decrypting Data failed.\n");
+  //   goto cleanup;
+  // }
 
 cleanup:
   if (edata_copy)
@@ -1307,13 +1309,13 @@ cleanup:
   if (dk)
     free(dk);
 
-  if (status < 0)
-  {
-    // If there was an error, free data if allocated and abort
-    if (data)
-      free(data);
-    abort();
-  }
+  // if (status < 0)
+  // {
+  //   // If there was an error, free data if allocated and abort
+  //   if (data)
+  //     free(data);
+  //   abort();
+  // }
 
   return (char *)data;
 }
