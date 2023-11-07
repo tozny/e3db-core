@@ -1253,6 +1253,7 @@ cleanup:
 
 const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned char *ak)
 {
+  printf("%s", "\nFIELD ---------------------------------------- \n");
   size_t edataLength = strlen((char *)edata);
   unsigned char *edata_copy = (unsigned char *)xmalloc(edataLength + 1);
   strcpy((char *)edata_copy, (char *)edata);
@@ -1318,7 +1319,7 @@ cleanup:
   //     free(data);
   //   abort();
   // }
-
+  printf("%s", "\n END FIELD ----------------------------------------  \n");
   return (char *)data;
 }
 
