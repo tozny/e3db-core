@@ -221,7 +221,6 @@ unsigned char *base64_decode(const char *base64)
 unsigned char *base64_decode_with_count(const char *base64, int *cnt)
 {
 	int len = strlen(base64);
-	printf("\nLength of Base64 encoded data: %d", len);
 	unsigned char *input = (unsigned char *)xmalloc(len + 1);
 	if (!input)
 	{
@@ -247,7 +246,6 @@ unsigned char *base64_decode_with_count(const char *base64, int *cnt)
 			input[count++] = base64[i];
 		}
 	}
-	printf("\nCount: %d", count);
 	unsigned char *new_input = xrealloc(input, count + 1);
 	if (!new_input)
 	{
