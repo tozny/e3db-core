@@ -1273,6 +1273,7 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
 
   int decodedDataLength = 0;
   printf("\nData Decoded %s \n", array[2]);
+  printf("\nData BASE 64 LENGTH  %d \n", strlen(array[2]));
   unsigned char *decodedData = base64_decode_with_count(array[2], &decodedDataLength);
   unsigned char *decodedDataNonce = base64_decode(array[3]);
 
