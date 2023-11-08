@@ -151,7 +151,7 @@ int main(void)
 	printf("%s", "Loaded Client");
 
 	// Set up Record Type Bucket
-	char *record_type = "employees";
+	char *record_type = "employees-try2";
 	printf("Record Type %s", record_type);
 	const char *EmployeeRecords[4];
 
@@ -163,9 +163,9 @@ int main(void)
 	printf("%s \n", "Writing Record 1");
 	cJSON_AddStringToObject(data, "First", "Katie");
 	cJSON_AddStringToObject(data, "Last", "Williams");
-	cJSON_AddStringToObject(data, "Phone Number", "1112223333");
-	cJSON_AddStringToObject(data, "Hourly Pay", "20");
-	cJSON_AddStringToObject(data, "Max Hours Allowed", "10");
+	// cJSON_AddStringToObject(data, "Phone Number", "1112223333");
+	// cJSON_AddStringToObject(data, "Hourly Pay", "20");
+	// cJSON_AddStringToObject(data, "Max Hours Allowed", "10");
 
 	// Meta are Searchable terms stored in plain text for indexing and fast retrieval
 	cJSON_AddStringToObject(meta, "Type", "Employee");
@@ -191,9 +191,9 @@ int main(void)
 	printf("%s", "Writing Record 2");
 	cJSON_AddStringToObject(data, "First", "Liliana");
 	cJSON_AddStringToObject(data, "Last", "Perez");
-	cJSON_AddStringToObject(data, "Phone Number", "1112223333");
-	cJSON_AddStringToObject(data, "Hourly Pay", "5");
-	cJSON_AddStringToObject(data, "Max Hours Allowed", "30");
+	// cJSON_AddStringToObject(data, "Phone Number", "1112223333");
+	// cJSON_AddStringToObject(data, "Hourly Pay", "5");
+	// cJSON_AddStringToObject(data, "Max Hours Allowed", "30");
 
 	// Meta are Searchable terms stored in plain text for indexing and fast retrieval
 	cJSON_AddStringToObject(meta, "Type", "Employee");
@@ -220,9 +220,9 @@ int main(void)
 	printf("%s", "Writing Record 3");
 	cJSON_AddStringToObject(data, "First", "Jason");
 	cJSON_AddStringToObject(data, "Last", "Smith");
-	cJSON_AddStringToObject(data, "Phone Number", "1112223333");
-	cJSON_AddStringToObject(data, "Hourly Pay", "1");
-	cJSON_AddStringToObject(data, "Max Hours Allowed", "10");
+	// cJSON_AddStringToObject(data, "Phone Number", "1112223333");
+	// cJSON_AddStringToObject(data, "Hourly Pay", "1");
+	// cJSON_AddStringToObject(data, "Max Hours Allowed", "10");
 
 	// Meta are Searchable terms stored in plain text for indexing and fast retrieval
 	cJSON_AddStringToObject(meta, "Type", "Employee");
@@ -249,9 +249,9 @@ int main(void)
 	printf("%s", "Writing Record 4");
 	cJSON_AddStringToObject(data, "First", "Meredith");
 	cJSON_AddStringToObject(data, "Last", "Yang");
-	cJSON_AddStringToObject(data, "Phone Number", "1112223333");
-	cJSON_AddStringToObject(data, "Hourly Pay", "15");
-	cJSON_AddStringToObject(data, "Max Hours Allowed", "30");
+	// cJSON_AddStringToObject(data, "Phone Number", "1112223333");
+	// cJSON_AddStringToObject(data, "Hourly Pay", "15");
+	// cJSON_AddStringToObject(data, "Max Hours Allowed", "30");
 
 	// Meta are Searchable terms stored in plain text for indexing and fast retrieval
 	cJSON_AddStringToObject(meta, "Type", "Employee");
