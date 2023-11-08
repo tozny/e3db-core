@@ -161,8 +161,8 @@ int main(void)
 
 	// Data remains encrypted end to end
 	printf("%s \n", "Writing Record 1");
-	cJSON_AddStringToObject(data, "First Name", "Katie");
-	cJSON_AddStringToObject(data, "Last Name", "Williams");
+	cJSON_AddStringToObject(data, "First", "Katie");
+	cJSON_AddStringToObject(data, "Last", "Williams");
 	cJSON_AddStringToObject(data, "Phone Number", "1112223333");
 	cJSON_AddStringToObject(data, "Hourly Pay", "20");
 	cJSON_AddStringToObject(data, "Max Hours Allowed", "10");
@@ -177,11 +177,11 @@ int main(void)
 	EmployeeRecords[0] = strdup(record->meta->record_id);
 
 	// Clean up
-	// cJSON_Delete(data);
-	// E3DB_FreeRecordMeta(record->meta);
-	// cJSON_Delete(record->data);
-	// free(record->rec_sig);
-	// free(record);
+	cJSON_Delete(data);
+	E3DB_FreeRecordMeta(record->meta);
+	cJSON_Delete(record->data);
+	free(record->rec_sig);
+	free(record);
 
 	// -----------------------------------------  Liliana Perez
 	data = cJSON_CreateObject();
@@ -206,11 +206,11 @@ int main(void)
 	EmployeeRecords[1] = strdup(record->meta->record_id);
 
 	// Clean up
-	// cJSON_Delete(data);
-	// E3DB_FreeRecordMeta(record->meta);
-	// cJSON_Delete(record->data);
-	// free(record->rec_sig);
-	// free(record);
+	cJSON_Delete(data);
+	E3DB_FreeRecordMeta(record->meta);
+	cJSON_Delete(record->data);
+	free(record->rec_sig);
+	free(record);
 
 	// ----------------------------------------- Jason Smith
 	data = cJSON_CreateObject();
@@ -235,11 +235,11 @@ int main(void)
 	EmployeeRecords[2] = strdup(record->meta->record_id);
 
 	// Clean up
-	// cJSON_Delete(data);
-	// E3DB_FreeRecordMeta(record->meta);
-	// cJSON_Delete(record->data);
-	// free(record->rec_sig);
-	// free(record);
+	cJSON_Delete(data);
+	E3DB_FreeRecordMeta(record->meta);
+	cJSON_Delete(record->data);
+	free(record->rec_sig);
+	free(record);
 
 	// -----------------------------------------  Meredith Yang
 	data = cJSON_CreateObject();
@@ -262,12 +262,12 @@ int main(void)
 	printf("\n\nRecord ID: %s\n", record->meta->record_id);
 	EmployeeRecords[3] = strdup(record->meta->record_id);
 
-	// // Clean up
-	// cJSON_Delete(data);
-	// E3DB_FreeRecordMeta(record->meta);
-	// cJSON_Delete(record->data);
-	// free(record->rec_sig);
-	// free(record);
+	// Clean up
+	cJSON_Delete(data);
+	E3DB_FreeRecordMeta(record->meta);
+	cJSON_Delete(record->data);
+	free(record->rec_sig);
+	free(record);
 
 	// View all Records
 	printf("%s", "Reading Record Starts now");
