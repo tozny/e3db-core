@@ -136,12 +136,12 @@ sds base64_encodeUrl2(const char *s, size_t size)
 	char *null_terminated_buffer = (char *)xmalloc(len + 1); // one extra byte for null terminator
 	memcpy(null_terminated_buffer, buf, len);
 
-	result = sdsnew(null_terminated_buffer);
+	result = sdsnewlen(null_terminated_buffer, len);
 
 	BIO_free_all(bio);
 	free(null_terminated_buffer);
 
-	for (int i = 0; i < size; i++)
+  for (int i = 0; i < sdslen(result); i++)
 	{
 		switch (result[i])
 		{
@@ -156,7 +156,6 @@ sds base64_encodeUrl2(const char *s, size_t size)
 
 	return result;
 }
-
 unsigned char *base64_decode(const char *base64)
 {
 	int len = strlen(base64);
