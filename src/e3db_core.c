@@ -1272,8 +1272,8 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
   unsigned char *decodedDataKeyNonce = base64_decode_with_count(array[1], &decodedDataKeyNonceLength);
 
   int decodedDataLength = 0;
-  printf("\nData Decoded %s \n", array[2]);
-  printf("\nData BASE 64 LENGTH  %d \n", strlen(array[2]));
+  printf("\nData Decoded from server %s \n", array[2]);
+  printf("\nData that is BASE 64 LENGTH  %d \n", strlen(array[2]));
   unsigned char *decodedData = base64_decode_with_count(array[2], &decodedDataLength);
   unsigned char *decodedDataNonce = base64_decode(array[3]);
 
@@ -1289,8 +1289,8 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
   // Find length of data cipher:
   status = crypto_secretbox_open_easy(data, decodedData, decodedDataLength, decodedDataNonce, dk);
   data[decodedDataLength] = '\0';
-  printf("\nData %s \n", data);
-  printf("\n Data lenght %d\n", decodedDataLength);
+  printf("\nDecrypted Data %s \n", data);
+  printf("\n Decoded Data lenght %d\n", decodedDataLength);
   // if (status < 0)
   // {
   //   fprintf(stderr, "Fatal: Decrypting Data failed.\n");
