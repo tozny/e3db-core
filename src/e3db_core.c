@@ -1289,7 +1289,7 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
   // Find length of data cipher:
   printf("\nDecoded Data %s \n", ":");
   printf("\n");
-  for (size_t i = 0; i < sizeof(decodedData); ++i)
+  for (size_t i = 0; i < decodedDataLength; ++i)
   {
     printf("%02x", decodedData[i]); // Print each byte as a two-digit hexadecimal number
   }
