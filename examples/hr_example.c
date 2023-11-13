@@ -169,8 +169,6 @@ int main(void)
 	cJSON_AddStringToObject(meta, "Company", "Tozny");
 	cJSON_AddStringToObject(meta, "Team", "Software");
 	E3DB_Record *record = WriteRecord(client, (const char **)record_type, data, meta);
-	printf("Written Record: %s", cJSON_Print(record->data));
-	printf("\n\nRecord ID: %s\n", record->meta->record_id);
 	EmployeeRecords[0] = strdup(record->meta->record_id);
 
 	// Clean up
@@ -197,8 +195,6 @@ int main(void)
 	cJSON_AddStringToObject(meta, "Team", "Sales");
 
 	record = WriteRecord(client, (const char **)record_type, data, meta);
-	printf("Written Record: %s", cJSON_Print(record->data));
-	printf("\n\nRecord ID: %s\n", record->meta->record_id);
 	EmployeeRecords[1] = strdup(record->meta->record_id);
 
 	// Clean up
@@ -225,8 +221,6 @@ int main(void)
 	cJSON_AddStringToObject(meta, "Team", "Design");
 
 	record = WriteRecord(client, (const char **)record_type, data, meta);
-	printf("Written Record: %s", cJSON_Print(record->data));
-	printf("\n\nRecord ID: %s\n", record->meta->record_id);
 	EmployeeRecords[2] = strdup(record->meta->record_id);
 
 	// Clean up
@@ -252,8 +246,6 @@ int main(void)
 	cJSON_AddStringToObject(meta, "Company", "Tozny");
 	cJSON_AddStringToObject(meta, "Team", "Hardware");
 	record = WriteRecord(client, (const char **)record_type, data, meta);
-	printf("Written Record: %s", cJSON_Print(record->data));
-	printf("\n\nRecord ID: %s\n", record->meta->record_id);
 	EmployeeRecords[3] = strdup(record->meta->record_id);
 
 	// Clean up
