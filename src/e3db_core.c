@@ -1267,14 +1267,14 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
   }
 
   int decodedDataKeyLength = 0;
-  unsigned char *decodedDataKey = base64_decode_with_count(array[0], &decodedDataKeyLength);
+  unsigned char *decodedDataKey = base64_decode2_with_count(array[0], &decodedDataKeyLength);
   int decodedDataKeyNonceLength = 0;
-  unsigned char *decodedDataKeyNonce = base64_decode_with_count(array[1], &decodedDataKeyNonceLength);
+  unsigned char *decodedDataKeyNonce = base64_decode2_with_count(array[1], &decodedDataKeyNonceLength);
 
   int decodedDataLength = 0;
   printf("\nData Decoded from server %s \n", array[2]);
   printf("\nData that is BASE 64 LENGTH  %d \n", strlen(array[2]));
-  unsigned char *decodedData = base64_decode_with_count(array[2], &decodedDataLength);
+  unsigned char *decodedData = base64_decode2_with_count(array[2], &decodedDataLength);
   unsigned char *decodedDataNonce = base64_decode(array[3]);
 
   unsigned char *dk = (unsigned char *)xmalloc(32);
