@@ -1287,7 +1287,12 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
   // unsigned long long dlen = strlen((const char *)decodedData);
   unsigned char *data = (unsigned char *)xmalloc(decodedDataLength + 1);
   // Find length of data cipher:
-  printf("\nDecoded Data %s \n", decodedData);
+  printf("\nDecoded Data %s \n", ":");
+  printf("\n");
+  for (size_t i = 0; i < sizeof(decodedData); ++i)
+  {
+    printf("%02x", decodedData[i]); // Print each byte as a two-digit hexadecimal number
+  }
   status = crypto_secretbox_open_easy(data, decodedData, decodedDataLength, decodedDataNonce, dk);
   data[decodedDataLength] = '\0';
   printf("\nDecrypted Data %s \n", data);
