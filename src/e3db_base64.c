@@ -224,7 +224,7 @@ unsigned char *base64_decode(const char *base64)
 	return output;
 }
 
-unsigned char *base64_decode_with_count(const char *base64, int *cnt)
+unsigned char *base64_decode_with_count_simple(const char *base64, int *cnt)
 {
 	int len = strlen(base64);
 	int padding = 0;
@@ -291,4 +291,69 @@ unsigned char *base64_decode_with_count(const char *base64, int *cnt)
 	buffer[bytesRead] = '\0'; // Null-terminate the result
 	*cnt = bytesRead;
 	return buffer;
+}
+
+unsigned char *base64_decode_with_count(const char *base64, int *cnt)
+{
+	int len = strlen(base64);
+	unsigned char *input = (unsigned char *)xmalloc(len + 1);
+	if (!input)
+	{
+		fprintf(stderr, "Error: Failed to allocate memory for 'input'.\n");
+		return NULL;
+	}
+
+	// Remove double quotes, replace url encoded chars _ with / and - with +.
+	int count = 0;
+	for (int i = 0; i < len; i++)
+	{
+		switch (base64[i])
+		{
+		case '_':
+			input[count++] = '/';
+			break;
+		case '-':
+			input[count++] = '+';
+			break;
+		case '"':
+			break;
+		default:
+			input[count++] = base64[i];
+		}
+	}
+
+	unsigned char *new_input = xrealloc(input, count + 1);
+	if (!new_input)
+	{
+		fprintf(stderr, "Error: Failed to reallocate memory for 'input'.\n");
+		free(input);
+		return NULL;
+	}
+	input = new_input;
+
+	/* set up a destination buffer large enough to hold the encoded data */
+	unsigned char *output = (unsigned char *)xmalloc(count + 1);
+	if (!output)
+	{
+		fprintf(stderr, "Error: Failed to allocate memory for 'output'.\n");
+		free(input);
+		return NULL;
+	}
+
+	/* keep track of our decoded position */
+	/* store the number of bytes decoded by a single call */
+	*cnt = 0;
+	/* we need a decoder state */
+	base64_decodestate s;
+
+	/*---------- START DECODING ----------*/
+	/* initialise the decoder state */
+	base64_init_decodestate(&s);
+	/* decode the input data */
+	*cnt = base64_decode_block((char *)input, count, (char *)output, &s);
+	/* note: there is no base64_decode_blockend! */
+	/*---------- STOP DECODING  ----------*/
+
+	free(input);
+	return output;
 }

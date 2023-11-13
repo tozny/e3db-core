@@ -1288,8 +1288,15 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
   data[decodedDataLength] = '\0';
   if (status < 0)
   {
-    fprintf(stderr, "Fatal: Decrypting Data failed.\n");
-    goto cleanup;
+    // If decoding fails, try with custom library
+    int decodedDataLengthSimple = 0;
+    unsigned char *decodedDataSimple = base64_decode_with_count_simple(array[2], &decodedDataLengthSimple);
+    status = crypto_secretbox_open_easy(data, decodedDataSimple, decodedDataLengthSimple, decodedDataNonce, dk);
+    if (status < 0)
+    {
+      fprintf(stderr, "Fatal: Decrypting Data failed.\n");
+      goto cleanup;
+    }
   }
 
 cleanup:
