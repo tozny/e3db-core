@@ -1218,16 +1218,25 @@ const char *E3DB_EAK_DecryptEAK(char *eak, char *pubKey, char *privKey)
   status = crypto_box_open_easy(ak, decodedKey, clen, decodedNonce, decodedPubKey, decodedPrivKey);
   if (status < 0)
   {
+    printf("Failed onetime %d", status);
     decodedKey = base64_decode_simple(array[0]);
-    status = crypto_box_open_easy(ak, decodedKey, clen, decodedNonce, decodedPubKey, decodedPrivKey);
-    if (status < 0)
+    int status2 = crypto_box_open_easy(ak, decodedKey, clen, decodedNonce, decodedPubKey, decodedPrivKey);
+    if (status2 < 0)
     {
+      printf("Failed 2time %d", status);
       decodedNonce = base64_decode_simple(array[1]);
-      status = crypto_box_open_easy(ak, decodedKey, clen, decodedNonce, decodedPubKey, decodedPrivKey);
-      if (status < 0)
+      int status1 = crypto_box_open_easy(ak, decodedKey, clen, decodedNonce, decodedPubKey, decodedPrivKey);
+      if (status1 < 0)
       {
-        fprintf(stderr, "Fatal: Decrypting Access Key failed.\n");
-        goto cleanup;
+        decodedPubKey = base64_decode_simple(pubKey);
+        decodedPrivKey = base64_decode_simple(privKey);
+        int status3 = crypto_box_open_easy(ak, decodedKey, clen, decodedNonce, decodedPubKey, decodedPrivKey);
+        if (status3 < 0)
+        {
+          printf("Failed threetime %d", status);
+          fprintf(stderr, "Fatal: Decrypting Access Key failed.\n");
+          goto cleanup;
+        }
       }
     }
   }
@@ -1744,7 +1753,7 @@ const char *SignDocumentWithPrivateKey(char *document, char *privateSigningKey)
   unsigned char *signedDocument = (unsigned char *)xmalloc(crypto_sign_BYTES + 1);
   memcpy(signedDocument, sig, crypto_sign_BYTES);
 
-  char *result = base64_encodeUrl((char *)signedDocument);
+  char *result = old_base64_encodeUrl((char *)signedDocument);
   free(signedDocument);
   return result;
 }

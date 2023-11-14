@@ -150,7 +150,7 @@ int main(void)
 	E3DB_Client *client = E3DB_Client_New(load_config(configFile));
 
 	// Set up Record Type Bucket
-	char *record_type = "employees";
+	char *record_type = "employeeshello";
 	const char *EmployeeRecords[4];
 
 	// ----------------------------------------- Kate Williams
