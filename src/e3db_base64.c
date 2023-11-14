@@ -100,20 +100,46 @@ sds base64_encodeUrl(const char *s)
 			break;
 		}
 	}
+	result[result_len] = '\0';
+	return result;
+}
 
-	// // Remove padding characters '='
-	// int padding = 0;
-	// for (int i = result_len - 1; i >= 0; i--)
-	// {
-	// 	if (result[i] == '=')
-	// 	{
-	// 		padding++;
-	// 	}
-	// 	else
-	// 	{
-	// 		break;
-	// 	}
-	// }
+sds old_base64_encodeUrl(const char *s)
+{
+	BIO *bio, *b64;
+	char *buf;
+	sds result;
+
+	b64 = BIO_new(BIO_f_base64());
+	bio = BIO_new(BIO_s_mem());
+	bio = BIO_push(b64, bio);
+
+	BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
+	BIO_write(bio, s, strlen(s));
+	BIO_flush(bio);
+
+	long len = BIO_get_mem_data(bio, &buf);
+	char *null_terminated_buffer = (char *)xmalloc(len + 1); // one extra byte for null terminator
+	memcpy(null_terminated_buffer, buf, len);
+
+	result = sdsnew(null_terminated_buffer);
+
+	BIO_free_all(bio);
+	free(null_terminated_buffer);
+
+	int result_len = sdslen(result);
+	for (int i = 0; i < result_len; i++)
+	{
+		switch (result[i])
+		{
+		case '/':
+			result[i] = '_';
+			break;
+		case '+':
+			result[i] = '-';
+			break;
+		}
+	}
 
 	// Remove padding characters '='
 	int padding = 0;
@@ -129,7 +155,6 @@ sds base64_encodeUrl(const char *s)
 		}
 	}
 	result[result_len - padding] = '\0';
-	// result[result_len] = '\0';
 	return result;
 }
 

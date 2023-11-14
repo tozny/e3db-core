@@ -1581,8 +1581,8 @@ E3DB_Op *E3DB_CreateAccessKeys_Begin(
   newCipher[crypto_box_MACBYTES + SECRET_KEY_SIZE] = '\0';
 
   // Encode
-  ciphertext_base64 = base64_encodeUrl((char *)newCipher);
-  nonce_base64 = base64_encodeUrl((char *)nonce);
+  ciphertext_base64 = old_base64_encodeUrl((char *)newCipher);
+  nonce_base64 = old_base64_encodeUrl((char *)nonce);
 
   // Set up EAK
   encryptedAccessKey = (unsigned char *)xmalloc(strlen(ciphertext_base64) + strlen(nonce_base64) + 2);

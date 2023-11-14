@@ -19,6 +19,7 @@ extern "C"
 	 * string must be free'd with `xfree'. */
 	sds base64_encode(const char *s);
 	sds base64_encodeUrl(const char *s);
+	sds old_base64_encodeUrl(const char *s);
 	sds base64_encodeUrl2(const char *s, size_t length);
 
 	/* Base64 decode a string, returning a freshly allocated result. The
