@@ -260,7 +260,7 @@ E3DB_Record *WriteRecord(E3DB_Client *client, const char **record_type, cJSON *d
 	E3DB_EAK *eak = E3DB_ResultIterator_GetEAK(EAKIt);
 	char *rawEAK = (char *)E3DB_EAK_GetEAK(eak);
 	char *authPublicKey = (char *)E3DB_EAK_GetAuthPubKey(eak);
-
+	printf("Raw eak %s", rawEAK);
 	// ak needs to be deallocated at some point?
 	unsigned char *ak = (unsigned char *)E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, op->client->options->private_key);
 

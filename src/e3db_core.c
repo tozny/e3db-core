@@ -1218,8 +1218,18 @@ const char *E3DB_EAK_DecryptEAK(char *eak, char *pubKey, char *privKey)
   status = crypto_box_open_easy(ak, decodedKey, clen, decodedNonce, decodedPubKey, decodedPrivKey);
   if (status < 0)
   {
-    fprintf(stderr, "Fatal: Decrypting Access Key failed.\n");
-    goto cleanup;
+    decodedKey = base64_decode_simple(array[0]);
+    status = crypto_box_open_easy(ak, decodedKey, clen, decodedNonce, decodedPubKey, decodedPrivKey);
+    if (status < 0)
+    {
+      decodedNonce = base64_decode_simple(array[1]);
+      status = crypto_box_open_easy(ak, decodedKey, clen, decodedNonce, decodedPubKey, decodedPrivKey);
+      if (status < 0)
+      {
+        fprintf(stderr, "Fatal: Decrypting Access Key failed.\n");
+        goto cleanup;
+      }
+    }
   }
   ak = (unsigned char *)realloc(ak, SECRET_KEY_SIZE * sizeof(unsigned char) + 1);
   if (!ak)

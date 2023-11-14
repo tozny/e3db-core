@@ -26,6 +26,7 @@ extern "C"
 	 *
 	 * TODO: How do we handle decode errors? */
 	unsigned char *base64_decode(const char *s);
+	unsigned char *base64_decode_simple(const char *s);
 	unsigned char *base64_decode_with_count(const char *s, int *count);
 	unsigned char *base64_decode_with_count_simple(const char *s, int *count);
 
