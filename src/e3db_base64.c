@@ -224,6 +224,70 @@ unsigned char *base64_decode(const char *base64)
 	return output;
 }
 
+unsigned char *old_base64_decode(const char *base64)
+{
+	int len = strlen(base64);
+	unsigned char *input = (unsigned char *)xmalloc(len + 1);
+	if (!input)
+	{
+		fprintf(stderr, "Error: Failed to allocate memory for 'input'.\n");
+		return NULL;
+	}
+	// Remove double quotes, replace url encoded chars _ with / and - with +.
+	int count = 0;
+	for (int i = 0; i < len; i++)
+	{
+		switch (base64[i])
+		{
+		case '_':
+			input[count++] = '/';
+			break;
+		case '-':
+			input[count++] = '+';
+			break;
+		case '"':
+			break;
+		default:
+			input[count++] = base64[i];
+		}
+	}
+	unsigned char *new_input = xrealloc(input, count + 1);
+	if (!new_input)
+	{
+		fprintf(stderr, "Error: Failed to reallocate memory for 'input'.\n");
+		free(input);
+		return NULL;
+	}
+	input = new_input;
+	/* set up a destination buffer large enough to hold the encoded data */
+	unsigned char *output = (unsigned char *)xmalloc(count + 1);
+	if (!output)
+	{
+		fprintf(stderr, "Error: Failed to allocate memory for 'output'.\n");
+		free(input);
+		return NULL;
+	}
+
+	/* keep track of our decoded position */
+	unsigned char *c = output;
+	/* we need a decoder state */
+	base64_decodestate s;
+
+	/*---------- START DECODING ----------*/
+	/* initialise the decoder state */
+	base64_init_decodestate(&s);
+	/* decode the input data */
+	int actual_decoded_length = base64_decode_block((char *)input, count, (char *)c, &s);
+
+	/* note: there is no base64_decode_blockend! */
+	/* Null-terminate the output */
+	output[actual_decoded_length] = '\0';
+	/*---------- STOP DECODING  ----------*/
+
+	free(input);
+	return output;
+}
+
 unsigned char *base64_decode_with_count_simple(const char *base64, int *cnt)
 {
 	int len = strlen(base64);
@@ -356,4 +420,126 @@ unsigned char *base64_decode_with_count(const char *base64, int *cnt)
 
 	free(input);
 	return output;
+}
+
+// unsigned char *base64_decode_simple(const char *base64)
+// {
+// 	int len = strlen(base64);
+// 	int padding = 0;
+// 	// Process the base64 string: remove double quotes, replace URL encoded characters
+// 	unsigned char *input = (unsigned char *)xmalloc(len + 1);
+// 	if (!input)
+// 	{
+// 		fprintf(stderr, "Error: Failed to allocate memory for 'processed_input'.\n");
+// 		return NULL;
+// 	}
+
+// 	// Remove double quotes, replace url encoded chars _ with / and - with +.
+// 	int count = 0;
+// 	for (int i = 0; i < len; i++)
+// 	{
+// 		switch (base64[i])
+// 		{
+// 		case '_':
+// 			input[count++] = '/';
+// 			break;
+// 		case '-':
+// 			input[count++] = '+';
+// 			break;
+// 		case '"':
+// 			break;
+// 		default:
+// 			input[count++] = base64[i];
+// 		}
+// 	}
+// 	// Count the padding characters in the processed input
+// 	for (int i = count - 1; i >= 0 && input[i] == '='; i--)
+// 	{
+// 		padding++;
+// 	}
+
+// 	// Calculate the maximum decoded length
+// 	int decoded_length = (count * 3) / 4 - padding;
+
+// 	BIO *bio, *b64;
+
+// 	unsigned char *buffer = (unsigned char *)xmalloc(decoded_length + 1); // +1 for null terminator
+// 	if (!buffer)
+// 	{
+// 		fprintf(stderr, "Error: Failed to allocate memory for 'output'.\n");
+// 		free(input);
+// 		return NULL;
+// 	}
+
+// 	b64 = BIO_new(BIO_f_base64());
+// 	bio = BIO_new_mem_buf(input, -1); // -1 indicates string is null terminated
+// 	bio = BIO_push(b64, bio);
+
+// 	BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL); // Don't require newlines
+
+// 	int bytesRead = BIO_read(bio, buffer, decoded_length);
+// 	if (bytesRead < 0)
+// 	{
+// 		fprintf(stderr, "BIO_read failed\n");
+// 		free(buffer);
+// 		BIO_free_all(bio);
+// 		return NULL;
+// 	}
+
+// 	buffer[bytesRead] = '\0'; // Null-terminate the result
+// 	return buffer;
+// }
+
+sds old_base64_encodeUrl(const char *s)
+{
+	BIO *bio, *b64;
+	char *buf;
+	sds result;
+
+	b64 = BIO_new(BIO_f_base64());
+	bio = BIO_new(BIO_s_mem());
+	bio = BIO_push(b64, bio);
+
+	BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
+	BIO_write(bio, s, strlen(s));
+	BIO_flush(bio);
+
+	long len = BIO_get_mem_data(bio, &buf);
+	char *null_terminated_buffer = (char *)xmalloc(len + 1); // one extra byte for null terminator
+	memcpy(null_terminated_buffer, buf, len);
+
+	result = sdsnew(null_terminated_buffer);
+
+	BIO_free_all(bio);
+	free(null_terminated_buffer);
+
+	int result_len = sdslen(result);
+	for (int i = 0; i < result_len; i++)
+	{
+		switch (result[i])
+		{
+		case '/':
+			result[i] = '_';
+			break;
+		case '+':
+			result[i] = '-';
+			break;
+		}
+	}
+
+	// Remove padding characters '='
+	int padding = 0;
+	for (int i = result_len - 1; i >= 0; i--)
+	{
+		if (result[i] == '=')
+		{
+			padding++;
+		}
+		else
+		{
+			break;
+		}
+	}
+	result[result_len - padding] = '\0';
+	return result;
 }

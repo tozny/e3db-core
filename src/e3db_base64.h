@@ -19,6 +19,7 @@ extern "C"
 	 * string must be free'd with `xfree'. */
 	sds base64_encode(const char *s);
 	sds base64_encodeUrl(const char *s);
+	sds old_base64_encodeUrl(const char *s);
 	sds base64_encodeUrl2(const char *s, size_t length);
 
 	/* Base64 decode a string, returning a freshly allocated result. The
@@ -26,6 +27,8 @@ extern "C"
 	 *
 	 * TODO: How do we handle decode errors? */
 	unsigned char *base64_decode(const char *s);
+	unsigned char *base64_decode_simple(const char *s);
+	unsigned char *old_base64_decode(const char *s);
 	unsigned char *base64_decode_with_count(const char *s, int *count);
 	unsigned char *base64_decode_with_count_simple(const char *s, int *count);
 
