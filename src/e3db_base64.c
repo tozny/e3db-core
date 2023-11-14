@@ -114,7 +114,22 @@ sds base64_encodeUrl(const char *s)
 	// 		break;
 	// 	}
 	// }
-	result[result_len] = '\0';
+
+	// Remove padding characters '='
+	int padding = 0;
+	for (int i = result_len - 1; i >= 0; i--)
+	{
+		if (result[i] == '=')
+		{
+			padding++;
+		}
+		else
+		{
+			break;
+		}
+	}
+	result[result_len - padding] = '\0';
+	// result[result_len] = '\0';
 	return result;
 }
 
