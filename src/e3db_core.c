@@ -1284,13 +1284,19 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
   }
   // unsigned long long dlen = strlen((const char *)decodedData);
   unsigned char *data = (unsigned char *)xmalloc(decodedDataLength + 1);
-  // Find length of data cipher:
   status = crypto_secretbox_open_easy(data, decodedData, decodedDataLength, decodedDataNonce, dk);
   data[decodedDataLength] = '\0';
   if (status < 0)
   {
-    fprintf(stderr, "Fatal: Decrypting Data failed.\n");
-    goto cleanup;
+    // If decoding fails, try with custom library
+    int decodedDataLengthSimple = 0;
+    unsigned char *decodedDataSimple = base64_decode_with_count_simple(array[2], &decodedDataLengthSimple);
+    status = crypto_secretbox_open_easy(data, decodedDataSimple, decodedDataLengthSimple, decodedDataNonce, dk);
+    if (status < 0)
+    {
+      fprintf(stderr, "Fatal: Decrypting Data failed.\n");
+      goto cleanup;
+    }
   }
 
 cleanup:

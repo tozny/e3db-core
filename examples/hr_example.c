@@ -282,7 +282,7 @@ int main(void)
 	for (int i = 0; i < 4; i++)
 	{
 		free((void *)EmployeeRecords[i]); // Cast to void* because the array is of type const char*
-		EmployeeRecords[i] = NULL;				
+		EmployeeRecords[i] = NULL;
 	}
 	E3DB_CleanupRecords(records, 4);
 	E3DB_Client_Delete(client);
