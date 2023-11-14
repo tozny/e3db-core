@@ -1292,7 +1292,7 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
 
   int decodedDataLength = 0;
   unsigned char *decodedData = base64_decode_with_count(array[2], &decodedDataLength);
-  unsigned char *decodedDataNonce = base64_decode(array[3]);
+  unsigned char *decodedDataNonce = old_base64_decode(array[3]);
 
   unsigned char *dk = (unsigned char *)xmalloc(32);
   int status = crypto_secretbox_open_easy(dk, decodedDataKey, decodedDataKeyLength, decodedDataKeyNonce, ak);
@@ -1553,12 +1553,12 @@ E3DB_Op *E3DB_CreateAccessKeys_Begin(
   accessKey[SECRET_KEY_SIZE] = '\0';
 
   // Grab User Private Key and Decode
-  publicKey = base64_decode((char *)reader_public_key);
+  publicKey = old_base64_decode((char *)reader_public_key);
   if (!publicKey)
     goto cleanup;
 
   char *writerKey = client->options->private_key;
-  privateKey = base64_decode((char *)writerKey);
+  privateKey = old_base64_decode((char *)writerKey);
   if (!privateKey)
     goto cleanup;
 
@@ -1590,8 +1590,8 @@ E3DB_Op *E3DB_CreateAccessKeys_Begin(
   newCipher[crypto_box_MACBYTES + SECRET_KEY_SIZE] = '\0';
 
   // Encode
-  ciphertext_base64 = old_base64_encodeUrl((char *)newCipher);
-  nonce_base64 = old_base64_encodeUrl((char *)nonce);
+  ciphertext_base64 = base64_encodeUrl((char *)newCipher);
+  nonce_base64 = base64_encodeUrl((char *)nonce);
 
   // Set up EAK
   encryptedAccessKey = (unsigned char *)xmalloc(strlen(ciphertext_base64) + strlen(nonce_base64) + 2);
@@ -1602,6 +1602,7 @@ E3DB_Op *E3DB_CreateAccessKeys_Begin(
   strcat((char *)encryptedAccessKey, ".");
   strcat((char *)encryptedAccessKey, nonce_base64);
 
+  printf("Access key %s", encryptedAccessKey);
   // Assign results
   result->writer_id = writer_id;
   result->user_id = user_id;
@@ -1838,11 +1839,15 @@ char *EncryptRecordField(unsigned char *ak, char *field)
   crypto_secretbox_easy(edk, dk, crypto_secretbox_KEYBYTES, edkN, ak);
 
   // Create dotted quad
-  sds edk_base64 = base64_encodeUrl2((const char *)edk, crypto_box_MACBYTES + crypto_secretbox_KEYBYTES);
-  sds edkN_base64 = base64_encodeUrl2((const char *)edkN, crypto_box_NONCEBYTES);
-  sds ef_base64 = base64_encodeUrl2((const char *)ef, crypto_box_MACBYTES + strlen(field));
-  sds efN_base64 = base64_encodeUrl2((const char *)efN, crypto_box_NONCEBYTES);
+  // sds edk_base64 = base64_encodeUrl2((const char *)edk, crypto_box_MACBYTES + crypto_secretbox_KEYBYTES);
+  // sds edkN_base64 = base64_encodeUrl2((const char *)edkN, crypto_box_NONCEBYTES);
+  // sds ef_base64 = base64_encodeUrl2((const char *)ef, crypto_box_MACBYTES + strlen(field));
+  // sds efN_base64 = base64_encodeUrl2((const char *)efN, crypto_box_NONCEBYTES);
 
+  sds edk_base64 = old_base64_encodeUrl((const char *)edk);
+  sds edkN_base64 = old_base64_encodeUrl((const char *)edkN);
+  sds ef_base64 = old_base64_encodeUrl((const char *)ef);
+  sds efN_base64 = old_base64_encodeUrl((const char *)efN);
   // edk.edkN.ef.efN
   unsigned char *encryptedField = (unsigned char *)xmalloc(strlen(edk_base64) + strlen(edkN_base64) + strlen(ef_base64) + strlen(efN_base64) + 3 + 1);
   strcpy((char *)encryptedField, edk_base64);

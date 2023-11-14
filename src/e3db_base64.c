@@ -160,6 +160,8 @@ sds old_base64_encodeUrl(const char *s)
 
 sds base64_encodeUrl2(const char *s, size_t size)
 {
+
+	printf("Si %zu", size);
 	BIO *bio, *b64;
 	char *buf;
 	sds result;
@@ -173,15 +175,17 @@ sds base64_encodeUrl2(const char *s, size_t size)
 	BIO_flush(bio);
 
 	long len = BIO_get_mem_data(bio, &buf);
+	printf("len %ld", len);
 	char *null_terminated_buffer = (char *)xmalloc(len + 1); // one extra byte for null terminator
 	memcpy(null_terminated_buffer, buf, len);
 
 	result = sdsnewlen(null_terminated_buffer, len);
-
+	size_t length = sdslen(result);
+	printf("length %zu", length);
 	BIO_free_all(bio);
 	free(null_terminated_buffer);
 
-	for (int i = 0; i < sdslen(result); i++)
+	for (int i = 0; i < length; i++)
 	{
 		switch (result[i])
 		{
@@ -464,4 +468,65 @@ unsigned char *base64_decode_simple(const char *base64)
 
 	buffer[bytesRead] = '\0'; // Null-terminate the result
 	return buffer;
+}
+
+unsigned char *old_base64_decode(const char *base64)
+{
+	int len = strlen(base64);
+	unsigned char *input = (unsigned char *)xmalloc(len + 1);
+	if (!input)
+	{
+		fprintf(stderr, "Error: Failed to allocate memory for 'input'.\n");
+		return NULL;
+	}
+	// Remove double quotes, replace url encoded chars _ with / and - with +.
+	int count = 0;
+	for (int i = 0; i < len; i++)
+	{
+		switch (base64[i])
+		{
+		case '_':
+			input[count++] = '/';
+			break;
+		case '-':
+			input[count++] = '+';
+			break;
+		case '"':
+			break;
+		default:
+			input[count++] = base64[i];
+		}
+	}
+	unsigned char *new_input = xrealloc(input, count + 1);
+	if (!new_input)
+	{
+		fprintf(stderr, "Error: Failed to reallocate memory for 'input'.\n");
+		free(input);
+		return NULL;
+	}
+	input = new_input;
+	/* set up a destination buffer large enough to hold the encoded data */
+	unsigned char *output = (unsigned char *)xmalloc(count + 1);
+	if (!output)
+	{
+		fprintf(stderr, "Error: Failed to allocate memory for 'output'.\n");
+		free(input);
+		return NULL;
+	}
+
+	/* keep track of our decoded position */
+	unsigned char *c = output;
+	/* we need a decoder state */
+	base64_decodestate s;
+
+	/*---------- START DECODING ----------*/
+	/* initialise the decoder state */
+	base64_init_decodestate(&s);
+	/* decode the input data */
+	base64_decode_block((char *)input, count, (char *)c, &s);
+	/* note: there is no base64_decode_blockend! */
+	/*---------- STOP DECODING  ----------*/
+
+	free(input);
+	return output;
 }
