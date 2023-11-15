@@ -1833,27 +1833,6 @@ char *EncryptRecordField(unsigned char *ak, char *field)
   {
     abort();
   }
-  // // Create dotted quad
-  // sds edk_base64 = base64_encodeUrl2((const char *)edk, crypto_box_MACBYTES + crypto_secretbox_KEYBYTES);
-  // sds edkN_base64 = base64_encodeUrl2((const char *)edkN, crypto_box_NONCEBYTES);
-  // sds ef_base64 = base64_encodeUrl2((const char *)ef, crypto_box_MACBYTES + strlen(field));
-  // sds efN_base64 = base64_encodeUrl2((const char *)efN, crypto_box_NONCEBYTES);
-
-  // // edk.edkN.ef.efN
-  // unsigned char *encryptedField = (unsigned char *)xmalloc(strlen(edk_base64) + strlen(edkN_base64) + strlen(ef_base64) + strlen(efN_base64) + 3 + 1);
-  // strcpy((char *)encryptedField, edk_base64);
-  // strncat((char *)encryptedField, ".", 1);
-  // strncat((char *)encryptedField, edkN_base64, strlen(edkN_base64));
-  // strncat((char *)encryptedField, ".", 1);
-  // strncat((char *)encryptedField, ef_base64, strlen(ef_base64));
-  // strncat((char *)encryptedField, ".", 1);
-  // strncat((char *)encryptedField, efN_base64, strlen(efN_base64));
-
-  // // try new encode
-  // char *edk_base64 = encode64((const char *)edk);
-  // char *edkN_base64 = encode64((const char *)edkN);
-  // char *ef_base64 = encode64((const char *)ef);
-  // char *efN_base64 = encode64((const char *)efN);
 
   char *edk_base64 = encode64_length((const char *)edk, crypto_box_MACBYTES + crypto_secretbox_KEYBYTES);
   char *edkN_base64 = encode64_length((const char *)edkN, crypto_box_NONCEBYTES);
@@ -1870,10 +1849,10 @@ char *EncryptRecordField(unsigned char *ak, char *field)
   strncat((char *)encryptedField, ".", 1);
   strncat((char *)encryptedField, efN_base64, strlen(efN_base64));
 
-  // sdsfree(edk_base64);
-  // sdsfree(edkN_base64);
-  // sdsfree(ef_base64);
-  // sdsfree(efN_base64);
+  free(edk_base64);
+  free(edkN_base64);
+  free(ef_base64);
+  free(efN_base64);
   return (char *)encryptedField;
 }
 
