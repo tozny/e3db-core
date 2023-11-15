@@ -106,7 +106,6 @@ sds base64_encodeUrl(const char *s)
 
 char *encode64_length(const char *input, size_t length)
 {
-	// printf("start encoding %s \n ", input);
 	/* set up a destination buffer large enough to hold the encoded data */
 	char *output = (char *)xmalloc(200);
 	/* keep track of our encoded position */
