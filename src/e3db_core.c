@@ -1289,7 +1289,6 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
       goto cleanup;
     }
   }
-  // unsigned long long dlen = strlen((const char *)decodedData);
   unsigned char *data = (unsigned char *)xmalloc(decodedDataLength + 1);
   status = crypto_secretbox_open_easy(data, decodedData, decodedDataLength, decodedDataNonce, dk);
   data[decodedDataLength] = '\0';
