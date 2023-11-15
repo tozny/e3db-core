@@ -13,7 +13,7 @@
 
 #include "sds.h"
 #include "cdecode.h"
-#include "cdecode.h"
+#include "cencode.h"
 #include "e3db_mem.h"
 
 sds base64_encode(const char *s)
@@ -100,61 +100,51 @@ sds base64_encodeUrl(const char *s)
 			break;
 		}
 	}
-
-	// // Remove padding characters '='
-	// int padding = 0;
-	// for (int i = result_len - 1; i >= 0; i--)
-	// {
-	// 	if (result[i] == '=')
-	// 	{
-	// 		padding++;
-	// 	}
-	// 	else
-	// 	{
-	// 		break;
-	// 	}
-	// }
 	result[result_len] = '\0';
 	return result;
 }
 
-sds base64_encodeUrl2(const char *s, size_t size)
+char *encode64_length(const char *input, size_t length)
 {
-	BIO *bio, *b64;
-	char *buf;
-	sds result;
+	/* set up a destination buffer large enough to hold the encoded data */
+	char *output = (char *)xmalloc(200);
+	/* keep track of our encoded position */
+	char *c = output;
+	/* store the number of bytes encoded by a single call */
+	int cnt = 0;
+	/* we need an encoder state */
+	base64_encodestate s;
 
-	b64 = BIO_new(BIO_f_base64());
-	bio = BIO_new(BIO_s_mem());
-	bio = BIO_push(b64, bio);
+	/*---------- START ENCODING ----------*/
+	/* initialise the encoder state */
+	base64_init_encodestate(&s);
+	/* gather data from the input and send it to the output */
+	cnt = base64_encode_block(input, length, c, &s);
+	c += cnt;
+	/* since we have encoded the entire input string, we know that
+	   there is no more input data; finalise the encoding */
+	cnt = base64_encode_blockend(c, &s);
+	c += cnt;
+	/*---------- STOP ENCODING  ----------*/
 
-	BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
-	BIO_write(bio, s, size);
-	BIO_flush(bio);
+	/* we want to print the encoded data, so null-terminate it: */
+	*c = 0;
 
-	long len = BIO_get_mem_data(bio, &buf);
-	char *null_terminated_buffer = (char *)xmalloc(len + 1); // one extra byte for null terminator
-	memcpy(null_terminated_buffer, buf, len);
-
-	result = sdsnewlen(null_terminated_buffer, len);
-
-	BIO_free_all(bio);
-	free(null_terminated_buffer);
-
-	for (int i = 0; i < sdslen(result); i++)
+	int result_len = strlen(output);
+	for (int i = 0; i < result_len; i++)
 	{
-		switch (result[i])
+		switch (output[i])
 		{
 		case '/':
-			result[i] = '_';
+			output[i] = '_';
 			break;
 		case '+':
-			result[i] = '-';
+			output[i] = '-';
 			break;
 		}
 	}
-
-	return result;
+	output[result_len] = '\0';
+	return output;
 }
 
 unsigned char *base64_decode(const char *base64)
