@@ -1279,30 +1279,30 @@ const char *E3DB_RecordFieldIterator_DecryptValue(unsigned char *edata, unsigned
   int status = crypto_secretbox_open_easy(dk, decodedDataKey, decodedDataKeyLength, decodedDataKeyNonce, ak);
   if (status < 0)
   {
-    // // If decoding fails, try with custom library
-    // int decodedDataKeyLengthSimple = 0;
-    // unsigned char *decodedDataKeySimple = base64_decode_with_count_simple(array[0], &decodedDataKeyLengthSimple);
-    // status = crypto_secretbox_open_easy(dk, decodedDataKeySimple, decodedDataKeyLengthSimple, decodedDataKeyNonce, ak);
-    // if (status < 0)
-    // {
-    fprintf(stderr, "Fatal: Decrypting Data Key failed.\n");
-    goto cleanup;
-    // }
+    // If decoding fails, try with custom library
+    int decodedDataKeyLengthSimple = 0;
+    unsigned char *decodedDataKeySimple = base64_decode_with_count_simple(array[0], &decodedDataKeyLengthSimple);
+    status = crypto_secretbox_open_easy(dk, decodedDataKeySimple, decodedDataKeyLengthSimple, decodedDataKeyNonce, ak);
+    if (status < 0)
+    {
+      fprintf(stderr, "Fatal: Decrypting Data Key failed.\n");
+      goto cleanup;
+    }
   }
   unsigned char *data = (unsigned char *)xmalloc(decodedDataLength + 1);
   status = crypto_secretbox_open_easy(data, decodedData, decodedDataLength, decodedDataNonce, dk);
   data[decodedDataLength] = '\0';
   if (status < 0)
   {
-    // // If decoding fails, try with custom library
-    // int decodedDataLengthSimple = 0;
-    // unsigned char *decodedDataSimple = base64_decode_with_count_simple(array[2], &decodedDataLengthSimple);
-    // status = crypto_secretbox_open_easy(data, decodedDataSimple, decodedDataLengthSimple, decodedDataNonce, dk);
-    // if (status < 0)
-    // {
-    fprintf(stderr, "Fatal: Decrypting Data failed.\n");
-    goto cleanup;
-    // }
+    // If decoding fails, try with custom library
+    int decodedDataLengthSimple = 0;
+    unsigned char *decodedDataSimple = base64_decode_with_count_simple(array[2], &decodedDataLengthSimple);
+    status = crypto_secretbox_open_easy(data, decodedDataSimple, decodedDataLengthSimple, decodedDataNonce, dk);
+    if (status < 0)
+    {
+      fprintf(stderr, "Fatal: Decrypting Data failed.\n");
+      goto cleanup;
+    }
   }
 
 cleanup:
