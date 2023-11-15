@@ -1830,6 +1830,7 @@ char *EncryptRecordField(unsigned char *ak, char *field)
   status = crypto_secretbox_easy(edk, dk, crypto_secretbox_KEYBYTES, edkN, ak);
   if (status < 0)
   {
+    printf("Failed to Encrypt Data Key");
     abort();
   }
 
