@@ -1512,7 +1512,7 @@ E3DB_Op *E3DB_CreateAccessKeys_Begin(
   E3DB_CreateAccessKeyResult *result = NULL;
   unsigned char *accessKey = NULL, *publicKey = NULL, *privateKey = NULL;
   unsigned char *nonce = NULL, *newCipher = NULL, *encryptedAccessKey = NULL;
-  sds ciphertext_base64 = NULL, nonce_base64 = NULL;
+  char *ciphertext_base64 = NULL, *nonce_base64 = NULL;
 
   op = E3DB_Op_New(client, E3DB_OP_CREATE_ACCESS_KEYS);
   if (!op)
@@ -1571,8 +1571,8 @@ E3DB_Op *E3DB_CreateAccessKeys_Begin(
   newCipher[crypto_box_MACBYTES + SECRET_KEY_SIZE] = '\0';
 
   // Encode
-  ciphertext_base64 = old_base64_encodeUrl((char *)newCipher);
-  nonce_base64 = old_base64_encodeUrl((char *)nonce);
+  ciphertext_base64 = encode64_length((const char *)newCipher, crypto_box_MACBYTES + SECRET_KEY_SIZE);
+  nonce_base64 = encode64_length((const char *)nonce, crypto_box_NONCEBYTES);
 
   // Set up EAK
   encryptedAccessKey = (unsigned char *)xmalloc(strlen(ciphertext_base64) + strlen(nonce_base64) + 2);
@@ -1602,8 +1602,8 @@ E3DB_Op *E3DB_CreateAccessKeys_Begin(
   }
 
   // Clean up memory if all steps were successful
-  sdsfree(nonce_base64);
-  sdsfree(ciphertext_base64);
+  free(nonce_base64);
+  free(ciphertext_base64);
   free(newCipher);
   free(nonce);
   free(accessKey);
@@ -1622,9 +1622,9 @@ cleanup:
   if (nonce)
     free(nonce);
   if (ciphertext_base64)
-    sdsfree(ciphertext_base64);
+    free(ciphertext_base64);
   if (nonce_base64)
-    sdsfree(nonce_base64);
+    free(nonce_base64);
   if (accessKey)
     free(accessKey);
   if (publicKey)
@@ -1805,24 +1805,60 @@ char *EncryptRecordField(unsigned char *ak, char *field)
   // Create efN
   unsigned char efN[crypto_box_NONCEBYTES];
   randombytes_buf(efN, sizeof efN);
-
+  if (sizeof efN != crypto_box_NONCEBYTES)
+  {
+    printf("Failed to get nonce bytes");
+    abort();
+  }
   // Encrypt Symmetric
   unsigned char ef[crypto_box_MACBYTES + strlen(field)];
-  crypto_secretbox_easy(ef, (unsigned char *)field, strlen(field), efN, dk);
-
+  int status = crypto_secretbox_easy(ef, (unsigned char *)field, strlen(field), efN, dk);
+  if (status < 0)
+  {
+    printf("Failed to Encrypt Field");
+    abort();
+  }
   // Create edkN
   unsigned char edkN[crypto_box_NONCEBYTES];
   randombytes_buf(edkN, sizeof edkN);
-
+  if (sizeof edkN != crypto_box_NONCEBYTES)
+  {
+    printf("Failed to get nonce bytes");
+    abort();
+  }
   // Encrypt Symmetric
   unsigned char edk[crypto_box_MACBYTES + crypto_secretbox_KEYBYTES];
-  crypto_secretbox_easy(edk, dk, crypto_secretbox_KEYBYTES, edkN, ak);
+  status = crypto_secretbox_easy(edk, dk, crypto_secretbox_KEYBYTES, edkN, ak);
+  if (status < 0)
+  {
+    abort();
+  }
+  // // Create dotted quad
+  // sds edk_base64 = base64_encodeUrl2((const char *)edk, crypto_box_MACBYTES + crypto_secretbox_KEYBYTES);
+  // sds edkN_base64 = base64_encodeUrl2((const char *)edkN, crypto_box_NONCEBYTES);
+  // sds ef_base64 = base64_encodeUrl2((const char *)ef, crypto_box_MACBYTES + strlen(field));
+  // sds efN_base64 = base64_encodeUrl2((const char *)efN, crypto_box_NONCEBYTES);
 
-  // Create dotted quad
-  sds edk_base64 = base64_encodeUrl2((const char *)edk, crypto_box_MACBYTES + crypto_secretbox_KEYBYTES);
-  sds edkN_base64 = base64_encodeUrl2((const char *)edkN, crypto_box_NONCEBYTES);
-  sds ef_base64 = base64_encodeUrl2((const char *)ef, crypto_box_MACBYTES + strlen(field));
-  sds efN_base64 = base64_encodeUrl2((const char *)efN, crypto_box_NONCEBYTES);
+  // // edk.edkN.ef.efN
+  // unsigned char *encryptedField = (unsigned char *)xmalloc(strlen(edk_base64) + strlen(edkN_base64) + strlen(ef_base64) + strlen(efN_base64) + 3 + 1);
+  // strcpy((char *)encryptedField, edk_base64);
+  // strncat((char *)encryptedField, ".", 1);
+  // strncat((char *)encryptedField, edkN_base64, strlen(edkN_base64));
+  // strncat((char *)encryptedField, ".", 1);
+  // strncat((char *)encryptedField, ef_base64, strlen(ef_base64));
+  // strncat((char *)encryptedField, ".", 1);
+  // strncat((char *)encryptedField, efN_base64, strlen(efN_base64));
+
+  // // try new encode
+  // char *edk_base64 = encode64((const char *)edk);
+  // char *edkN_base64 = encode64((const char *)edkN);
+  // char *ef_base64 = encode64((const char *)ef);
+  // char *efN_base64 = encode64((const char *)efN);
+
+  char *edk_base64 = encode64_length((const char *)edk, crypto_box_MACBYTES + crypto_secretbox_KEYBYTES);
+  char *edkN_base64 = encode64_length((const char *)edkN, crypto_box_NONCEBYTES);
+  char *ef_base64 = encode64_length((const char *)ef, crypto_box_MACBYTES + strlen(field));
+  char *efN_base64 = encode64_length((const char *)efN, crypto_box_NONCEBYTES);
 
   // edk.edkN.ef.efN
   unsigned char *encryptedField = (unsigned char *)xmalloc(strlen(edk_base64) + strlen(edkN_base64) + strlen(ef_base64) + strlen(efN_base64) + 3 + 1);
@@ -1834,10 +1870,10 @@ char *EncryptRecordField(unsigned char *ak, char *field)
   strncat((char *)encryptedField, ".", 1);
   strncat((char *)encryptedField, efN_base64, strlen(efN_base64));
 
-  sdsfree(edk_base64);
-  sdsfree(edkN_base64);
-  sdsfree(ef_base64);
-  sdsfree(efN_base64);
+  // sdsfree(edk_base64);
+  // sdsfree(edkN_base64);
+  // sdsfree(ef_base64);
+  // sdsfree(efN_base64);
   return (char *)encryptedField;
 }
 

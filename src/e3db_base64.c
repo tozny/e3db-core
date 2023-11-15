@@ -13,7 +13,7 @@
 
 #include "sds.h"
 #include "cdecode.h"
-#include "cdecode.h"
+#include "cencode.h"
 #include "e3db_mem.h"
 
 sds base64_encode(const char *s)
@@ -100,22 +100,98 @@ sds base64_encodeUrl(const char *s)
 			break;
 		}
 	}
-
-	// // Remove padding characters '='
-	// int padding = 0;
-	// for (int i = result_len - 1; i >= 0; i--)
-	// {
-	// 	if (result[i] == '=')
-	// 	{
-	// 		padding++;
-	// 	}
-	// 	else
-	// 	{
-	// 		break;
-	// 	}
-	// }
 	result[result_len] = '\0';
 	return result;
+}
+
+char *encode64(const char *input)
+{
+	// printf("start encoding %s \n ", input);
+	/* set up a destination buffer large enough to hold the encoded data */
+	char *output = (char *)xmalloc(200);
+	/* keep track of our encoded position */
+	char *c = output;
+	/* store the number of bytes encoded by a single call */
+	int cnt = 0;
+	/* we need an encoder state */
+	base64_encodestate s;
+
+	/*---------- START ENCODING ----------*/
+	/* initialise the encoder state */
+	base64_init_encodestate(&s);
+	/* gather data from the input and send it to the output */
+	cnt = base64_encode_block(input, strlen(input), c, &s);
+	c += cnt;
+	/* since we have encoded the entire input string, we know that
+	   there is no more input data; finalise the encoding */
+	cnt = base64_encode_blockend(c, &s);
+	c += cnt;
+	/*---------- STOP ENCODING  ----------*/
+
+	/* we want to print the encoded data, so null-terminate it: */
+	*c = 0;
+	printf(" end encoding%s \n", output);
+
+	int result_len = strlen(output);
+	for (int i = 0; i < result_len; i++)
+	{
+		switch (output[i])
+		{
+		case '/':
+			output[i] = '_';
+			break;
+		case '+':
+			output[i] = '-';
+			break;
+		}
+	}
+	output[result_len] = '\0';
+	return output;
+}
+
+char *encode64_length(const char *input, size_t length)
+{
+	// printf("start encoding %s \n ", input);
+	/* set up a destination buffer large enough to hold the encoded data */
+	char *output = (char *)xmalloc(200);
+	/* keep track of our encoded position */
+	char *c = output;
+	/* store the number of bytes encoded by a single call */
+	int cnt = 0;
+	/* we need an encoder state */
+	base64_encodestate s;
+
+	/*---------- START ENCODING ----------*/
+	/* initialise the encoder state */
+	base64_init_encodestate(&s);
+	/* gather data from the input and send it to the output */
+	cnt = base64_encode_block(input, length, c, &s);
+	c += cnt;
+	/* since we have encoded the entire input string, we know that
+	   there is no more input data; finalise the encoding */
+	cnt = base64_encode_blockend(c, &s);
+	c += cnt;
+	/*---------- STOP ENCODING  ----------*/
+
+	/* we want to print the encoded data, so null-terminate it: */
+	*c = 0;
+	printf(" end encoding%s \n", output);
+
+	int result_len = strlen(output);
+	for (int i = 0; i < result_len; i++)
+	{
+		switch (output[i])
+		{
+		case '/':
+			output[i] = '_';
+			break;
+		case '+':
+			output[i] = '-';
+			break;
+		}
+	}
+	output[result_len] = '\0';
+	return output;
 }
 
 sds base64_encodeUrl2(const char *s, size_t size)

@@ -26,6 +26,8 @@ extern "C"
 	 * result string must be free'd with `xfree'.
 	 *
 	 * TODO: How do we handle decode errors? */
+	char *encode64(const char *s);
+	char *encode64_length(const char *s, size_t length);
 	unsigned char *base64_decode(const char *s);
 	unsigned char *base64_decode_simple(const char *s);
 	unsigned char *old_base64_decode(const char *s);
