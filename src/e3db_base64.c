@@ -130,7 +130,6 @@ char *encode64_length(const char *input, size_t length)
 
 	/* we want to print the encoded data, so null-terminate it: */
 	*c = 0;
-	printf(" end encoding%s \n", output);
 
 	int result_len = strlen(output);
 	for (int i = 0; i < result_len; i++)
