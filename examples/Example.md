@@ -54,13 +54,13 @@ Write record takes 3 parameters, -r takes the record type for the record, -d tak
 # Run write record with client configuration file found in ~/.tozny/e3db.json and the record data/meta found in a file
 ./build/e3db write-record -t recordTypeWanted -d @<PathToJSON>/examples/example_data.json  -m @<PathToJSON>/examples/example_meta.json
 
-# Run Read Record with custom config file path and the record data/meta found in a file
+# Run write record with custom config file path and the record data/meta found in a file
 ./build/e3db write-record -t recordTypeWanted -d @<PathToJSON>/examples/example_data.json  -m @<PathToJSON>/examples/example_meta.json -c @<PathToJSON>/examples/config.json
 
 # Run write record with client configuration file found in ~/.tozny/e3db.json and the record data/meta JSON blobs
 ./build/e3db write-record -t recordTypeWanted -d '{"key": "value"}'  -m '{"key": "value"}'
 
-# Run write recordwith custom config file path and the record data/meta JSON blobs
+# Run write record with custom config file path and the record data/meta JSON blobs
 ./build/e3db write-record  -c @<PathToJSON>/examples/config.json -t recordTypeWanted -d '{"key": "value"}'  -m '{"key": "value"}'
 
 ```
@@ -74,7 +74,7 @@ Read record takes a space separated list of record ids to fetch
 # Run read record with client configuration file found in ~/.tozny/e3db.json
 ./build/e3db read-record 4d289c9d-ffe4-45a9-a423-c8fdcf76ddd1
 
-# Run Read Record with custom config file path 
+# Run read record with custom config file path 
 ./build/e3db read-record -c @<PathToJSON>/examples/config.json 4d289c9d-ffe4-45a9-a423-c8fdcf76ddd1
 
 # Run read record with multiple records 
