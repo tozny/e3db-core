@@ -43,7 +43,7 @@ size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp)
 	if (mem->data == NULL)
 	{
 		fprintf(stderr, "write_callback: realloc failed\n");
-		return 0; // Returning 0 indicates an error to libcurl
+		exit(EXIT_FAILURE);
 	}
 
 	memcpy(&(mem->data[mem->size]), contents, realsize);
@@ -202,7 +202,7 @@ int curl_run_op_with_expected_response_code(E3DB_Op *op, long expected_response_
 			{
 				curl_easy_cleanup(curl);
 				curl_slist_free_all(chunk);
-				free_response_data(&response_data);
+				free(response_data.data);
 				return expected_response_code;
 			}
 

@@ -124,6 +124,75 @@ unsigned char *base64_decode(const char *base64)
 	return output;
 }
 
+// unsigned char *base64_decode_with_count_simple(const char *base64, int *cnt)
+// {
+// 	int len = strlen(base64);
+// 	int padding = 0;
+// 	// Process the base64 string: remove double quotes, replace URL encoded characters
+// 	unsigned char *input = (unsigned char *)xmalloc(len + 1);
+// 	if (!input)
+// 	{
+// 		fprintf(stderr, "Error: Failed to allocate memory for 'processed_input'.\n");
+// 		return NULL;
+// 	}
+
+// 	// Remove double quotes, replace url encoded chars _ with / and - with +.
+// 	int count = 0;
+// 	for (int i = 0; i < len; i++)
+// 	{
+// 		switch (base64[i])
+// 		{
+// 		case '_':
+// 			input[count++] = '/';
+// 			break;
+// 		case '-':
+// 			input[count++] = '+';
+// 			break;
+// 		case '"':
+// 			break;
+// 		default:
+// 			input[count++] = base64[i];
+// 		}
+// 	}
+// 	// Count the padding characters in the processed input
+// 	for (int i = count - 1; i >= 0 && input[i] == '='; i--)
+// 	{
+// 		padding++;
+// 	}
+
+// 	// Calculate the maximum decoded length
+// 	int decoded_length = (count * 3) / 4 - padding;
+
+// 	BIO *bio, *b64;
+
+// 	unsigned char *buffer = (unsigned char *)xmalloc(decoded_length + 1); // +1 for null terminator
+// 	if (!buffer)
+// 	{
+// 		fprintf(stderr, "Error: Failed to allocate memory for 'output'.\n");
+// 		free(input);
+// 		return NULL;
+// 	}
+
+// 	b64 = BIO_new(BIO_f_base64());
+// 	bio = BIO_new_mem_buf(input, -1); // -1 indicates string is null terminated
+// 	bio = BIO_push(b64, bio);
+
+// 	BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL); // Don't require newlines
+
+// 	int bytesRead = BIO_read(bio, buffer, decoded_length);
+// 	if (bytesRead < 0)
+// 	{
+// 		fprintf(stderr, "BIO_read failed\n");
+// 		free(buffer);
+// 		BIO_free_all(bio);
+// 		return NULL;
+// 	}
+
+// 	buffer[bytesRead] = '\0'; // Null-terminate the result
+// 	*cnt = bytesRead;
+// 	return buffer;
+// }
+
 unsigned char *base64_decode_with_count_simple(const char *base64, int *cnt)
 {
 	int len = strlen(base64);
