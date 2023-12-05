@@ -43,7 +43,7 @@ size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp)
 	if (mem->data == NULL)
 	{
 		fprintf(stderr, "write_callback: realloc failed\n");
-		exit(EXIT_FAILURE);
+		return 0; // Returning 0 indicates an error to libcurl
 	}
 
 	memcpy(&(mem->data[mem->size]), contents, realsize);
