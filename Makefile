@@ -32,8 +32,8 @@ UNAME := $(shell uname)
 
 ifeq ($(UNAME),Darwin)
 DIST_NAME := e3db-core-macosx-$(VERSION)
-CFLAGS    += -I/usr/local/opt/openssl/include
-LDFLAGS   += -L/usr/local/opt/openssl/lib
+CFLAGS    += -I/usr/local/opt/mbedtls/include
+LDFLAGS   += -L/usr/local/opt/mbedtls/lib
 else
 ifeq ($(UNAME),Linux)
 DIST_NAME := e3db-core-linux-$(VERSION)
@@ -80,7 +80,7 @@ $(SIMPLE_LIB): $(SIMPLE_OBJECTS)
 $(EXAMPLES): $(EXAMPLES_OBJECTS) $(EXAMPLES_HEADERS) $(SIMPLE_LIB) $(SIMPLE_HEADERS)
 	@printf "%-10s %s\n" "LINK" "$@"
 	@-mkdir -p $(dir $@)
-	@gcc $(CFLAGS) $(LDFLAGS) -o $@ -Ilib $< $(SIMPLE_LIB) -lcurl -lssl -lcrypto -lm -lsodium
+	@gcc $(CFLAGS) $(LDFLAGS) -o $@ -Ilib $< $(SIMPLE_LIB) -lcurl  -lcrypto -lm -lsodium -lmbedcrypto
 
 $(SIMPLE_BUILD_DIR)/%.o: %.c $(SIMPLE_HEADERS)
 	@printf "%-10s %s\n" "CC" "$@"
@@ -113,7 +113,7 @@ $(LIB): $(OBJECTS)
 $(CMD): $(CMD_OBJECTS) $(CMD_HEADERS) $(LIB) $(HEADERS)
 	@printf "%-10s %s\n" "LINK" "$@"
 	@-mkdir -p $(dir $@)
-	@gcc $(CFLAGS) $(LDFLAGS) -o $@ -Ilib $< $(LIB) -lcurl -lssl -lcrypto -lm -lsodium
+	@gcc $(CFLAGS) $(LDFLAGS) -o $@ -Ilib $< $(LIB) -lcurl  -lcrypto -lm -lsodium -lmbedcrypto
 
 $(BUILD_DIR)/%.o: %.c $(HEADERS)
 	@printf "%-10s %s\n" "CC" "$@"

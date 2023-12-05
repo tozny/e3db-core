@@ -15,15 +15,6 @@ extern "C"
 
 #include "sds.h"
 
-	/* Base64 encode a string, returning a freshly allocated result. The result
-	 * string must be free'd with `xfree'. */
-	sds base64_encode(const char *s);
-	sds base64_encodeUrl(const char *s);
-
-	/* Base64 decode a string, returning a freshly allocated result. The
-	 * result string must be free'd with `xfree'.
-	 *
-	 */
 	char *encode64_length(const char *s, size_t length);
 	unsigned char *base64_decode(const char *s);
 	unsigned char *base64_decode_with_count(const char *s, int *count);
