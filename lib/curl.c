@@ -202,7 +202,7 @@ int curl_run_op_with_expected_response_code(E3DB_Op *op, long expected_response_
 			{
 				curl_easy_cleanup(curl);
 				curl_slist_free_all(chunk);
-				free(response_data.data);
+				free_response_data(&response_data);
 				return expected_response_code;
 			}
 
