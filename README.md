@@ -39,6 +39,6 @@ $ ./cmd/e3db <params>
 ```
 or
 ```
-$ ./examples/simple <params>
+$ ./examples/simple
 ```
 

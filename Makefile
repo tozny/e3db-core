@@ -6,13 +6,13 @@
 #
 
 VERSION        := 0.0.1
-PUBLIC_HEADERS := src/e3db_core.h
+PUBLIC_HEADERS := lib/e3db_core.h
 
 BUILD_DIR      := build
 
-SOURCES        := $(wildcard src/*.c)
+SOURCES        := $(wildcard lib/*.c)
 OBJECTS        := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SOURCES))
-HEADERS        := $(wildcard src/*.h)
+HEADERS        := $(wildcard lib/*.h)
 LIB            := $(BUILD_DIR)/libe3db.a
 CFLAGS         := -Wall -g
 LDFLAGS        :=
@@ -58,9 +58,9 @@ debug:
 
 SIMPLE_BUILD_DIR      := simple
 
-SIMPLE_SOURCES        := $(wildcard src/*.c)
+SIMPLE_SOURCES        := $(wildcard lib/*.c)
 SIMPLE_OBJECTS        := $(patsubst %.c,$(SIMPLE_BUILD_DIR)/%.o,$(SIMPLE_SOURCES))
-SIMPLE_HEADERS        := $(wildcard src/*.h)
+SIMPLE_HEADERS        := $(wildcard lib/*.h)
 SIMPLE_LIB            := $(SIMPLE_BUILD_DIR)/lib_simple.a
 
 
@@ -80,12 +80,12 @@ $(SIMPLE_LIB): $(SIMPLE_OBJECTS)
 $(EXAMPLES): $(EXAMPLES_OBJECTS) $(EXAMPLES_HEADERS) $(SIMPLE_LIB) $(SIMPLE_HEADERS)
 	@printf "%-10s %s\n" "LINK" "$@"
 	@-mkdir -p $(dir $@)
-	@gcc $(CFLAGS) $(LDFLAGS) -o $@ -Isrc $< $(SIMPLE_LIB) -lcurl -lssl -lcrypto -lm -lsodium
+	@gcc $(CFLAGS) $(LDFLAGS) -o $@ -Ilib $< $(SIMPLE_LIB) -lcurl -lssl -lcrypto -lm -lsodium
 
 $(SIMPLE_BUILD_DIR)/%.o: %.c $(SIMPLE_HEADERS)
 	@printf "%-10s %s\n" "CC" "$@"
 	@-mkdir -p $(dir $@)
-	@gcc $(CFLAGS) -Isrc -c -o $@ $<
+	@gcc $(CFLAGS) -Ilib -c -o $@ $<
 
 clean-simple:
 	rm -rf $(SIMPLE_BUILD_DIR)
@@ -113,12 +113,12 @@ $(LIB): $(OBJECTS)
 $(CMD): $(CMD_OBJECTS) $(CMD_HEADERS) $(LIB) $(HEADERS)
 	@printf "%-10s %s\n" "LINK" "$@"
 	@-mkdir -p $(dir $@)
-	@gcc $(CFLAGS) $(LDFLAGS) -o $@ -Isrc $< $(LIB) -lcurl -lssl -lcrypto -lm -lsodium
+	@gcc $(CFLAGS) $(LDFLAGS) -o $@ -Ilib $< $(LIB) -lcurl -lssl -lcrypto -lm -lsodium
 
 $(BUILD_DIR)/%.o: %.c $(HEADERS)
 	@printf "%-10s %s\n" "CC" "$@"
 	@-mkdir -p $(dir $@)
-	@gcc $(CFLAGS) -Isrc -c -o $@ $<
+	@gcc $(CFLAGS) -Ilib -c -o $@ $<
 
 clean:
 	rm -rf $(BUILD_DIR) $(DIST_ZIP) $(SIMPLE_BUILD_DIR)

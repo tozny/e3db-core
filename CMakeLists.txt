@@ -10,9 +10,37 @@ project(e3db-c-sdk VERSION 1.0.0 DESCRIPTION sdk LANGUAGES C)
 include_directories(lib)
 
 # For all child projects, set dependent 3rd-party library linkages
-# TODO this may change for if not using Linux (i.e. don't include "m")
-SET(LIBS_OUTSIDE
-    curl ssl crypto m sodium)
+SET(LIBS_OUTSIDE curl m)
+
+# Check if the platform is macOS (Darwin)
+if(APPLE)
+    # Use the FindSodium module
+    set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+    find_package(Sodium REQUIRED)
+
+    # Check if Sodium is found
+    if(SODIUM_FOUND)
+        # Include Sodium directories
+        include_directories(${SODIUM_INCLUDE_DIR})
+
+        # Add Sodium libraries to the list
+        SET(LIBS_OUTSIDE ${LIBS_OUTSIDE} ${SODIUM_LIBRARY})
+    endif()
+    # Find OpenSSL package
+    find_package(OpenSSL REQUIRED)
+
+    # Check if OpenSSL is found
+    if(OPENSSL_FOUND)
+        # Include OpenSSL directories
+        include_directories(${OPENSSL_INCLUDE_DIR})
+
+        # Add OpenSSL libraries to the list
+        SET(LIBS_OUTSIDE ${LIBS_OUTSIDE} ${OPENSSL_LIBRARIES})
+    endif()
+else()
+    # Non-Apple platforms
+    SET(LIBS_OUTSIDE ${LIBS_OUTSIDE} sodium ssl crypto)
+endif()
 
 # Build library
 add_subdirectory(lib)

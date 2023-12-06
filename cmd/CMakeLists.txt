@@ -1,20 +1,48 @@
 # CMake file for Tozny E3DB C-SDK Command Line Interface
 
 # Glob the source and header files
-FILE(GLOB EXE_SOUCES *.c)
+FILE(GLOB EXE_SOURCES *.c)
 FILE(GLOB EXE_HEADERS *.h)
 
 # Set dependent 3rd-party library linkages
-# TODO this may change for if not using Linux
-SET(LIBS_OUTSIDE
-    curl ssl crypto m sodium)
+SET(LIBS_OUTSIDE curl m)
+
+# Check if the platform is macOS (Darwin)
+if(APPLE)
+    # Find Sodium package
+    find_package(Sodium REQUIRED)
+
+    # Check if Sodium is found
+    if(SODIUM_FOUND)
+        # Include Sodium directories
+        include_directories(${SODIUM_INCLUDE_DIR})
+
+        # Add Sodium libraries to the list
+        SET(LIBS_OUTSIDE ${LIBS_OUTSIDE} ${SODIUM_LIBRARY})
+    endif()
+    
+    # Find OpenSSL package
+    find_package(OpenSSL REQUIRED)
+
+    # Check if OpenSSL is found
+    if(OPENSSL_FOUND)
+        # Include OpenSSL directories
+        include_directories(${OPENSSL_INCLUDE_DIR})
+
+        # Add OpenSSL libraries to the list
+        SET(LIBS_OUTSIDE ${LIBS_OUTSIDE} ${OPENSSL_LIBRARIES})
+    endif()
+else()
+    # Non-Apple platforms
+    SET(LIBS_OUTSIDE ${LIBS_OUTSIDE} sodium ssl crypto)
+endif()
 
 # Add sources and make executable "e3db" (or "e3db.exe")
 add_executable(e3db
-               ${EXE_SOUCES}
+               ${EXE_SOURCES}
                ${EXE_HEADERS})
 
-# Static link the SDK library
+# Static link the SDK library and external libraries
 target_link_libraries(e3db 
                       e3db_lib
                       ${LIBS_OUTSIDE})

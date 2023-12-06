@@ -2,7 +2,7 @@
 
 # CLI Example
 
-## How to Build
+## How to Build with Makefile
 
 To build a local version of the command-line interface, check out the
 sources locally, install dependencies
@@ -84,6 +84,79 @@ Read record takes a space separated list of record ids to fetch
 ./build/e3db read-record -c @<PathToJSON>/examples/config.json 4d289c9d-ffe4-45a9-a423-c8fdcf76ddd1 b8a79ca6-c1c2-4bc4-9906-739e772ae110
 
 ```
+## How to Build with CMake
+
+To build a local version of the command-line interface, check out the
+sources locally, install dependencies
+Run the following command to build an executable
+
+```bash
+git clone https://github.com/tozny/e3db-core
+mkdir build
+cd build
+cmake ..
+make
+```
+
+### How to Clean 
+
+To clean the project:
+
+```bash
+make clean 
+```
+
+## How to Run
+
+To run the following library from the build directory
+
+```bash
+./cmd/e3db [command]
+```
+
+Write Record
+
+Write record takes 3 parameters, -r takes the record type for the record, -d takes the data meant to be encrypted for the record, and -m takes the plain meta fields used for advanced searching 
+
+```bash
+
+# Run write record with client configuration file found in ~/.tozny/e3db.json and the record data/meta found in a file
+./cmd/e3db write-record -t recordTypeWanted -d @<PathToJSON>/examples/example_data.json  -m @<PathToJSON>/examples/example_meta.json
+
+# Run write record with custom config file path and the record data/meta found in a file
+./cmd/e3db write-record -t recordTypeWanted -d @<PathToJSON>/examples/example_data.json  -m @<PathToJSON>/examples/example_meta.json -c @<PathToJSON>/examples/config.json
+
+# Run write record with client configuration file found in ~/.tozny/e3db.json and the record data/meta JSON blobs
+./cmd/e3db write-record -t recordTypeWanted -d '{"key": "value"}'  -m '{"key": "value"}'
+
+# Run write record with custom config file path and the record data/meta JSON blobs
+./cmd/e3db write-record  -c @<PathToJSON>/examples/config.json -t recordTypeWanted -d '{"key": "value"}'  -m '{"key": "value"}'
+
+```
+
+Read Record
+
+Read record takes a space separated list of record ids to fetch
+
+```bash
+
+# Run read record with client configuration file found in ~/.tozny/e3db.json
+./cmd/e3db read-record 4d289c9d-ffe4-45a9-a423-c8fdcf76ddd1
+
+# Run read record with custom config file path 
+./cmd/e3db read-record -c @<PathToJSON>/examples/config.json 4d289c9d-ffe4-45a9-a423-c8fdcf76ddd1
+
+# Run read record with multiple records 
+./cmd/e3db read-record 4d289c9d-ffe4-45a9-a423-c8fdcf76ddd1 b8a79ca6-c1c2-4bc4-9906-739e772ae110
+
+# Run read record with custom config file path and multiple records
+./cmd/e3db read-record -c @<PathToJSON>/examples/config.json 4d289c9d-ffe4-45a9-a423-c8fdcf76ddd1 b8a79ca6-c1c2-4bc4-9906-739e772ae110
+
+```
+
+
+
+
 
 # Example Simple Program
 
@@ -91,7 +164,7 @@ Read record takes a space separated list of record ids to fetch
 
 Must have a Tozny Client Configuration File Located @ `~/.tozny/e3db.json`.
 
-## How to Build
+## How to Build with Makefile
 
 To build a small example project
 
@@ -120,10 +193,42 @@ For a clean debug build of the simple project:
 make clean debug-simple
 ```
 
-## How to Run
+### How to Run
 
 To run the following example project
 
 ```bash
 ./simple/simple 
+```
+
+## How to Build with CMake
+
+To build a small example project
+
+```bash
+git clone https://github.com/tozny/e3db-core
+mkdir build
+cd build
+cmake ..
+make
+```
+
+### How to Clean 
+
+To clean  the simple project:
+
+```bash
+make clean 
+```
+
+### How to Run
+
+To run the following example project from the top level directory
+
+```bash
+mkdir build
+cd build
+cmake ..
+make
+./examples/simple
 ```
