@@ -23,7 +23,7 @@ extern "C"
 	/* Base64 decode a string, returning a freshly allocated result. The
 	 * result string must be free'd with `xfree'.
 	 *
-	 * TODO: How do we handle decode errors? */
+	 */
 	char *encode64_length(const char *s, size_t length);
 	unsigned char *base64_decode(const char *s);
 	unsigned char *base64_decode_with_count(const char *s, int *count);

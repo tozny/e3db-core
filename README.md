@@ -19,3 +19,26 @@ platforms are available from this project's Releases page.
 
 For Examples on how to Run and Build look in the [Example Folder](./examples/Example.md)
 
+# Build with CMake
+
+To build with CMake:
+
+Note: *These instruction are for Linux command line only for now.*
+
+```
+$ mkdir build
+$ cd build
+$ cmake ..
+$ make
+```
+
+Then to run command line from the `build` directory:
+
+```
+$ ./cmd/e3db <params>
+```
+or
+```
+$ ./examples/simple
+```
+
