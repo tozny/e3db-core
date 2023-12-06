@@ -10,7 +10,12 @@ project(e3db-c-sdk VERSION 1.0.0 DESCRIPTION sdk LANGUAGES C)
 include_directories(lib)
 
 # Set dependent 3rd-party library linkages
-set(LIBS_OUTSIDE curl m)
+if(UNIX AND NOT APPLE)
+    find_package(tiny-curl REQUIRED)
+    list(APPEND LIBS_OUTSIDE ${TINY_CURL_LIBRARIES})
+else()
+    list(APPEND LIBS_OUTSIDE curl)
+endif()
 
 # Check if the platform is macOS (Darwin)
 if(APPLE)
