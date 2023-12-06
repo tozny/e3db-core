@@ -20,22 +20,23 @@ if(APPLE)
         # Add Sodium libraries to the list
         SET(LIBS_OUTSIDE ${LIBS_OUTSIDE} ${SODIUM_LIBRARY})
     endif()
-    
-    # Find OpenSSL package
-    find_package(OpenSSL REQUIRED)
 
-    # Check if OpenSSL is found
-    if(OPENSSL_FOUND)
-        # Include OpenSSL directories
-        include_directories(${OPENSSL_INCLUDE_DIR})
+    # Find mbedTLS package
+    find_package(mbedTLS REQUIRED)
 
-        # Add OpenSSL libraries to the list
-        SET(LIBS_OUTSIDE ${LIBS_OUTSIDE} ${OPENSSL_LIBRARIES})
+    # Check if mbedTLS is found
+    if(MBEDTLS_FOUND)
+        # Include mbedTLS directories
+        include_directories(${MBEDTLS_INCLUDE_DIRS})
+
+        # Add mbedTLS libraries to the list
+        SET(LIBS_OUTSIDE ${LIBS_OUTSIDE} ${MBEDTLS_LIBRARIES})
     endif()
 else()
     # Non-Apple platforms
-    SET(LIBS_OUTSIDE ${LIBS_OUTSIDE} sodium ssl crypto)
+    SET(LIBS_OUTSIDE ${LIBS_OUTSIDE} sodium mbedtls)
 endif()
+
 # Add sources and make executable "simple" (or "simple.exe")
 add_executable(simple
                ${EXE_SOURCES}

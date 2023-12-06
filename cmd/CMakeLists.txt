@@ -21,20 +21,20 @@ if(APPLE)
         SET(LIBS_OUTSIDE ${LIBS_OUTSIDE} ${SODIUM_LIBRARY})
     endif()
     
-    # Find OpenSSL package
-    find_package(OpenSSL REQUIRED)
+    # Find mbedTLS package
+    find_package(mbedTLS REQUIRED)
 
-    # Check if OpenSSL is found
-    if(OPENSSL_FOUND)
-        # Include OpenSSL directories
-        include_directories(${OPENSSL_INCLUDE_DIR})
+    # Check if mbedTLS is found
+    if(MBEDTLS_FOUND)
+        # Include mbedTLS directories
+        include_directories(${MBEDTLS_INCLUDE_DIRS})
 
-        # Add OpenSSL libraries to the list
-        SET(LIBS_OUTSIDE ${LIBS_OUTSIDE} ${OPENSSL_LIBRARIES})
+        # Add mbedTLS libraries to the list
+        SET(LIBS_OUTSIDE ${LIBS_OUTSIDE} ${MBEDTLS_LIBRARIES})
     endif()
 else()
     # Non-Apple platforms
-    SET(LIBS_OUTSIDE ${LIBS_OUTSIDE} sodium ssl crypto)
+    SET(LIBS_OUTSIDE ${LIBS_OUTSIDE} sodium mbedtls)
 endif()
 
 # Add sources and make executable "e3db" (or "e3db.exe")
