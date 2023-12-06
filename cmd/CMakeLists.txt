@@ -15,47 +15,26 @@ if(APPLE)
         include_directories(${SODIUM_INCLUDE_DIR})
         list(APPEND LIBS_OUTSIDE ${SODIUM_LIBRARY})
     endif()
-    
-    # Find mbedTLS package
+
+    # Find and include mbedTLS package
     find_package(mbedTLS REQUIRED)
-
-    # Check if mbedTLS is found
     if(MBEDTLS_FOUND)
-        # Include mbedTLS directories
         include_directories(${MBEDTLS_INCLUDE_DIRS})
-
-        # Add mbedTLS libraries to the list
-        SET(LIBS_OUTSIDE ${LIBS_OUTSIDE} ${MBEDTLS_LIBRARIES})
+        list(APPEND LIBS_OUTSIDE ${MBEDTLS_LIBRARIES})
     endif()
 else()
     # Non-Apple platforms
-    SET(LIBS_OUTSIDE ${LIBS_OUTSIDE} sodium mbedtls)
+    list(APPEND LIBS_OUTSIDE sodium mbedtls)
 endif()
 
 # Add sources and make executable "e3db" (or "e3db.exe")
 add_executable(e3db ${EXE_SOURCES} ${EXE_HEADERS})
 
-# Specify the default library directory
-set(DEFAULT_LIBRARY_DIR /usr/local/opt/mbedtls/lib)
+# Static link the SDK library and external libraries
+target_link_libraries(e3db e3db_lib ${LIBS_OUTSIDE}
+                      /usr/local/opt/mbedtls/lib/libmbedtls.a
+                      /usr/local/opt/mbedtls/lib/libmbedcrypto.a
+                      /usr/local/opt/mbedtls/lib/libmbedx509.a)
 
-# Check if a specific file exists
-file(GLOB LIBRARY_SPECIAL_CHECK /opt/homebrew/Cellar/mbedtls/3.5.1/lib/libmbedtls.a)
-if(LIBRARY_SPECIAL_CHECK)
-   # Target-specific libraries for the other computer
-    target_link_libraries(e3db e3db_lib ${LIBS_OUTSIDE}
-                          /opt/homebrew/Cellar/mbedtls/3.5.1/lib/libmbedtls.a
-                          /opt/homebrew/Cellar/mbedtls/3.5.1/lib/libmbedcrypto.a
-                          /opt/homebrew/Cellar/mbedtls/3.5.1/lib/libmbedx509.a)
-    
-    # Target-specific library search path for the other computer
-    link_directories(/opt/homebrew/Cellar/mbedtls/3.5.1/lib)
-else()
-    # Default libraries and library search path
-    target_link_libraries(e3db e3db_lib ${LIBS_OUTSIDE}
-                          /usr/local/opt/mbedtls/lib/libmbedtls.a
-                          /usr/local/opt/mbedtls/lib/libmbedcrypto.a
-                          /usr/local/opt/mbedtls/lib/libmbedx509.a)
-    
-    # Default library search path
-    link_directories(${DEFAULT_LIBRARY_DIR})
-endif()
+# Add the library search path if needed
+link_directories(/usr/local/opt/mbedtls/lib)
