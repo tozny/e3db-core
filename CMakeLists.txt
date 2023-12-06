@@ -24,7 +24,6 @@ if(APPLE)
         include_directories(${SODIUM_INCLUDE_DIR})
         list(APPEND LIBS_OUTSIDE ${SODIUM_LIBRARY})
     endif()
-
     # Find mbedTLS package
     find_package(mbedTLS REQUIRED)
 
@@ -32,11 +31,13 @@ if(APPLE)
     if(MBEDTLS_FOUND)
         # Include mbedTLS directories
         include_directories(${MBEDTLS_INCLUDE_DIRS})
-        list(APPEND LIBS_OUTSIDE ${MBEDTLS_LIBRARIES})
+
+        # Add mbedTLS libraries to the list
+        SET(LIBS_OUTSIDE ${LIBS_OUTSIDE} ${MBEDTLS_LIBRARIES})
     endif()
 else()
     # Non-Apple platforms
-    list(APPEND LIBS_OUTSIDE sodium mbedtls)
+    SET(LIBS_OUTSIDE ${LIBS_OUTSIDE} sodium mbedtls)
 endif()
 
 # Build library, command-line application, and simple example

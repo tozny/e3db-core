@@ -15,16 +15,21 @@ if(APPLE)
         include_directories(${SODIUM_INCLUDE_DIR})
         list(APPEND LIBS_OUTSIDE ${SODIUM_LIBRARY})
     endif()
-
-    # Find and include mbedTLS package
+    
+    # Find mbedTLS package
     find_package(mbedTLS REQUIRED)
+
+    # Check if mbedTLS is found
     if(MBEDTLS_FOUND)
+        # Include mbedTLS directories
         include_directories(${MBEDTLS_INCLUDE_DIRS})
-        list(APPEND LIBS_OUTSIDE ${MBEDTLS_LIBRARIES})
+
+        # Add mbedTLS libraries to the list
+        SET(LIBS_OUTSIDE ${LIBS_OUTSIDE} ${MBEDTLS_LIBRARIES})
     endif()
 else()
     # Non-Apple platforms
-    list(APPEND LIBS_OUTSIDE sodium mbedtls)
+    SET(LIBS_OUTSIDE ${LIBS_OUTSIDE} sodium mbedtls)
 endif()
 
 # Add sources and make executable "e3db" (or "e3db.exe")

@@ -11,20 +11,36 @@ set(LIBS_OUTSIDE curl m)
 if(APPLE)
     # Find Sodium and mbedTLS packages
     find_package(Sodium REQUIRED)
-    find_package(mbedTLS REQUIRED)
-    
-    # Check if Sodium and mbedTLS are found
-    if(SODIUM_FOUND AND MBEDTLS_FOUND)
-        # Include directories
-        include_directories(${SODIUM_INCLUDE_DIR} ${MBEDTLS_INCLUDE_DIRS})
 
-        # Add libraries to the list
-        set(LIBS_OUTSIDE ${LIBS_OUTSIDE} ${SODIUM_LIBRARY} ${MBEDTLS_LIBRARIES})
+    # Check if Sodium is found
+    if(SODIUM_FOUND)
+        # Include Sodium directories
+        include_directories(${SODIUM_INCLUDE_DIR})
+
+        # Add Sodium libraries to the list
+        SET(LIBS_OUTSIDE ${LIBS_OUTSIDE} ${SODIUM_LIBRARY})
+    endif()
+
+    # Find mbedTLS package
+    find_package(mbedTLS REQUIRED)
+
+    # Check if mbedTLS is found
+    if(MBEDTLS_FOUND)
+        # Include mbedTLS directories
+        include_directories(${MBEDTLS_INCLUDE_DIRS})
+
+        # Add mbedTLS libraries to the list
+        SET(LIBS_OUTSIDE ${LIBS_OUTSIDE} ${MBEDTLS_LIBRARIES})
     endif()
 else()
     # Non-Apple platforms
-    set(LIBS_OUTSIDE ${LIBS_OUTSIDE} sodium mbedtls)
+    SET(LIBS_OUTSIDE ${LIBS_OUTSIDE} sodium mbedtls)
 endif()
+
+# Add sources and make executable "simple" (or "simple.exe")
+add_executable(simple
+               ${EXE_SOURCES}
+               ${EXE_HEADERS})
 
 # Add sources and make executable "simple" (or "simple.exe")
 add_executable(simple ${EXE_SOURCES} ${EXE_HEADERS})
