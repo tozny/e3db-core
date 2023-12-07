@@ -7,102 +7,12 @@
 
 #include <string.h>
 
-#include <openssl/bio.h>
-#include <openssl/evp.h>
-#include <openssl/buffer.h>
-
-#include "sds.h"
 #include "cdecode.h"
 #include "cencode.h"
 #include "e3db_mem.h"
-
-sds base64_encode(const char *s)
-{
-	BIO *bio, *b64;
-	char *buf;
-	sds result;
-
-	b64 = BIO_new(BIO_f_base64());
-	bio = BIO_new(BIO_s_mem());
-	bio = BIO_push(b64, bio);
-
-	BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
-	BIO_write(bio, s, strlen(s));
-
-	BIO_flush(bio);
-	long len = BIO_get_mem_data(bio, &buf);
-	char *null_terminated_buffer = (char *)xmalloc(len + 1); // one extra byte for null terminator
-	memcpy(null_terminated_buffer, buf, len);
-
-	result = sdsnew(null_terminated_buffer);
-
-	BIO_free_all(bio);
-	free(null_terminated_buffer);
-
-	return result;
-}
-
-sds sdsRemoveBytes(sds str, size_t start, size_t count)
-{
-	if (str == NULL)
-		return NULL;
-	size_t len = sdslen(str);
-	if (start >= len)
-		return str; // Nothing to remove
-
-	// Calculate the new length of the string
-	size_t new_len = len - count;
-	if (new_len >= len)
-		return str; // Avoid underflow
-
-	// Remove the specified bytes by shifting the data
-	memmove(str + start, str + start + count, len - start - count + 1); // +1 for null terminator
-
-	// Update the length of the string
-	sdssetlen(str, new_len);
-
-	return str;
-}
-
-sds base64_encodeUrl(const char *s)
-{
-	BIO *bio, *b64;
-	char *buf;
-	sds result;
-
-	b64 = BIO_new(BIO_f_base64());
-	bio = BIO_new(BIO_s_mem());
-	bio = BIO_push(b64, bio);
-
-	BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
-	BIO_write(bio, s, strlen(s));
-	BIO_flush(bio);
-
-	long len = BIO_get_mem_data(bio, &buf);
-	char *null_terminated_buffer = (char *)xmalloc(len + 1); // one extra byte for null terminator
-	memcpy(null_terminated_buffer, buf, len);
-
-	result = sdsnew(null_terminated_buffer);
-
-	BIO_free_all(bio);
-	free(null_terminated_buffer);
-
-	int result_len = sdslen(result);
-	for (int i = 0; i < result_len; i++)
-	{
-		switch (result[i])
-		{
-		case '/':
-			result[i] = '_';
-			break;
-		case '+':
-			result[i] = '-';
-			break;
-		}
-	}
-	result[result_len] = '\0';
-	return result;
-}
+#include <stdio.h>
+#include <stdlib.h>
+#include "mbedtls_base64.h"
 
 char *encode64_length(const char *input, size_t length)
 {
@@ -218,8 +128,9 @@ unsigned char *base64_decode_with_count_simple(const char *base64, int *cnt)
 {
 	int len = strlen(base64);
 	int padding = 0;
+
 	// Process the base64 string: remove double quotes, replace URL encoded characters
-	unsigned char *input = (unsigned char *)xmalloc(len + 1);
+	unsigned char *input = (unsigned char *)malloc(len + 1);
 	if (!input)
 	{
 		fprintf(stderr, "Error: Failed to allocate memory for 'processed_input'.\n");
@@ -253,9 +164,7 @@ unsigned char *base64_decode_with_count_simple(const char *base64, int *cnt)
 	// Calculate the maximum decoded length
 	int decoded_length = (count * 3) / 4 - padding;
 
-	BIO *bio, *b64;
-
-	unsigned char *buffer = (unsigned char *)xmalloc(decoded_length + 1); // +1 for null terminator
+	unsigned char *buffer = (unsigned char *)malloc(decoded_length + 1); // +1 for null terminator
 	if (!buffer)
 	{
 		fprintf(stderr, "Error: Failed to allocate memory for 'output'.\n");
@@ -263,23 +172,20 @@ unsigned char *base64_decode_with_count_simple(const char *base64, int *cnt)
 		return NULL;
 	}
 
-	b64 = BIO_new(BIO_f_base64());
-	bio = BIO_new_mem_buf(input, -1); // -1 indicates string is null terminated
-	bio = BIO_push(b64, bio);
-
-	BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL); // Don't require newlines
-
-	int bytesRead = BIO_read(bio, buffer, decoded_length);
-	if (bytesRead < 0)
+	// Use mbedtls base64 decoding
+	size_t out_len;
+	int ret = mbedtls_base64_decode(buffer, decoded_length, &out_len, input, count);
+	if (ret != 0)
 	{
-		fprintf(stderr, "BIO_read failed\n");
+		fprintf(stderr, "mbedtls_base64_decode failed: %d\n", ret);
 		free(buffer);
-		BIO_free_all(bio);
+		free(input);
 		return NULL;
 	}
 
-	buffer[bytesRead] = '\0'; // Null-terminate the result
-	*cnt = bytesRead;
+	buffer[out_len] = '\0'; // Null-terminate the result
+	*cnt = out_len;
+	free(input);
 	return buffer;
 }
 

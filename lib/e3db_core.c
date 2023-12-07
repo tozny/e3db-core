@@ -638,11 +638,12 @@ const char *E3DB_RecordFieldIterator_GetValue(E3DB_RecordFieldIterator *it)
 static sds E3DB_GetAuthHeader(E3DB_Client *client)
 {
   sds credentials = sdscatprintf(sdsempty(), "%s:%s", client->options->api_key, client->options->api_secret);
-  sds credentials_base64 = base64_encode(credentials);
+  char *credentials_base64 = encode64_length(credentials, strlen(credentials));
+
   sds auth_header = sdsnew("Basic ");
   auth_header = sdscat(auth_header, credentials_base64);
 
-  sdsfree(credentials_base64);
+  free(credentials_base64);
   sdsfree(credentials);
 
   return auth_header;
@@ -936,13 +937,12 @@ static int E3DB_ReadRecords_Response(
     fprintf(stderr, "Fatal: Error response from E3DB API: %d\n", response_code);
     abort();
   }
-
   cJSON *json = cJSON_Parse(body);
 
   if (json == NULL)
   {
     // TODO: Figure out proper error handling here.
-    fprintf(stderr, "Fatal: Parsing ListRecords JSON failed.\n");
+    fprintf(stderr, "Fatal: Parsing Read Records JSON failed.\n");
     abort();
   }
 
@@ -1418,7 +1418,7 @@ static int E3DB_CreateAccessKeys_Response(
   if (json == NULL)
   {
     // TODO: Figure out proper error handling here.
-    fprintf(stderr, "Fatal: Parsing ListRecords JSON failed.\n");
+    fprintf(stderr, "Fatal: Parsing Create Access Key JSON failed.\n");
     abort();
   }
 
@@ -1702,7 +1702,7 @@ static int E3DB_WriteRecords_Response(
 
   if (json == NULL)
   {
-    fprintf(stderr, "Fatal: Parsing ListRecords JSON failed.\n");
+    fprintf(stderr, "Fatal: Parsing Write Records JSON failed.\n");
     abort();
   }
 
@@ -1733,7 +1733,7 @@ const char *SignDocumentWithPrivateKey(char *document, char *privateSigningKey)
   unsigned char *signedDocument = (unsigned char *)xmalloc(crypto_sign_BYTES + 1);
   memcpy(signedDocument, sig, crypto_sign_BYTES);
 
-  char *result = base64_encodeUrl((char *)signedDocument);
+  char *result = encode64_length((const char *)signedDocument, strlen((const char *)signedDocument));
   free(signedDocument);
   return result;
 }
@@ -1780,7 +1780,7 @@ static void E3DB_WriteRecords_InitOp(E3DB_Op *op)
   // Free Memory
   sdsfree(auth_header);
   free(signedRequest);
-  sdsfree((sds)signature);
+  free((char *)signature);
   cJSON_Delete(recordWriteRequestJSON);
   recordWriteRequestJSON = NULL;
 }

@@ -14,217 +14,14 @@
 #include "cJSON.h"
 #include "utlist.h"
 #include "sds.h"
-#include <curl/curl.h>
-#include <openssl/bio.h>
-#include <openssl/buffer.h>
-#include <openssl/evp.h>
 #include "e3db_core.h"
+#include "curl.h"
 #include "e3db_core.c"
 #include "e3db_client.h"
 #include "e3db_mem.h"
 #include "e3db_base64.h"
 
 #include "sodium.h"
-/* Callback function for libcurl to read data that should be supplied
- * as the body in an HTTP POST/PUT/etc request, from an OpenSSL BIO.
- * Returns the number of bytes read. */
-size_t read_body(void *ptr, size_t size, size_t nmemb, BIO *bio)
-{
-	size_t len = size * nmemb;
-	int result;
-
-	if ((result = BIO_read(bio, ptr, len)) < 0)
-	{
-		fprintf(stderr, "read_body: BIO_read failed\n");
-		abort();
-	}
-
-	return (size_t)result;
-}
-
-/* Callback function for libcurl to write data received from an HTTP
- * request to an OpenSSL BIO. Returns the number of bytes written. */
-size_t write_body(void *ptr, size_t size, size_t nmemb, BIO *bio)
-{
-	size_t len = size * nmemb;
-	int result;
-
-	if ((result = BIO_write(bio, ptr, len)) < 0)
-	{
-		fprintf(stderr, "write_body: BIO_write failed\n");
-		abort();
-	}
-
-	return (size_t)result;
-}
-
-/* Complete an E3DB operation using libcurl for HTTP requests. */
-int curl_run_op(E3DB_Op *op)
-{
-	CURL *curl;
-
-	if ((curl = curl_easy_init()) == NULL)
-	{
-		fprintf(stderr, "Fatal: Curl initialization failed.\n");
-		exit(1);
-	}
-
-	while (!E3DB_Op_IsDone(op))
-	{
-		if (E3DB_Op_IsHttpState(op))
-		{
-			curl_easy_reset(curl);
-
-			const char *method = E3DB_Op_GetHttpMethod(op);
-			E3DB_HttpHeaderList *headers = E3DB_Op_GetHttpHeaders(op);
-			BIO *write_bio = BIO_new(BIO_s_mem());
-
-			struct curl_slist *chunk = NULL;
-			E3DB_HttpHeader *header = E3DB_HttpHeaderList_GetFirst(headers);
-
-			while (header != NULL)
-			{
-				sds header_text = sdscatprintf(sdsempty(), "%s: %s",
-							       E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
-				chunk = curl_slist_append(chunk, header_text);
-				sdsfree(header_text);
-
-				header = E3DB_HttpHeader_GetNext(header);
-			}
-
-			if (!strcmp(method, "POST"))
-			{
-				const char *post_body = E3DB_Op_GetHttpBody(op);
-				curl_easy_setopt(curl, CURLOPT_POST, 1L);
-				curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_body);
-			}
-			else if (!strcmp(method, "GET"))
-			{
-				// nothing special for GET
-			}
-			else if (!strcmp(method, "PUT"))
-			{
-				const char *put_body = E3DB_Op_GetHttpBody(op);
-				curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
-				curl_easy_setopt(curl, CURLOPT_POSTFIELDS, put_body);
-			}
-			else
-			{
-				fprintf(stderr, "Unsupported method: %s\n", method);
-				abort();
-			}
-			curl_easy_setopt(curl, CURLOPT_URL, E3DB_Op_GetHttpUrl(op));
-			// Turn on for debugging
-			// curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
-			curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_body);
-			curl_easy_setopt(curl, CURLOPT_WRITEDATA, write_bio);
-
-			CURLcode res = curl_easy_perform(curl);
-			if (res != CURLE_OK)
-			{
-				fprintf(stderr, "curl_easy_perform: %s\n", curl_easy_strerror(res));
-			}
-			long response_code;
-			curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
-
-			char *body;
-			BIO_write(write_bio, "\0", 1);
-			BIO_get_mem_data(write_bio, &body);
-			E3DB_Op_FinishHttpState(op, response_code, body, NULL, 0);
-			// printf("\nBody Returned %s\n", body);
-			BIO_free_all(write_bio);
-			curl_slist_free_all(chunk);
-		}
-	}
-
-	curl_easy_cleanup(curl);
-	return 0;
-}
-
-/* Complete an E3DB operation using libcurl for HTTP requests. */
-int curl_run_op_dont_fail_with_response_code(E3DB_Op *op, long response_code_not_errored)
-{
-	CURL *curl;
-
-	if ((curl = curl_easy_init()) == NULL)
-	{
-		fprintf(stderr, "Fatal: Curl initialization failed.\n");
-		exit(1);
-	}
-
-	while (!E3DB_Op_IsDone(op))
-	{
-		if (E3DB_Op_IsHttpState(op))
-		{
-			curl_easy_reset(curl);
-
-			const char *method = E3DB_Op_GetHttpMethod(op);
-			E3DB_HttpHeaderList *headers = E3DB_Op_GetHttpHeaders(op);
-			BIO *write_bio = BIO_new(BIO_s_mem());
-
-			struct curl_slist *chunk = NULL;
-			E3DB_HttpHeader *header = E3DB_HttpHeaderList_GetFirst(headers);
-
-			while (header != NULL)
-			{
-				sds header_text = sdscatprintf(sdsempty(), "%s: %s",
-							       E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
-				chunk = curl_slist_append(chunk, header_text);
-				sdsfree(header_text);
-
-				header = E3DB_HttpHeader_GetNext(header);
-			}
-
-			if (!strcmp(method, "POST"))
-			{
-				const char *post_body = E3DB_Op_GetHttpBody(op);
-				curl_easy_setopt(curl, CURLOPT_POST, 1L);
-				curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_body);
-			}
-			else if (!strcmp(method, "GET"))
-			{
-				// nothing special for GET
-			}
-			else
-			{
-				fprintf(stderr, "Unsupported method: %s\n", method);
-				abort();
-			}
-			curl_easy_setopt(curl, CURLOPT_URL, E3DB_Op_GetHttpUrl(op));
-			// Turn on for debugging
-			// curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
-			curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_body);
-			curl_easy_setopt(curl, CURLOPT_WRITEDATA, write_bio);
-
-			CURLcode res = curl_easy_perform(curl);
-			if (res != CURLE_OK)
-			{
-				fprintf(stderr, "curl_easy_perform: %s\n", curl_easy_strerror(res));
-			}
-			long response_code;
-			curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
-			if (response_code == response_code_not_errored)
-			{
-				curl_easy_cleanup(curl);
-				BIO_free_all(write_bio);
-				curl_slist_free_all(chunk);
-				return response_code_not_errored;
-			}
-
-			char *body;
-			BIO_write(write_bio, "\0", 1);
-			BIO_get_mem_data(write_bio, &body);
-			E3DB_Op_FinishHttpState(op, response_code, body, NULL, 0);
-			BIO_free_all(write_bio);
-			curl_slist_free_all(chunk);
-		}
-	}
-
-	curl_easy_cleanup(curl);
-	return 0;
-}
 
 /*
  * {WriteRecord}
@@ -233,13 +30,11 @@ int curl_run_op_dont_fail_with_response_code(E3DB_Op *op, long response_code_not
 
 E3DB_Record *WriteRecord(E3DB_Client *client, const char **record_type, cJSON *data, cJSON *meta)
 {
-	// Set Up Curl to be used
-	curl_global_init(CURL_GLOBAL_DEFAULT);
 
 	// Step 1: Get Access Key
 	E3DB_Op *op = E3DB_GetEncryptedAccessKeys_Begin(client, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)record_type);
 
-	int responseCode = curl_run_op_dont_fail_with_response_code(op, 404);
+	int responseCode = curl_run_op_with_expected_response_code(op, 404);
 
 	if (responseCode == 404)
 	{
@@ -330,7 +125,6 @@ E3DB_Record *WriteRecord(E3DB_Client *client, const char **record_type, cJSON *d
 	{
 		E3DB_Op_Delete(op);
 	}
-	curl_global_cleanup();
 	return writtenRecord;
 }
 
@@ -402,7 +196,6 @@ E3DB_Record *ReadRecords(E3DB_Client *client, const char **all_record_ids, int r
 
 		E3DB_ReadRecordsResultIterator_Delete(it);
 		E3DB_Op_Delete(op);
-		curl_global_cleanup();
 	}
 	return records;
 }

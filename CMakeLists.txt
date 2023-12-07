@@ -6,11 +6,11 @@ cmake_minimum_required(VERSION 3.0)
 # Project Specifics
 project(e3db-c-sdk VERSION 1.0.0 DESCRIPTION sdk LANGUAGES C)
 
-# For all child projects, set include directory path
+# Set include directory path for all child projects
 include_directories(lib)
 
-# For all child projects, set dependent 3rd-party library linkages
-SET(LIBS_OUTSIDE curl m)
+# Set dependent 3rd-party library linkages
+set(LIBS_OUTSIDE curl m)
 
 # Check if the platform is macOS (Darwin)
 if(APPLE)
@@ -22,31 +22,24 @@ if(APPLE)
     if(SODIUM_FOUND)
         # Include Sodium directories
         include_directories(${SODIUM_INCLUDE_DIR})
-
-        # Add Sodium libraries to the list
-        SET(LIBS_OUTSIDE ${LIBS_OUTSIDE} ${SODIUM_LIBRARY})
+        list(APPEND LIBS_OUTSIDE ${SODIUM_LIBRARY})
     endif()
-    # Find OpenSSL package
-    find_package(OpenSSL REQUIRED)
 
-    # Check if OpenSSL is found
-    if(OPENSSL_FOUND)
-        # Include OpenSSL directories
-        include_directories(${OPENSSL_INCLUDE_DIR})
+    # Find mbedTLS package
+    find_package(mbedTLS REQUIRED)
 
-        # Add OpenSSL libraries to the list
-        SET(LIBS_OUTSIDE ${LIBS_OUTSIDE} ${OPENSSL_LIBRARIES})
+    # Check if mbedTLS is found
+    if(MBEDTLS_FOUND)
+        # Include mbedTLS directories
+        include_directories(${MBEDTLS_INCLUDE_DIRS})
+        list(APPEND LIBS_OUTSIDE ${MBEDTLS_LIBRARIES})
     endif()
 else()
     # Non-Apple platforms
-    SET(LIBS_OUTSIDE ${LIBS_OUTSIDE} sodium ssl crypto)
+    list(APPEND LIBS_OUTSIDE sodium mbedtls)
 endif()
 
-# Build library
+# Build library, command-line application, and simple example
 add_subdirectory(lib)
-
-# Build command-line application
 add_subdirectory(cmd)
-
-# Build simple example
 add_subdirectory(examples)

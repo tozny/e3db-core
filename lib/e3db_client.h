@@ -1,5 +1,5 @@
 /*
- * e3db_core.h
+ * e3db_client.h
  *
  * Copyright (C) 2017-2023, Tozny.
  * All Rights Reserved.
