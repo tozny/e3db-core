@@ -274,24 +274,15 @@ int mbedtls_run_op(E3DB_Op *op)
 	mbedtls_ssl_config_init(&conf);
 	mbedtls_x509_crt_init(&cacert);
 
-	// ... (initialize entropy, DRBG, and other mbedtls components)
-
-	// Set up SSL configuration
 	if (mbedtls_ssl_config_defaults(&conf, MBEDTLS_SSL_IS_CLIENT, MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT) != 0)
 	{
 		fprintf(stderr, "Failed to set up SSL configuration.\n");
 		exit(EXIT_FAILURE);
 	}
 
-	// Disable certificate verification
-	mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_NONE);
-
-	// Set up your own private key and certificate
-	if (mbedtls_ssl_conf_own_cert(&conf, &own_cert, &pkey) != 0)
-	{
-		fprintf(stderr, "Failed to set up own certificate and private key.\n");
-		exit(EXIT_FAILURE);
-	}
+	mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_REQUIRED);
+	mbedtls_ssl_conf_ca_chain(&conf, &cacert, NULL);
+	mbedtls_ssl_set_bio(&ssl, &server_fd, mbedtls_net_send, mbedtls_net_recv, NULL);
 
 	struct ResponseData response_data = {NULL, 0};
 
@@ -301,8 +292,21 @@ int mbedtls_run_op(E3DB_Op *op)
 	parser.data = &response_data;
 
 	// Set up your HTTP request, send it using mbedtls_ssl_write, and receive the response
+	const char *patch_data = "your_patch_data";
+	char request[512];
 
-	// Example: mbedtls_ssl_write(ssl, request, strlen(request));
+	snprintf(request, sizeof(request),
+		 "PATCH %s HTTP/1.1\r\n"
+		 "Host: %s\r\n"
+		 "Content-Length: %d\r\n"
+		 "\r\n%s",
+		 op, op, strlen(patch_data), patch_data);
+
+	if (mbedtls_ssl_write(&ssl, (const unsigned char *)request, strlen(request)) != strlen(request))
+	{
+		fprintf(stderr, "Failed to set up HHTP Request.\n");
+		exit(EXIT_FAILURE);
+	}
 
 	char buffer[1024];
 	int bytes_received;
