@@ -15,12 +15,17 @@
 #include "sds.h"
 #include <curl/curl.h>
 #include "e3db_core.h"
+#include "mbedtls/net_sockets.h"
+#include "mbedtls/ssl.h"
+#include "mbedtls/error.h"
+#include "http_parser.h"
 
 // Define a structure to hold the response data
 struct ResponseData
 {
 	char *data;
 	size_t size;
+	long response_code;
 };
 
 // Function to free the response data
@@ -32,6 +37,36 @@ void free_response_data(struct ResponseData *response_data)
 		response_data->data = NULL;
 		response_data->size = 0;
 	}
+}
+
+// HTTP parser callback for handling body data
+int http_parser_body_callback(http_parser *parser, const char *at, size_t length)
+{
+	struct ResponseData *response_data = (struct ResponseData *)parser->data;
+
+	response_data->data = realloc(response_data->data, response_data->size + length + 1);
+	if (response_data->data == NULL)
+	{
+		fprintf(stderr, "http_parser_body_callback: realloc failed\n");
+		return 1; // Returning non-zero indicates an error to the HTTP parser
+	}
+
+	memcpy(&(response_data->data[response_data->size]), at, length);
+	response_data->size += length;
+	response_data->data[response_data->size] = 0; // Null-terminate the data
+
+	return 0;
+}
+
+// HTTP parser callback for handling status code
+int http_parser_status_callback(http_parser *parser, const char *at, size_t length)
+{
+	struct ResponseData *response_data = (struct ResponseData *)parser->data;
+
+	// Convert the status code string to a long
+	response_data->response_code = strtol(at, NULL, 10);
+
+	return 0;
 }
 
 size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp)
@@ -52,6 +87,14 @@ size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp)
 
 	return realsize;
 }
+
+// Define http_parser_settings
+http_parser_settings parser_settings = {
+    .on_body = http_parser_body_callback,
+    .on_status = http_parser_status_callback,
+    // Add other callbacks as needed
+};
+
 int curl_run_op(E3DB_Op *op)
 {
 	CURL *curl;
@@ -215,5 +258,83 @@ int curl_run_op_with_expected_response_code(E3DB_Op *op, long expected_response_
 	}
 
 	curl_easy_cleanup(curl);
+	return 0;
+}
+
+int mbedtls_run_op(E3DB_Op *op)
+{
+	// Set up objects
+	mbedtls_net_context server_fd;
+	mbedtls_ssl_context ssl;
+	mbedtls_ssl_config conf;
+	mbedtls_x509_crt cacert;
+
+	mbedtls_net_init(&server_fd);
+	mbedtls_ssl_init(&ssl);
+	mbedtls_ssl_config_init(&conf);
+	mbedtls_x509_crt_init(&cacert);
+
+	// ... (initialize entropy, DRBG, and other mbedtls components)
+
+	// Set up SSL configuration
+	if (mbedtls_ssl_config_defaults(&conf, MBEDTLS_SSL_IS_CLIENT, MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT) != 0)
+	{
+		fprintf(stderr, "Failed to set up SSL configuration.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	// Disable certificate verification
+	mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_NONE);
+
+	// Set up your own private key and certificate
+	if (mbedtls_ssl_conf_own_cert(&conf, &own_cert, &pkey) != 0)
+	{
+		fprintf(stderr, "Failed to set up own certificate and private key.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	struct ResponseData response_data = {NULL, 0};
+
+	http_parser parser;
+	http_parser_init(&parser, HTTP_RESPONSE);
+
+	parser.data = &response_data;
+
+	// Set up your HTTP request, send it using mbedtls_ssl_write, and receive the response
+
+	// Example: mbedtls_ssl_write(ssl, request, strlen(request));
+
+	char buffer[1024];
+	int bytes_received;
+
+	do
+	{
+		bytes_received = mbedtls_ssl_read(&ssl, (unsigned char *)buffer, sizeof(buffer));
+
+		if (http_parser_execute(&parser, &parser_settings, buffer, bytes_received) != bytes_received)
+		{
+			fprintf(stderr, "HTTP parsing error.\n");
+			mbedtls_ssl_close_notify(&ssl);
+			mbedtls_net_free(&server_fd);
+			mbedtls_x509_crt_free(&cacert);
+			mbedtls_ssl_free(&ssl);
+			mbedtls_ssl_config_free(&conf);
+			exit(EXIT_FAILURE);
+		}
+	} while (bytes_received > 0);
+
+	// Pass the response data to E3DB_Op_FinishHttpState
+	E3DB_Op_FinishHttpState(op, response_data.response_code, response_data.data, NULL, 0);
+
+	// Clean up mbedtls components
+	mbedtls_ssl_close_notify(&ssl);
+	mbedtls_net_free(&server_fd);
+	mbedtls_x509_crt_free(&cacert);
+	mbedtls_ssl_free(&ssl);
+	mbedtls_ssl_config_free(&conf);
+
+	// Free memory for response data
+	free_response_data(&response_data);
+
 	return 0;
 }
