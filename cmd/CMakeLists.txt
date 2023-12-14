@@ -30,11 +30,27 @@ endif()
 # Add sources and make executable "e3db" (or "e3db.exe")
 add_executable(e3db ${EXE_SOURCES} ${EXE_HEADERS})
 
-# Static link the SDK library and external libraries
-target_link_libraries(e3db e3db_lib ${LIBS_OUTSIDE}
-                      /usr/local/opt/mbedtls/lib/libmbedtls.a
-                      /usr/local/opt/mbedtls/lib/libmbedcrypto.a
-                      /usr/local/opt/mbedtls/lib/libmbedx509.a)
+# Specify the default library directory
+set(DEFAULT_LIBRARY_DIR /usr/local/opt/mbedtls/lib)
 
-# Add the library search path if needed
-link_directories(/usr/local/opt/mbedtls/lib)
+# Check if a specific file exists
+file(GLOB LIBRARY_SPECIAL_CHECK /opt/homebrew/Cellar/mbedtls/3.5.1/lib/libmbedtls.a)
+if(LIBRARY_SPECIAL_CHECK)
+   # Target-specific libraries for the other computer
+    target_link_libraries(e3db e3db_lib ${LIBS_OUTSIDE}
+                          /opt/homebrew/Cellar/mbedtls/3.5.1/lib/libmbedtls.a
+                          /opt/homebrew/Cellar/mbedtls/3.5.1/lib/libmbedcrypto.a
+                          /opt/homebrew/Cellar/mbedtls/3.5.1/lib/libmbedx509.a)
+    
+    # Target-specific library search path for the other computer
+    link_directories(/opt/homebrew/Cellar/mbedtls/3.5.1/lib)
+else()
+    # Default libraries and library search path
+    target_link_libraries(e3db e3db_lib ${LIBS_OUTSIDE}
+                          /usr/local/opt/mbedtls/lib/libmbedtls.a
+                          /usr/local/opt/mbedtls/lib/libmbedcrypto.a
+                          /usr/local/opt/mbedtls/lib/libmbedx509.a)
+    
+    # Default library search path
+    link_directories(${DEFAULT_LIBRARY_DIR})
+endif()
