@@ -139,7 +139,7 @@ E3DB_Record *ReadRecords(E3DB_Client *client, const char **all_record_ids, int r
 	for (int i = 0; i < recordCount; i++)
 	{
 		E3DB_Op *op = E3DB_ReadRecords_Begin(client, &all_record_ids[i], 1, NULL, 0);
-		curl_run_op(op);
+		mbedtls_run_op(op);
 
 		E3DB_ReadRecordsResult *result = E3DB_ReadRecords_GetResult(op);
 		E3DB_ReadRecordsResultIterator *it = E3DB_ReadRecordsResult_GetIterator(result);
