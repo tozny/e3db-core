@@ -325,21 +325,21 @@ int mbedtls_run_op(E3DB_Op *op)
 
 				snprintf(request, sizeof(request),
 					 "POST %s HTTP/1.1\r\n"
-					 "Host: %s\r\n"
+					 "Host: api.e3db.com\r\n" // Use only the hostname
 					 "Content-Length: %d\r\n"
 					 "%s\r\n"  // Authorization header
 					 "\r\n%s", // Request body
-					 E3DB_Op_GetHttpUrl(op), E3DB_Op_GetHttpUrl(op), strlen(post_body), headers_string, post_body);
+					 E3DB_Op_GetHttpUrl(op), strlen(post_body), headers_string, post_body);
 				printf("Request %s\n", request);
 			}
 			else if (!strcmp(method, "GET"))
 			{
 				snprintf(request, sizeof(request),
 					 "GET %s HTTP/1.1\r\n"
-					 "Host: %s\r\n"
-					 "%s\r\n" // Additional headers if needed
-					 "\r\n",  // No request body for GET
-					 E3DB_Op_GetHttpUrl(op), E3DB_Op_GetHttpUrl(op), headers_string);
+					 "Host: api.e3db.com\r\n" // Use only the hostname
+					 "%s\r\n"		  // Additional headers if needed
+					 "\r\n",		  // No request body for GET
+					 E3DB_Op_GetHttpUrl(op), headers_string);
 			}
 
 			else
@@ -347,7 +347,8 @@ int mbedtls_run_op(E3DB_Op *op)
 				fprintf(stderr, "Unsupported method: %s\n", method);
 				abort();
 			}
-
+			printf("Request: %s\n", request);
+			printf("All headers as a string: %s\n", headers_string);
 			if (mbedtls_ssl_write(&ssl, (const unsigned char *)request, strlen(request)) != strlen(request))
 			{
 				fprintf(stderr, "Failed to set up HTTP Request.\n");
