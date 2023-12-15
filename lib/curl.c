@@ -64,13 +64,18 @@ int http_parser_body_callback(http_parser *parser, const char *at, size_t length
 	return 0;
 }
 
-// HTTP parser callback for handling status code
 int http_parser_status_callback(http_parser *parser, const char *at, size_t length)
 {
+	// Access the status code directly from the parser
 	struct ResponseData *response_data = (struct ResponseData *)parser->data;
 
 	// Convert the status code string to a long
-	response_data->response_code = strtol(at, NULL, 10);
+	response_data->response_code = parser->status_code;
+
+	// Print debug information
+	printf("Status Callback: at='%.*s', length=%zu\n", (int)length, at, length);
+	printf("Status Code: %d\n", parser->status_code);
+	printf("Response Code: %ld\n", response_data->response_code);
 
 	return 0;
 }
