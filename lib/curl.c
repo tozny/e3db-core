@@ -387,7 +387,7 @@ int mbedtls_run_op(E3DB_Op *op)
 				}
 				sprintf(header_text, "%s: %s\r\n", E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
 				strcat(headers_string, header_text);
-				//free(header_text); // Free the allocated memory
+				// free(header_text); // Free the allocated memory
 				header = E3DB_HttpHeader_GetNext(header);
 			}
 
