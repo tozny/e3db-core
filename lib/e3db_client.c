@@ -41,11 +41,11 @@ E3DB_Record *WriteRecord(E3DB_Client *client, const char **record_type, cJSON *d
 		// Path B: Access Key Does Not Exist
 		// Create Access Key
 		E3DB_Op *operationCreateAccessKey = E3DB_CreateAccessKeys_Begin(client, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)record_type, (const char **)client->options->public_key);
-		curl_run_op(operationCreateAccessKey);
+		mbedtls_run_op(operationCreateAccessKey);
 		// Fetch Encrypted Access Key
 		E3DB_Op_Delete(op);
 		op = E3DB_GetEncryptedAccessKeys_Begin(client, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)record_type);
-		curl_run_op(op);
+		mbedtls_run_op(op);
 		E3DB_Op_Delete(operationCreateAccessKey);
 	}
 
@@ -62,7 +62,7 @@ E3DB_Record *WriteRecord(E3DB_Client *client, const char **record_type, cJSON *d
 	// Write Record
 	E3DB_Op_Delete(op);
 	op = E3DB_WriteRecord_Begin(client, record_type, data, meta, ak);
-	curl_run_op(op);
+	mbedtls_run_op(op);
 
 	free(eak->eak);
 	free(eak->signer_id);
@@ -156,7 +156,7 @@ E3DB_Record *ReadRecords(E3DB_Client *client, const char **all_record_ids, int r
 			E3DB_Op *eakOp = E3DB_GetEncryptedAccessKeys_Begin(client, (const char **)E3DB_RecordMeta_GetWriterId(meta), (const char **)E3DB_RecordMeta_GetUserId(meta), (const char **)E3DB_RecordMeta_GetUserId(meta), (const char **)E3DB_RecordMeta_GetType(meta));
 
 			// Run access keys fetch
-			curl_run_op(eakOp);
+			mbedtls_run_op(eakOp);
 
 			E3DB_EncryptedAccessKeyResult *EAKResult = E3DB_EAK_GetResult(eakOp);
 			E3DB_GetEAKResultIterator *EAKIt = E3DB_GetEAKResultIterator_GetIterator(EAKResult);
