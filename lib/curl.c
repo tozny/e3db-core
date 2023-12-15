@@ -310,8 +310,7 @@ int mbedtls_run_op(E3DB_Op *op)
 				char *header_text = malloc(strlen(E3DB_HttpHeader_GetName(header)) + strlen(E3DB_HttpHeader_GetValue(header)) + 3);
 				sprintf(header_text, "%s: %s", E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
 				strcat(headers_string, header_text);
-				free(header_text);
-
+				free(header_text); // Free the allocated memory
 				header = E3DB_HttpHeader_GetNext(header);
 			}
 
@@ -323,23 +322,32 @@ int mbedtls_run_op(E3DB_Op *op)
 			{
 				const char *post_body = E3DB_Op_GetHttpBody(op);
 
-				snprintf(request, sizeof(request),
-					 "POST %s HTTP/1.1\r\n"
-					 "Host: api.e3db.com\r\n" // Use only the hostname
-					 "Content-Length: %d\r\n"
-					 "%s\r\n"  // Authorization header
-					 "\r\n%s", // Request body
-					 E3DB_Op_GetHttpUrl(op), strlen(post_body), headers_string, post_body);
+				int ret = snprintf(request, sizeof(request),
+						   "POST %s HTTP/1.1\r\n"
+						   "Host: api.e3db.com\r\n" // Use only the hostname
+						   "Content-Length: %d\r\n"
+						   "%s\r\n"  // Authorization header
+						   "\r\n%s", // Request body
+						   E3DB_Op_GetHttpUrl(op), strlen(post_body), headers_string, post_body);
+
+				if (ret < 0 || ret >= sizeof(request))
+				{
+					fprintf(stderr, "Error constructing request.\n");
+				}
 				printf("Request %s\n", request);
 			}
 			else if (!strcmp(method, "GET"))
 			{
-				snprintf(request, sizeof(request),
-					 "GET %s HTTP/1.1\r\n"
-					 "Host: api.e3db.com\r\n" // Use only the hostname
-					 "%s\r\n"		  // Additional headers if needed
-					 "\r\n",		  // No request body for GET
-					 E3DB_Op_GetHttpUrl(op), headers_string);
+				int ret = snprintf(request, sizeof(request),
+						   "GET %s HTTP/1.1\r\n"
+						   "Host: api.e3db.com\r\n" // Use only the hostname
+						   "%s\r\n"		    // Additional headers if needed
+						   "\r\n",		    // No request body for GET
+						   E3DB_Op_GetHttpUrl(op), headers_string);
+				if (ret < 0 || ret >= sizeof(request))
+				{
+					fprintf(stderr, "Error constructing request.\n");
+				}
 			}
 
 			else
