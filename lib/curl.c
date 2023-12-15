@@ -438,6 +438,27 @@ int mbedtls_run_op(E3DB_Op *op)
 					exit(EXIT_FAILURE);
 				}
 			}
+			else if (!strcmp(method, "PUT"))
+			{
+				const char *put_body = E3DB_Op_GetHttpBody(op);
+				printf("Put Body: %s\n", put_body);
+				printf("Len Put Body: %d\n", strlen(put_body));
+
+				snprintf(request, MAX_REQUEST_SIZE,
+					 "PUT %s HTTP/1.1\r\n"
+					 "Host: api.e3db.com\r\n"
+					 "Content-Length: %zu\r\n"
+					 "Content-Type: application/json; charset=UTF-8\r\n"
+					 "%s\r\n" // Additional headers, like Authorization
+					 "%s",	  // JSON body
+					 E3DB_Op_GetHttpUrl(op), strlen(put_body), headers_string, put_body);
+
+				if (ret < 0 || ret >= MAX_REQUEST_SIZE - 1) // -1 to leave room for the null terminator
+				{
+					fprintf(stderr, "Error constructing request.\n");
+					exit(EXIT_FAILURE);
+				}
+			}
 			else
 			{
 				fprintf(stderr, "Unsupported method: %s\n", method);
