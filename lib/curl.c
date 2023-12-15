@@ -451,48 +451,108 @@ int mbedtls_run_op(E3DB_Op *op)
 				fprintf(stderr, "Memory allocation error.\n");
 				exit(EXIT_FAILURE);
 			}
-			int bytes_received;
 
-			do
+			int bytes_received = mbedtls_ssl_read(&ssl, (unsigned char *)buffer, MAX_BUFFER_SIZE);
+			printf("Bytes received %d\n", bytes_received);
+			if (bytes_received < 0)
 			{
-				bytes_received = mbedtls_ssl_read(&ssl, (unsigned char *)buffer, MAX_BUFFER_SIZE);
-				printf("Bytes received %d\n", bytes_received);
-				if (bytes_received < 0)
+				// Handle mbedtls_ssl_read error
+				fprintf(stderr, "mbedtls_ssl_read error: %d\n", bytes_received);
+				break; // Exit the loop on error
+			}
+			// Handle buffer overflow, reallocate if necessary
+			if (bytes_received > MAX_BUFFER_SIZE)
+			{
+				char *new_buffer = (char *)xrealloc(buffer, MAX_BUFFER_SIZE + bytes_received);
+				if (new_buffer == NULL)
 				{
-					// Handle mbedtls_ssl_read error
-					fprintf(stderr, "mbedtls_ssl_read error: %d\n", bytes_received);
-					break; // Exit the loop on error
-				}
-				// Handle buffer overflow, reallocate if necessary
-				if (bytes_received > MAX_BUFFER_SIZE)
-				{
-					char *new_buffer = (char *)xrealloc(buffer, MAX_BUFFER_SIZE + bytes_received);
-					if (new_buffer == NULL)
-					{
-						// Handle reallocation failure
-						free(buffer);
-						fprintf(stderr, "Memory reallocation error.\n");
-						exit(EXIT_FAILURE);
-					}
-					buffer = new_buffer;
-				}
-				printf("Bytes received %d\n", bytes_received);
-				printf("\n Buffer: %s \n", buffer);
-				printf("%s", "End of buffer");
-				if (http_parser_execute(&parser, &parser_settings, buffer, bytes_received) != bytes_received)
-				{
-					fprintf(stderr, "HTTP parsing error.\n");
-					mbedtls_ssl_close_notify(&ssl);
-					mbedtls_net_free(&server_fd);
-					mbedtls_x509_crt_free(&cacert);
-					mbedtls_ssl_free(&ssl);
-					mbedtls_ssl_config_free(&conf);
+					// Handle reallocation failure
+					free(buffer);
+					fprintf(stderr, "Memory reallocation error.\n");
 					exit(EXIT_FAILURE);
 				}
-				// Continue processing the buffer
-			} while (bytes_received > 0);
-			printf("Buffer: %.*s\n", bytes_received, buffer);
+				buffer = new_buffer;
+			}
+			printf("Bytes received %d\n", bytes_received);
+			printf("\n Buffer: %s \n", buffer);
+			printf("%s", "End of buffer");
+			// Find the position of the empty line that separates headers and body
+			const char *body_start = strstr(buffer, "\r\n\r\n");
 
+			if (body_start != NULL)
+			{
+				// Calculate the length of headers
+				size_t headers_length = body_start - buffer;
+
+				// Allocate memory for headers
+				char *headers = (char *)malloc(headers_length + 1); // +1 for null terminator
+
+				if (headers != NULL)
+				{
+					// Copy headers to the new buffer
+					strncpy(headers, buffer, headers_length);
+					headers[headers_length] = '\0'; // Null-terminate the string
+
+					// Print and do whatever you need with headers
+					printf("Headers:\n%s\n", headers);
+					if (http_parser_execute(&parser, &parser_settings, headers, headers_length) != headers_length)
+					{
+						fprintf(stderr, "HTTP parsing error.\n");
+						mbedtls_ssl_close_notify(&ssl);
+						mbedtls_net_free(&server_fd);
+						mbedtls_x509_crt_free(&cacert);
+						mbedtls_ssl_free(&ssl);
+						mbedtls_ssl_config_free(&conf);
+						exit(EXIT_FAILURE);
+					}
+					// Allocate memory for the body
+					size_t body_length = strlen(body_start + 4);  // Skip the "\r\n\r\n"
+					char *body = (char *)malloc(body_length + 1); // +1 for null terminator
+
+					if (body != NULL)
+					{
+						// Copy body to the new buffer
+						strcpy(body, body_start + 4);
+
+						// Print and do whatever you need with body
+						printf("\nBody:\n%s\n", body);
+						if (http_parser_execute(&parser, &parser_settings, body, body_length) != body_length)
+						{
+							fprintf(stderr, "HTTP parsing error.\n");
+							mbedtls_ssl_close_notify(&ssl);
+							mbedtls_net_free(&server_fd);
+							mbedtls_x509_crt_free(&cacert);
+							mbedtls_ssl_free(&ssl);
+							mbedtls_ssl_config_free(&conf);
+							exit(EXIT_FAILURE);
+						}
+						response_data.data = body;
+						// Don't forget to free the allocated memory for body
+						free(body);
+					}
+					else
+					{
+						// Handle memory allocation failure for body
+						printf("Memory allocation failed for body\n");
+					}
+
+					// Don't forget to free the allocated memory for headers
+					free(headers);
+				}
+				else
+				{
+					// Handle memory allocation failure for headers
+					printf("Memory allocation failed for headers\n");
+				}
+			}
+			else
+			{
+				// Invalid response, no empty line found
+				printf("Invalid response format\n");
+			}
+			printf("Buffer: %.*s\n", bytes_received, buffer);
+			printf("Response data: %s\n", response_data.data);
+			printf("Response data: %ld\n", response_data.response_code);
 			// Pass the response data to E3DB_Op_FinishHttpState
 			E3DB_Op_FinishHttpState(op, response_data.response_code, response_data.data, NULL, 0);
 			// Free memory at the end
