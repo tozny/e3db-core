@@ -128,3 +128,9 @@ clean:
 .SECONDARY: $(OBJECTS) $(CMD_OBJECTS)
 
 # vim: set noet ts=2:
+
+cmake-build: clean
+	mkdir build && \
+	cd build && \
+	cmake .. && \
+	make 

@@ -19,6 +19,8 @@
 #include "mbedtls/ssl.h"
 #include "mbedtls/error.h"
 #include "http_parser.h"
+#include "mbedtls/entropy.h"
+#include "mbedtls/ctr_drbg.h"
 
 // Define a structure to hold the response data
 struct ResponseData
@@ -268,6 +270,11 @@ int mbedtls_run_op(E3DB_Op *op)
 	mbedtls_ssl_context ssl;
 	mbedtls_ssl_config conf;
 	mbedtls_x509_crt cacert;
+	mbedtls_entropy_context entropy;
+    mbedtls_ctr_drbg_context ctr_drbg;
+	const char *hostname = "api.e3db.com";
+	const char *port = "443";
+	int ret;
 
 	mbedtls_net_init(&server_fd);
 	mbedtls_ssl_init(&ssl);
@@ -280,7 +287,7 @@ int mbedtls_run_op(E3DB_Op *op)
 		exit(EXIT_FAILURE);
 	}
 
-	mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_REQUIRED);
+	mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_OPTIONAL);
 	mbedtls_ssl_conf_ca_chain(&conf, &cacert, NULL);
 	mbedtls_ssl_set_bio(&ssl, &server_fd, mbedtls_net_send, mbedtls_net_recv, NULL);
 
@@ -290,6 +297,47 @@ int mbedtls_run_op(E3DB_Op *op)
 	http_parser_init(&parser, HTTP_RESPONSE);
 
 	parser.data = &response_data;
+
+	// Set hostname for Server Name Indication (SNI)
+    ret = mbedtls_ssl_set_hostname(&ssl, hostname);
+    if (ret != 0) {
+       fprintf(stderr, "Failed to set hostname. %d\n", ret);
+        exit(EXIT_FAILURE);
+    }
+
+    // Initialize entropy source
+    mbedtls_entropy_init(&entropy);
+    mbedtls_ctr_drbg_init(&ctr_drbg);
+
+    // Initialize random seed source
+    ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, NULL, 0);
+    if (ret != 0) {
+        fprintf(stderr, "Failed to set drbg seed. %d\n", ret);
+        exit(EXIT_FAILURE);
+    }
+
+    // Set SSL context random seed source
+    mbedtls_ssl_conf_rng(&conf, mbedtls_ctr_drbg_random, &ctr_drbg);
+
+	/* Assign the TLS config to the TLS context. */
+	if (mbedtls_ssl_setup(&ssl, &conf) != 0) {
+		 fprintf(stderr, "Failed to setup ssl. %d\n", ret);
+		exit(EXIT_FAILURE);
+	}
+
+	 // Connect to the server
+    if (mbedtls_net_connect(&server_fd, hostname, port, MBEDTLS_SSL_TRANSPORT_STREAM) != 0) {
+        fprintf(stderr, "Failed to connect to server.\n");
+        exit(EXIT_FAILURE);
+    }
+
+	// Handshake with server
+    while ((ret = mbedtls_ssl_handshake(&ssl)) != 0) {
+        if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
+           fprintf(stderr, "Failed to make ssl handshake. %d\n", ret);
+            exit(EXIT_FAILURE);
+        }
+    }
 
 	while (!E3DB_Op_IsDone(op))
 	{
