@@ -448,7 +448,6 @@ int mbedtls_run_op(E3DB_Op *op)
 					 "PUT %s HTTP/1.1\r\n"
 					 "Host: api.e3db.com\r\n"
 					 "Content-Length: %zu\r\n"
-					 "Content-Type: application/json; charset=UTF-8\r\n"
 					 "%s\r\n" // Additional headers, like Authorization
 					 "%s",	  // JSON body
 					 E3DB_Op_GetHttpUrl(op), strlen(put_body), headers_string, put_body);
