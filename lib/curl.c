@@ -379,7 +379,7 @@ int mbedtls_run_op(E3DB_Op *op)
 					fprintf(stderr, "Memory allocation error.\n");
 					exit(EXIT_FAILURE);
 				}
-				sprintf(header_text, "%s: %s", E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
+				sprintf(header_text, "%s: %s\r\n", E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
 				strcat(headers_string, header_text);
 				free(header_text); // Free the allocated memory
 				header = E3DB_HttpHeader_GetNext(header);
@@ -415,6 +415,8 @@ int mbedtls_run_op(E3DB_Op *op)
 			}
 			else if (!strcmp(method, "GET"))
 			{
+				printf("URL length: %zu\n", strlen(E3DB_Op_GetHttpUrl(op)));
+				printf("Headers length: %zu\n", strlen(headers_string));
 				int ret = snprintf(request, MAX_REQUEST_SIZE,
 						   "GET %s HTTP/1.1\r\n"
 						   "Host: api.e3db.com\r\n" // Use only the hostname
