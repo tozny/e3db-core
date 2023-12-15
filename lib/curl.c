@@ -14,6 +14,7 @@
 
 #include "sds.h"
 #include <curl/curl.h>
+#include "e3db_mem.h"
 #include "e3db_core.h"
 #include "mbedtls/net_sockets.h"
 #include "mbedtls/ssl.h"
@@ -22,6 +23,9 @@
 #include "mbedtls/entropy.h"
 #include "mbedtls/ctr_drbg.h"
 
+int MAX_BUFFER_SIZE = 8192;
+int MAX_REQUEST_SIZE = 8192;
+int MAX_HEADER_SIZE = 8192;
 // Define a structure to hold the response data
 struct ResponseData
 {
@@ -271,7 +275,7 @@ int mbedtls_run_op(E3DB_Op *op)
 	mbedtls_ssl_config conf;
 	mbedtls_x509_crt cacert;
 	mbedtls_entropy_context entropy;
-    mbedtls_ctr_drbg_context ctr_drbg;
+	mbedtls_ctr_drbg_context ctr_drbg;
 	const char *hostname = "api.e3db.com";
 	const char *port = "443";
 	int ret;
@@ -299,45 +303,51 @@ int mbedtls_run_op(E3DB_Op *op)
 	parser.data = &response_data;
 
 	// Set hostname for Server Name Indication (SNI)
-    ret = mbedtls_ssl_set_hostname(&ssl, hostname);
-    if (ret != 0) {
-       fprintf(stderr, "Failed to set hostname. %d\n", ret);
-        exit(EXIT_FAILURE);
-    }
-
-    // Initialize entropy source
-    mbedtls_entropy_init(&entropy);
-    mbedtls_ctr_drbg_init(&ctr_drbg);
-
-    // Initialize random seed source
-    ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, NULL, 0);
-    if (ret != 0) {
-        fprintf(stderr, "Failed to set drbg seed. %d\n", ret);
-        exit(EXIT_FAILURE);
-    }
-
-    // Set SSL context random seed source
-    mbedtls_ssl_conf_rng(&conf, mbedtls_ctr_drbg_random, &ctr_drbg);
-
-	/* Assign the TLS config to the TLS context. */
-	if (mbedtls_ssl_setup(&ssl, &conf) != 0) {
-		 fprintf(stderr, "Failed to setup ssl. %d\n", ret);
+	ret = mbedtls_ssl_set_hostname(&ssl, hostname);
+	if (ret != 0)
+	{
+		fprintf(stderr, "Failed to set hostname. %d\n", ret);
 		exit(EXIT_FAILURE);
 	}
 
-	 // Connect to the server
-    if (mbedtls_net_connect(&server_fd, hostname, port, MBEDTLS_SSL_TRANSPORT_STREAM) != 0) {
-        fprintf(stderr, "Failed to connect to server.\n");
-        exit(EXIT_FAILURE);
-    }
+	// Initialize entropy source
+	mbedtls_entropy_init(&entropy);
+	mbedtls_ctr_drbg_init(&ctr_drbg);
+
+	// Initialize random seed source
+	ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, NULL, 0);
+	if (ret != 0)
+	{
+		fprintf(stderr, "Failed to set drbg seed. %d\n", ret);
+		exit(EXIT_FAILURE);
+	}
+
+	// Set SSL context random seed source
+	mbedtls_ssl_conf_rng(&conf, mbedtls_ctr_drbg_random, &ctr_drbg);
+
+	/* Assign the TLS config to the TLS context. */
+	if (mbedtls_ssl_setup(&ssl, &conf) != 0)
+	{
+		fprintf(stderr, "Failed to setup ssl. %d\n", ret);
+		exit(EXIT_FAILURE);
+	}
+
+	// Connect to the server
+	if (mbedtls_net_connect(&server_fd, hostname, port, MBEDTLS_SSL_TRANSPORT_STREAM) != 0)
+	{
+		fprintf(stderr, "Failed to connect to server.\n");
+		exit(EXIT_FAILURE);
+	}
 
 	// Handshake with server
-    while ((ret = mbedtls_ssl_handshake(&ssl)) != 0) {
-        if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
-           fprintf(stderr, "Failed to make ssl handshake. %d\n", ret);
-            exit(EXIT_FAILURE);
-        }
-    }
+	while ((ret = mbedtls_ssl_handshake(&ssl)) != 0)
+	{
+		if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE)
+		{
+			fprintf(stderr, "Failed to make ssl handshake. %d\n", ret);
+			exit(EXIT_FAILURE);
+		}
+	}
 
 	while (!E3DB_Op_IsDone(op))
 	{
@@ -350,12 +360,25 @@ int mbedtls_run_op(E3DB_Op *op)
 
 			E3DB_HttpHeader *header = E3DB_HttpHeaderList_GetFirst(headers);
 
-			char headers_string[4096]; // Adjust the size based on your needs
-			headers_string[0] = '\0';  // Initialize the string to an empty string
+			// Allocate memory for headers_string and request
+			char *headers_string = (char *)xmalloc(MAX_HEADER_SIZE);
+			headers_string[0] = '\0'; // Initialize the string to an empty string
+			char *request = (char *)xmalloc(MAX_REQUEST_SIZE);
 
+			// Check for allocation errors
+			if (headers_string == NULL || request == NULL)
+			{
+				fprintf(stderr, "Memory allocation error.\n");
+				exit(EXIT_FAILURE);
+			}
 			while (header != NULL)
 			{
-				char *header_text = malloc(strlen(E3DB_HttpHeader_GetName(header)) + strlen(E3DB_HttpHeader_GetValue(header)) + 3);
+				char *header_text = (char *)xmalloc(strlen(E3DB_HttpHeader_GetName(header)) + strlen(E3DB_HttpHeader_GetValue(header)) + 3);
+				if (header_text == NULL)
+				{
+					fprintf(stderr, "Memory allocation error.\n");
+					exit(EXIT_FAILURE);
+				}
 				sprintf(header_text, "%s: %s", E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
 				strcat(headers_string, header_text);
 				free(header_text); // Free the allocated memory
@@ -363,38 +386,45 @@ int mbedtls_run_op(E3DB_Op *op)
 			}
 
 			printf("All headers as a string: %s\n", headers_string);
-			char request[8192]; // Adjust the size based on your needs
-			request[0] = '\0';  // Initialize the string to an empty string
 
 			if (!strcmp(method, "POST"))
 			{
 				const char *post_body = E3DB_Op_GetHttpBody(op);
-
-				int ret = snprintf(request, sizeof(request),
+				printf("URL length: %zu\n", strlen(E3DB_Op_GetHttpUrl(op)));
+				printf("Headers length: %zu\n", strlen(headers_string));
+				printf("Post body length: %zu\n", strlen(post_body));
+				int ret = snprintf(request, MAX_REQUEST_SIZE,
 						   "POST %s HTTP/1.1\r\n"
 						   "Host: api.e3db.com\r\n" // Use only the hostname
-						   "Content-Length: %d\r\n"
+						   "Content-Length: %zu\r\n"
 						   "%s\r\n"  // Authorization header
 						   "\r\n%s", // Request body
 						   E3DB_Op_GetHttpUrl(op), strlen(post_body), headers_string, post_body);
 
-				if (ret < 0 || ret >= sizeof(request))
+				printf("Ret size %d", ret);
+				printf("snprintf returned: %d\n", ret);
+				if (ret < 0 || ret >= MAX_REQUEST_SIZE - 1) // -1 to leave room for the null terminator
 				{
 					fprintf(stderr, "Error constructing request.\n");
+					exit(EXIT_FAILURE);
 				}
 				printf("Request %s\n", request);
+				printf("URL: %s\n", E3DB_Op_GetHttpUrl(op));
+				printf("Headers: %s\n", headers_string);
+				printf("Post Body: %s\n", post_body);
 			}
 			else if (!strcmp(method, "GET"))
 			{
-				int ret = snprintf(request, sizeof(request),
+				int ret = snprintf(request, MAX_REQUEST_SIZE,
 						   "GET %s HTTP/1.1\r\n"
 						   "Host: api.e3db.com\r\n" // Use only the hostname
 						   "%s\r\n"		    // Additional headers if needed
 						   "\r\n",		    // No request body for GET
 						   E3DB_Op_GetHttpUrl(op), headers_string);
-				if (ret < 0 || ret >= sizeof(request))
+				if (ret < 0 || ret >= MAX_REQUEST_SIZE - 1) // -1 to leave room for the null terminator
 				{
 					fprintf(stderr, "Error constructing request.\n");
+					exit(EXIT_FAILURE);
 				}
 			}
 
@@ -411,13 +441,42 @@ int mbedtls_run_op(E3DB_Op *op)
 				exit(EXIT_FAILURE);
 			}
 
-			char buffer[1024];
+			// Allocate memory for the response buffer
+			char *buffer = (char *)xmalloc(MAX_BUFFER_SIZE);
+			// Check for allocation errors
+			if (buffer == NULL)
+			{
+				fprintf(stderr, "Memory allocation error.\n");
+				exit(EXIT_FAILURE);
+			}
 			int bytes_received;
 
 			do
 			{
-				bytes_received = mbedtls_ssl_read(&ssl, (unsigned char *)buffer, sizeof(buffer));
+				bytes_received = mbedtls_ssl_read(&ssl, (unsigned char *)buffer, MAX_BUFFER_SIZE);
 				printf("Bytes received %d\n", bytes_received);
+				if (bytes_received < 0)
+				{
+					// Handle mbedtls_ssl_read error
+					fprintf(stderr, "mbedtls_ssl_read error: %d\n", bytes_received);
+					break; // Exit the loop on error
+				}
+				// Handle buffer overflow, reallocate if necessary
+				if (bytes_received > MAX_BUFFER_SIZE)
+				{
+					char *new_buffer = (char *)xrealloc(buffer, MAX_BUFFER_SIZE + bytes_received);
+					if (new_buffer == NULL)
+					{
+						// Handle reallocation failure
+						free(buffer);
+						fprintf(stderr, "Memory reallocation error.\n");
+						exit(EXIT_FAILURE);
+					}
+					buffer = new_buffer;
+				}
+				printf("Bytes received %d\n", bytes_received);
+				printf("\n Buffer: %s \n", buffer);
+				printf("%s", "End of buffer");
 				if (http_parser_execute(&parser, &parser_settings, buffer, bytes_received) != bytes_received)
 				{
 					fprintf(stderr, "HTTP parsing error.\n");
@@ -428,10 +487,16 @@ int mbedtls_run_op(E3DB_Op *op)
 					mbedtls_ssl_config_free(&conf);
 					exit(EXIT_FAILURE);
 				}
+				// Continue processing the buffer
 			} while (bytes_received > 0);
+			printf("Buffer: %.*s\n", bytes_received, buffer);
 
 			// Pass the response data to E3DB_Op_FinishHttpState
 			E3DB_Op_FinishHttpState(op, response_data.response_code, response_data.data, NULL, 0);
+			// Free memory at the end
+			free(headers_string);
+			free(request);
+			free(buffer);
 		}
 	}
 
@@ -444,6 +509,7 @@ int mbedtls_run_op(E3DB_Op *op)
 
 	// Free memory for response data
 	free_response_data(&response_data);
+	printf("%s", "Done!");
 
 	return 0;
 }
