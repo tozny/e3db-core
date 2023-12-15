@@ -96,9 +96,9 @@ size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp)
 
 // Define http_parser_settings
 http_parser_settings parser_settings = {
-    .on_body = http_parser_body_callback,
-    .on_status = http_parser_status_callback,
-    // Add other callbacks as needed
+	.on_body = http_parser_body_callback,
+	.on_status = http_parser_status_callback,
+	// Add other callbacks as needed
 };
 
 int curl_run_op(E3DB_Op *op)
@@ -221,6 +221,12 @@ int curl_run_op_with_expected_response_code(E3DB_Op *op, long expected_response_
 				const char *post_body = E3DB_Op_GetHttpBody(op);
 				curl_easy_setopt(curl, CURLOPT_POST, 1L);
 				curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_body);
+			}
+			else if (!strcmp(method, "PUT"))
+			{
+				const char *put_body = E3DB_Op_GetHttpBody(op);
+				curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
+				curl_easy_setopt(curl, CURLOPT_POSTFIELDS, put_body);
 			}
 			else if (!strcmp(method, "GET"))
 			{
@@ -381,7 +387,7 @@ int mbedtls_run_op(E3DB_Op *op)
 				}
 				sprintf(header_text, "%s: %s\r\n", E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
 				strcat(headers_string, header_text);
-				free(header_text); // Free the allocated memory
+				//free(header_text); // Free the allocated memory
 				header = E3DB_HttpHeader_GetNext(header);
 			}
 
@@ -394,12 +400,12 @@ int mbedtls_run_op(E3DB_Op *op)
 				printf("Headers length: %zu\n", strlen(headers_string));
 				printf("Post body length: %zu\n", strlen(post_body));
 				int ret = snprintf(request, MAX_REQUEST_SIZE,
-						   "POST %s HTTP/1.1\r\n"
-						   "Host: api.e3db.com\r\n" // Use only the hostname
-						   "Content-Length: %zu\r\n"
-						   "%s\r\n"  // Authorization header
-						   "\r\n%s", // Request body
-						   E3DB_Op_GetHttpUrl(op), strlen(post_body), headers_string, post_body);
+								   "POST %s HTTP/1.1\r\n"
+								   "Host: api.e3db.com\r\n" // Use only the hostname
+								   "Content-Length: %zu\r\n"
+								   "%s\r\n"	 // Authorization header
+								   "\r\n%s", // Request body
+								   E3DB_Op_GetHttpUrl(op), strlen(post_body), headers_string, post_body);
 
 				printf("Ret size %d", ret);
 				printf("snprintf returned: %d\n", ret);
@@ -413,16 +419,34 @@ int mbedtls_run_op(E3DB_Op *op)
 				printf("Headers: %s\n", headers_string);
 				printf("Post Body: %s\n", post_body);
 			}
+			else if (!strcmp(method, "PUT"))
+			{
+				const char *put_body = E3DB_Op_GetHttpBody(op);
+				printf("Put Body: %s\n", put_body);
+				int ret = snprintf(request, MAX_REQUEST_SIZE,
+								   "PUT %s HTTP/1.1\r\n"
+								   "Host: api.e3db.com\r\n" // Use only the hostname
+								   "Content-Length: %zu\r\n"
+								   "%s\r\n"	 // Authorization header
+								   "\r\n%s", // Request body
+								   E3DB_Op_GetHttpUrl(op), strlen(put_body), headers_string, put_body);
+
+				if (ret < 0 || ret >= MAX_REQUEST_SIZE - 1) // -1 to leave room for the null terminator
+				{
+					fprintf(stderr, "Error constructing request.\n");
+					exit(EXIT_FAILURE);
+				}
+			}
 			else if (!strcmp(method, "GET"))
 			{
 				printf("URL length: %zu\n", strlen(E3DB_Op_GetHttpUrl(op)));
 				printf("Headers length: %zu\n", strlen(headers_string));
 				int ret = snprintf(request, MAX_REQUEST_SIZE,
-						   "GET %s HTTP/1.1\r\n"
-						   "Host: api.e3db.com\r\n" // Use only the hostname
-						   "%s\r\n"		    // Additional headers if needed
-						   "\r\n",		    // No request body for GET
-						   E3DB_Op_GetHttpUrl(op), headers_string);
+								   "GET %s HTTP/1.1\r\n"
+								   "Host: api.e3db.com\r\n" // Use only the hostname
+								   "%s\r\n"					// Additional headers if needed
+								   "\r\n",					// No request body for GET
+								   E3DB_Op_GetHttpUrl(op), headers_string);
 				if (ret < 0 || ret >= MAX_REQUEST_SIZE - 1) // -1 to leave room for the null terminator
 				{
 					fprintf(stderr, "Error constructing request.\n");
