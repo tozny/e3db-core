@@ -478,7 +478,8 @@ int mbedtls_run_op(E3DB_Op *op)
 			printf("%s", "End of buffer");
 			// Find the position of the empty line that separates headers and body
 			const char *body_start = strstr(buffer, "\r\n\r\n");
-
+			size_t body_length = strlen(body_start + 4);  // Skip the "\r\n\r\n"
+			char *body = (char *)malloc(body_length + 1); // +1 for null terminator
 			if (body_start != NULL)
 			{
 				// Calculate the length of headers
@@ -506,8 +507,6 @@ int mbedtls_run_op(E3DB_Op *op)
 						exit(EXIT_FAILURE);
 					}
 					// Allocate memory for the body
-					size_t body_length = strlen(body_start + 4);  // Skip the "\r\n\r\n"
-					char *body = (char *)malloc(body_length + 1); // +1 for null terminator
 
 					if (body != NULL)
 					{
@@ -527,17 +526,12 @@ int mbedtls_run_op(E3DB_Op *op)
 							exit(EXIT_FAILURE);
 						}
 						response_data.data = body;
-						// Don't forget to free the allocated memory for body
-						free(body);
 					}
 					else
 					{
 						// Handle memory allocation failure for body
 						printf("Memory allocation failed for body\n");
 					}
-
-					// Don't forget to free the allocated memory for headers
-					free(headers);
 				}
 				else
 				{
