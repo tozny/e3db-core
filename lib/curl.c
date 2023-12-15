@@ -64,13 +64,18 @@ int http_parser_body_callback(http_parser *parser, const char *at, size_t length
 	return 0;
 }
 
-// HTTP parser callback for handling status code
 int http_parser_status_callback(http_parser *parser, const char *at, size_t length)
 {
+	// Access the status code directly from the parser
 	struct ResponseData *response_data = (struct ResponseData *)parser->data;
 
 	// Convert the status code string to a long
-	response_data->response_code = strtol(at, NULL, 10);
+	response_data->response_code = parser->status_code;
+
+	// Print debug information
+	printf("Status Callback: at='%.*s', length=%zu\n", (int)length, at, length);
+	printf("Status Code: %d\n", parser->status_code);
+	printf("Response Code: %ld\n", response_data->response_code);
 
 	return 0;
 }
@@ -93,12 +98,16 @@ size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp)
 
 	return realsize;
 }
-
+int on_headers_complete(http_parser *parser)
+{
+	// You can handle additional logic if needed
+	return 0;
+}
 // Define http_parser_settings
 http_parser_settings parser_settings = {
 	.on_body = http_parser_body_callback,
 	.on_status = http_parser_status_callback,
-	// Add other callbacks as needed
+	.on_headers_complete = on_headers_complete, // add this line
 };
 
 int curl_run_op(E3DB_Op *op)
@@ -387,8 +396,8 @@ int mbedtls_run_op(E3DB_Op *op)
 				}
 				sprintf(header_text, "%s: %s\r\n", E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
 				strcat(headers_string, header_text);
-				// free(header_text); // Free the allocated memory
 				header = E3DB_HttpHeader_GetNext(header);
+				// free(header_text); // Free the allocated memory
 			}
 
 			printf("All headers as a string: %s\n", headers_string);
@@ -403,8 +412,9 @@ int mbedtls_run_op(E3DB_Op *op)
 								   "POST %s HTTP/1.1\r\n"
 								   "Host: api.e3db.com\r\n" // Use only the hostname
 								   "Content-Length: %zu\r\n"
+								   "Content-Type: application/json\r\n"
 								   "%s\r\n"	 // Authorization header
-								   "\r\n%s", // Request body
+								   "%s", // Request body
 								   E3DB_Op_GetHttpUrl(op), strlen(post_body), headers_string, post_body);
 
 				printf("Ret size %d", ret);
@@ -423,13 +433,16 @@ int mbedtls_run_op(E3DB_Op *op)
 			{
 				const char *put_body = E3DB_Op_GetHttpBody(op);
 				printf("Put Body: %s\n", put_body);
-				int ret = snprintf(request, MAX_REQUEST_SIZE,
-								   "PUT %s HTTP/1.1\r\n"
-								   "Host: api.e3db.com\r\n" // Use only the hostname
-								   "Content-Length: %zu\r\n"
-								   "%s\r\n"	 // Authorization header
-								   "\r\n%s", // Request body
-								   E3DB_Op_GetHttpUrl(op), strlen(put_body), headers_string, put_body);
+				printf("Len Put Body: %d\n", strlen(put_body));
+
+				snprintf(request, MAX_REQUEST_SIZE,
+						 "PUT %s HTTP/1.1\r\n"
+						 "Host: api.e3db.com\r\n"
+						 "Content-Length: %zu\r\n"
+						 "Content-Type: application/json; charset=UTF-8\r\n"
+						 "%s\r\n" // Additional headers, like Authorization
+						 "%s",	  // JSON body
+						 E3DB_Op_GetHttpUrl(op), strlen(put_body), headers_string, put_body);
 
 				if (ret < 0 || ret >= MAX_REQUEST_SIZE - 1) // -1 to leave room for the null terminator
 				{
@@ -500,80 +513,17 @@ int mbedtls_run_op(E3DB_Op *op)
 			printf("Bytes received %d\n", bytes_received);
 			printf("\n Buffer: %s \n", buffer);
 			printf("%s", "End of buffer");
-			// Find the position of the empty line that separates headers and body
-			const char *body_start = strstr(buffer, "\r\n\r\n");
-
-			if (body_start != NULL)
+			if (http_parser_execute(&parser, &parser_settings, buffer, bytes_received) != bytes_received)
 			{
-				// Calculate the length of headers
-				size_t headers_length = body_start - buffer;
-
-				// Allocate memory for headers
-				char *headers = (char *)malloc(headers_length + 1); // +1 for null terminator
-
-				if (headers != NULL)
-				{
-					// Copy headers to the new buffer
-					strncpy(headers, buffer, headers_length);
-					headers[headers_length] = '\0'; // Null-terminate the string
-
-					// Print and do whatever you need with headers
-					printf("Headers:\n%s\n", headers);
-					if (http_parser_execute(&parser, &parser_settings, headers, headers_length) != headers_length)
-					{
-						fprintf(stderr, "HTTP parsing error.\n");
-						mbedtls_ssl_close_notify(&ssl);
-						mbedtls_net_free(&server_fd);
-						mbedtls_x509_crt_free(&cacert);
-						mbedtls_ssl_free(&ssl);
-						mbedtls_ssl_config_free(&conf);
-						exit(EXIT_FAILURE);
-					}
-					// Allocate memory for the body
-					size_t body_length = strlen(body_start + 4);  // Skip the "\r\n\r\n"
-					char *body = (char *)malloc(body_length + 1); // +1 for null terminator
-
-					if (body != NULL)
-					{
-						// Copy body to the new buffer
-						strcpy(body, body_start + 4);
-
-						// Print and do whatever you need with body
-						printf("\nBody:\n%s\n", body);
-						if (http_parser_execute(&parser, &parser_settings, body, body_length) != body_length)
-						{
-							fprintf(stderr, "HTTP parsing error.\n");
-							mbedtls_ssl_close_notify(&ssl);
-							mbedtls_net_free(&server_fd);
-							mbedtls_x509_crt_free(&cacert);
-							mbedtls_ssl_free(&ssl);
-							mbedtls_ssl_config_free(&conf);
-							exit(EXIT_FAILURE);
-						}
-						response_data.data = body;
-						// Don't forget to free the allocated memory for body
-						free(body);
-					}
-					else
-					{
-						// Handle memory allocation failure for body
-						printf("Memory allocation failed for body\n");
-					}
-
-					// Don't forget to free the allocated memory for headers
-					free(headers);
-				}
-				else
-				{
-					// Handle memory allocation failure for headers
-					printf("Memory allocation failed for headers\n");
-				}
+				fprintf(stderr, "HTTP parsing error.\n");
+				mbedtls_ssl_close_notify(&ssl);
+				mbedtls_net_free(&server_fd);
+				mbedtls_x509_crt_free(&cacert);
+				mbedtls_ssl_free(&ssl);
+				mbedtls_ssl_config_free(&conf);
+				exit(EXIT_FAILURE);
 			}
-			else
-			{
-				// Invalid response, no empty line found
-				printf("Invalid response format\n");
-			}
+
 			printf("Buffer: %.*s\n", bytes_received, buffer);
 			printf("Response data: %s\n", response_data.data);
 			printf("Response data: %ld\n", response_data.response_code);
