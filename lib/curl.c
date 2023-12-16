@@ -13,7 +13,6 @@
 #include <string.h>
 
 #include "sds.h"
-#include <curl/curl.h>
 #include "e3db_mem.h"
 #include "e3db_core.h"
 #include "mbedtls/net_sockets.h"
@@ -64,24 +63,6 @@ int http_parser_status_callback(http_parser *parser, const char *at, size_t leng
 	return 0;
 }
 
-size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp)
-{
-	size_t realsize = size * nmemb;
-	struct ResponseData *mem = (struct ResponseData *)userp;
-
-	mem->data = realloc(mem->data, mem->size + realsize + 1);
-	if (mem->data == NULL)
-	{
-		fprintf(stderr, "write_callback: realloc failed\n");
-		return 0; // Returning 0 indicates an error to libcurl
-	}
-
-	memcpy(&(mem->data[mem->size]), contents, realsize);
-	mem->size += realsize;
-	mem->data[mem->size] = 0; // Null-terminate the data
-
-	return realsize;
-}
 int on_headers_complete(http_parser *parser)
 {
 	// You can handle additional logic if needed

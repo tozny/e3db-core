@@ -5,7 +5,7 @@ file(GLOB EXE_SOURCES *.c)
 file(GLOB EXE_HEADERS *.h)
 
 # Set dependent 3rd-party library linkages
-set(LIBS_OUTSIDE curl m)
+set(LIBS_OUTSIDE  m)
 
 # Check if the platform is macOS (Darwin)
 if(APPLE)
