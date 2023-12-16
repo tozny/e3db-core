@@ -84,7 +84,7 @@ int mbedtls_run_op(E3DB_Op *op)
 	mbedtls_x509_crt cacert;
 	mbedtls_entropy_context entropy;
 	mbedtls_ctr_drbg_context ctr_drbg;
-	const char *hostname = "api.e3db.com";
+	const char *hostname = "api.e3db.com"; // TODO replace with E3DB_Op_GetHostName once tested
 	const char *port = "443";
 	int ret;
 

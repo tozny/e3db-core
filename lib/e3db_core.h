@@ -116,6 +116,7 @@ extern "C"
 
     const char *E3DB_Op_GetHttpMethod(E3DB_Op *op);
     const char *E3DB_Op_GetHttpUrl(E3DB_Op *op);
+    const char *E3DB_Op_GetHostName(E3DB_Op *op);
     E3DB_HttpHeaderList *E3DB_Op_GetHttpHeaders(E3DB_Op *op);
     const char *E3DB_Op_GetHttpBody(E3DB_Op *op);
     int E3DB_Op_FinishHttpState(E3DB_Op *op, int response_code, const char *body,
@@ -162,7 +163,6 @@ extern "C"
 
     void E3DB_FreeRecordMeta(E3DB_RecordMeta *meta);
 
-
     const char *E3DB_EAK_GetEAK(E3DB_EAK *eak);
     const char *E3DB_EAK_GetAuthPubKey(E3DB_EAK *eak);
     const char *E3DB_EAK_DecryptEAK(char *eak, char *pubKey, char *privKey);
@@ -170,8 +170,6 @@ extern "C"
 
     typedef struct _E3DB_Legacy_Record E3DB_Legacy_Record;
     typedef struct _E3DB_RecordFieldIterator E3DB_RecordFieldIterator;
-
-
 
     // TODO: Setters
     // TODO: Consider an adaptor to JSON?
@@ -280,7 +278,6 @@ extern "C"
 
     /* Return the metadata for the current record in the result set. */
     E3DB_RecordMeta *E3DB_ReadRecordsResultIterator_GetMeta(E3DB_ReadRecordsResultIterator *it);
-
 
     /* Return the record record data for the current record in the result set. */
     E3DB_Legacy_Record *E3DB_ReadRecordsResultIterator_GetData(E3DB_ReadRecordsResultIterator *it);

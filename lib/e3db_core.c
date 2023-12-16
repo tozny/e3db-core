@@ -361,6 +361,46 @@ const char *E3DB_Op_GetHttpUrl(E3DB_Op *op)
   return op->request.http.url;
 }
 
+const char *E3DB_Op_GetHostName(E3DB_Op *op)
+{
+  // Find the start of the hostname
+  char *url = op->request.http.url;
+  const char *start = strstr(url, "://");
+  if (start == NULL)
+  {
+    fprintf(stderr, "Invalid URL format.\n");
+    return NULL;
+  }
+
+  // Move to the end of "://"
+  start += 3;
+
+  // Find the end of the hostname
+  const char *end = strchr(start, '/');
+  if (end == NULL)
+  {
+    fprintf(stderr, "Invalid URL format.\n");
+    return NULL;
+  }
+
+  // Calculate the length of the hostname
+  size_t length = end - start;
+
+  // Allocate memory for the hostname
+  char *hostname = (char *)malloc(length + 1); // +1 for null terminator
+  if (hostname == NULL)
+  {
+    fprintf(stderr, "Memory allocation error.\n");
+    return NULL;
+  }
+
+  // Copy the hostname
+  strncpy(hostname, start, length);
+  hostname[length] = '\0'; // Null-terminate the string
+
+  return hostname;
+}
+
 E3DB_HttpHeaderList *E3DB_Op_GetHttpHeaders(E3DB_Op *op)
 {
   assert(op->state == E3DB_OP_STATE_HTTP);
