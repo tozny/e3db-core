@@ -34,7 +34,7 @@ E3DB_Record *WriteRecord(E3DB_Client *client, const char **record_type, cJSON *d
 	// Step 1: Get Access Key
 	E3DB_Op *op = E3DB_GetEncryptedAccessKeys_Begin(client, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)record_type);
 
-	int responseCode = curl_run_op_with_expected_response_code(op, 404);
+	int responseCode = mbedtls_run_op_with_expected_response_code(op, 404);
 
 	if (responseCode == 404)
 	{
