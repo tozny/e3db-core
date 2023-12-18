@@ -129,6 +129,7 @@ clean:
 
 # vim: set noet ts=2:
 
+# for debug: change below cmake .. to cmake -DCMAKE_BUILD_TYPE=Debug .. 
 cmake-build: clean
 	mkdir build && \
 	cd build && \

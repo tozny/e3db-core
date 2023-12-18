@@ -39,8 +39,10 @@ else()
     list(APPEND LIBS_OUTSIDE sodium mbedtls)
 endif()
 
+# Enable below for debugging memory issues.
 # add_compile_options("-g")
 # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
+# set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fsanitize=address")
 
 # Build library, command-line application, and simple example
 add_subdirectory(lib)
