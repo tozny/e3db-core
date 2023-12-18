@@ -18,12 +18,9 @@ extern "C"
 	/*
 	 * Run a Curl Operation, fail if response code is not 200
 	 */
-	int curl_run_op(E3DB_Op *op);
+	int mbedtls_run_op(E3DB_Op *op);
 
-	/*
-	 * Run a Curl Operation, fail if response code is not expected response code
-	 */
-	int curl_run_op_with_expected_response_code(E3DB_Op *op, long expected_response_code);
+	int mbedtls_run_op_with_expected_response_code(E3DB_Op *op, long expected_response_code);
 
 #ifdef __cplusplus
 }

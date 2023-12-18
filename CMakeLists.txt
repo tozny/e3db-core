@@ -10,7 +10,7 @@ project(e3db-c-sdk VERSION 1.0.0 DESCRIPTION sdk LANGUAGES C)
 include_directories(lib)
 
 # Set dependent 3rd-party library linkages
-set(LIBS_OUTSIDE curl m)
+set(LIBS_OUTSIDE m)
 
 # Check if the platform is macOS (Darwin)
 if(APPLE)
@@ -38,6 +38,11 @@ else()
     # Non-Apple platforms
     list(APPEND LIBS_OUTSIDE sodium mbedtls)
 endif()
+
+# Enable below for debugging memory issues.
+# add_compile_options("-g")
+# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
+# set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fsanitize=address")
 
 # Build library, command-line application, and simple example
 add_subdirectory(lib)

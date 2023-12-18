@@ -80,7 +80,7 @@ $(SIMPLE_LIB): $(SIMPLE_OBJECTS)
 $(EXAMPLES): $(EXAMPLES_OBJECTS) $(EXAMPLES_HEADERS) $(SIMPLE_LIB) $(SIMPLE_HEADERS)
 	@printf "%-10s %s\n" "LINK" "$@"
 	@-mkdir -p $(dir $@)
-	@gcc $(CFLAGS) $(LDFLAGS) -o $@ -Ilib $< $(SIMPLE_LIB) -lcurl  -lm -lsodium -lmbedcrypto
+	@gcc $(CFLAGS) $(LDFLAGS) -o $@ -Ilib $< $(SIMPLE_LIB) -lm-lsodium -lmbedcrypto
 
 $(SIMPLE_BUILD_DIR)/%.o: %.c $(SIMPLE_HEADERS)
 	@printf "%-10s %s\n" "CC" "$@"
@@ -113,7 +113,7 @@ $(LIB): $(OBJECTS)
 $(CMD): $(CMD_OBJECTS) $(CMD_HEADERS) $(LIB) $(HEADERS)
 	@printf "%-10s %s\n" "LINK" "$@"
 	@-mkdir -p $(dir $@)
-	@gcc $(CFLAGS) $(LDFLAGS) -o $@ -Ilib $< $(LIB) -lcurl  -lm -lsodium -lmbedcrypto
+	@gcc $(CFLAGS) $(LDFLAGS) -o $@ -Ilib $< $(LIB) -lm -lsodium -lmbedcrypto
 
 $(BUILD_DIR)/%.o: %.c $(HEADERS)
 	@printf "%-10s %s\n" "CC" "$@"
@@ -128,3 +128,10 @@ clean:
 .SECONDARY: $(OBJECTS) $(CMD_OBJECTS)
 
 # vim: set noet ts=2:
+
+# for debug: change below cmake .. to cmake -DCMAKE_BUILD_TYPE=Debug .. 
+cmake-build: clean
+	mkdir build && \
+	cd build && \
+	cmake .. && \
+	make 
