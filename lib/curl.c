@@ -84,7 +84,7 @@ int mbedtls_run_op(E3DB_Op *op)
 	mbedtls_x509_crt cacert;
 	mbedtls_entropy_context entropy;
 	mbedtls_ctr_drbg_context ctr_drbg;
-	const char *hostname = "api.e3db.com"; // TODO replace with E3DB_Op_GetHostName once tested
+	const char *hostname = E3DB_Op_GetHostName(op);
 	const char *port = "443";
 	int ret;
 
@@ -177,16 +177,19 @@ int mbedtls_run_op(E3DB_Op *op)
 				exit(EXIT_FAILURE);
 			}
 			while (header != NULL)
-			{
-				char *header_text = (char *)xmalloc(strlen(E3DB_HttpHeader_GetName(header)) + strlen(E3DB_HttpHeader_GetValue(header)) + 3);
+			{	
+				// Additional 5 bytes, 1 for colon, 1 for space, 2 for /r/n, 1 for null terminator.
+				int header_text_length = strlen(E3DB_HttpHeader_GetName(header)) + strlen(E3DB_HttpHeader_GetValue(header)) + 5;
+				char *header_text = (char *)xmalloc(header_text_length);
 				if (header_text == NULL)
 				{
 					fprintf(stderr, "Memory allocation error.\n");
 					exit(EXIT_FAILURE);
 				}
-				sprintf(header_text, "%s: %s\r\n", E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
+				snprintf(header_text, header_text_length, "%s: %s\r\n", E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
 				strcat(headers_string, header_text);
 				header = E3DB_HttpHeader_GetNext(header);
+				free(header_text);
 			}
 
 			if (!strcmp(method, "POST"))
@@ -194,11 +197,11 @@ int mbedtls_run_op(E3DB_Op *op)
 				const char *post_body = E3DB_Op_GetHttpBody(op);
 				int ret = snprintf(request, MAX_REQUEST_SIZE,
 						   "POST %s HTTP/1.1\r\n"
-						   "Host: api.e3db.com\r\n" // Use only the hostname
+						   "Host: %s\r\n" // Use only the hostname
 						   "Content-Length: %zu\r\n"
 						   "%s\r\n" // Authorization header
 						   "%s",    // Request body
-						   E3DB_Op_GetHttpUrl(op), strlen(post_body), headers_string, post_body);
+						   E3DB_Op_GetHttpUrl(op), hostname, strlen(post_body), headers_string, post_body);
 
 				if (ret < 0 || ret >= MAX_REQUEST_SIZE - 1) // -1 to leave room for the null terminator
 				{
@@ -210,10 +213,10 @@ int mbedtls_run_op(E3DB_Op *op)
 			{
 				int ret = snprintf(request, MAX_REQUEST_SIZE,
 						   "GET %s HTTP/1.1\r\n"
-						   "Host: api.e3db.com\r\n" // Use only the hostname
+						   "Host: %s\r\n" // Use only the hostname
 						   "%s"			    // Additional headers if needed
 						   "\r\n",		    // No request body for GET
-						   E3DB_Op_GetHttpUrl(op), headers_string);
+						   E3DB_Op_GetHttpUrl(op), hostname, headers_string);
 				if (ret < 0 || ret >= MAX_REQUEST_SIZE - 1) // -1 to leave room for the null terminator
 				{
 					fprintf(stderr, "Error constructing request.\n");
@@ -226,11 +229,11 @@ int mbedtls_run_op(E3DB_Op *op)
 
 				snprintf(request, MAX_REQUEST_SIZE,
 					 "PUT %s HTTP/1.1\r\n"
-					 "Host: api.e3db.com\r\n"
+					 "Host: %s\r\n"
 					 "Content-Length: %zu\r\n"
 					 "%s\r\n" // Additional headers, like Authorization
 					 "%s",	  // JSON body
-					 E3DB_Op_GetHttpUrl(op), strlen(put_body), headers_string, put_body);
+					 E3DB_Op_GetHttpUrl(op), hostname, strlen(put_body), headers_string, put_body);
 
 				if (ret < 0 || ret >= MAX_REQUEST_SIZE - 1) // -1 to leave room for the null terminator
 				{
@@ -321,7 +324,7 @@ int mbedtls_run_op_with_expected_response_code(E3DB_Op *op, long expected_respon
 	mbedtls_x509_crt cacert;
 	mbedtls_entropy_context entropy;
 	mbedtls_ctr_drbg_context ctr_drbg;
-	const char *hostname = "api.e3db.com";
+	const char *hostname = E3DB_Op_GetHostName(op);
 	const char *port = "443";
 	int ret;
 
@@ -415,15 +418,17 @@ int mbedtls_run_op_with_expected_response_code(E3DB_Op *op, long expected_respon
 			}
 			while (header != NULL)
 			{
-				char *header_text = (char *)xmalloc(strlen(E3DB_HttpHeader_GetName(header)) + strlen(E3DB_HttpHeader_GetValue(header)) + 3);
+				int header_text_length = strlen(E3DB_HttpHeader_GetName(header)) + strlen(E3DB_HttpHeader_GetValue(header)) + 5;
+				char *header_text = (char *)xmalloc(header_text_length);
 				if (header_text == NULL)
 				{
 					fprintf(stderr, "Memory allocation error.\n");
 					exit(EXIT_FAILURE);
 				}
-				sprintf(header_text, "%s: %s\r\n", E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
+				snprintf(header_text, header_text_length, "%s: %s\r\n", E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
 				strcat(headers_string, header_text);
 				header = E3DB_HttpHeader_GetNext(header);
+				free(header_text);
 			}
 
 			if (!strcmp(method, "POST"))
@@ -431,11 +436,11 @@ int mbedtls_run_op_with_expected_response_code(E3DB_Op *op, long expected_respon
 				const char *post_body = E3DB_Op_GetHttpBody(op);
 				int ret = snprintf(request, MAX_REQUEST_SIZE,
 						   "POST %s HTTP/1.1\r\n"
-						   "Host: api.e3db.com\r\n" // Use only the hostname
+						   "Host: %s\r\n" // Use only the hostname
 						   "Content-Length: %zu\r\n"
 						   "%s\r\n" // Authorization header
 						   "%s",    // Request body
-						   E3DB_Op_GetHttpUrl(op), strlen(post_body), headers_string, post_body);
+						   E3DB_Op_GetHttpUrl(op), hostname, strlen(post_body), headers_string, post_body);
 
 				if (ret < 0 || ret >= MAX_REQUEST_SIZE - 1) // -1 to leave room for the null terminator
 				{
@@ -447,10 +452,10 @@ int mbedtls_run_op_with_expected_response_code(E3DB_Op *op, long expected_respon
 			{
 				int ret = snprintf(request, MAX_REQUEST_SIZE,
 						   "GET %s HTTP/1.1\r\n"
-						   "Host: api.e3db.com\r\n" // Use only the hostname
+						   "Host: %s\r\n" // Use only the hostname
 						   "%s"			    // Additional headers if needed
 						   "\r\n",		    // No request body for GET
-						   E3DB_Op_GetHttpUrl(op), headers_string);
+						   E3DB_Op_GetHttpUrl(op), hostname, headers_string);
 				if (ret < 0 || ret >= MAX_REQUEST_SIZE - 1) // -1 to leave room for the null terminator
 				{
 					fprintf(stderr, "Error constructing request.\n");
@@ -463,11 +468,11 @@ int mbedtls_run_op_with_expected_response_code(E3DB_Op *op, long expected_respon
 
 				snprintf(request, MAX_REQUEST_SIZE,
 					 "PUT %s HTTP/1.1\r\n"
-					 "Host: api.e3db.com\r\n"
+					 "Host: %s\r\n"
 					 "Content-Length: %zu\r\n"
 					 "%s\r\n" // Additional headers, like Authorization
 					 "%s",	  // JSON body
-					 E3DB_Op_GetHttpUrl(op), strlen(put_body), headers_string, put_body);
+					 E3DB_Op_GetHttpUrl(op), hostname, strlen(put_body), headers_string, put_body);
 
 				if (ret < 0 || ret >= MAX_REQUEST_SIZE - 1) // -1 to leave room for the null terminator
 				{

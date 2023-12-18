@@ -39,6 +39,9 @@ else()
     list(APPEND LIBS_OUTSIDE sodium mbedtls)
 endif()
 
+# add_compile_options("-g")
+# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
+
 # Build library, command-line application, and simple example
 add_subdirectory(lib)
 add_subdirectory(cmd)
