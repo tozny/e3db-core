@@ -415,13 +415,17 @@ int mbedtls_run_op_with_expected_response_code(E3DB_Op *op, long expected_respon
 			}
 			while (header != NULL)
 			{
-				char *header_text = (char *)xmalloc(strlen(E3DB_HttpHeader_GetName(header)) + strlen(E3DB_HttpHeader_GetValue(header)) + 3);
+				// char *header_text = (char *)xmalloc(strlen(E3DB_HttpHeader_GetName(header)) + strlen(E3DB_HttpHeader_GetValue(header)) + 3);
+				// 4 for null char
+				char *header_text = (char *)xmalloc(strlen(E3DB_HttpHeader_GetName(header)) + strlen(E3DB_HttpHeader_GetValue(header)) + 4);
 				if (header_text == NULL)
 				{
 					fprintf(stderr, "Memory allocation error.\n");
 					exit(EXIT_FAILURE);
 				}
-				sprintf(header_text, "%s: %s\r\n", E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
+				// sprintf(header_text, "%s: %s\r\n", E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
+				int written = snprintf(header_text, strlen(E3DB_HttpHeader_GetName(header)) + strlen(E3DB_HttpHeader_GetValue(header)) + 4, "%s: %s\r\n", E3DB_HttpHeader_GetName(header), E3DB_HttpHeader_GetValue(header));
+
 				strcat(headers_string, header_text);
 				header = E3DB_HttpHeader_GetNext(header);
 			}

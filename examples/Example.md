@@ -228,7 +228,7 @@ To run the following example project from the top level directory
 ```bash
 mkdir build
 cd build
-cmake ..
+cmake ..  # for debug: cmake -DCMAKE_BUILD_TYPE=Debug .. 
 make
 ./examples/simple
 ```

@@ -54,3 +54,10 @@ else()
     # Default library search path
     link_directories(${DEFAULT_LIBRARY_DIR})
 endif()
+
+
+
+# Enable Address Sanitizer
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fsanitize=address")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address")
+set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fsanitize=address")
