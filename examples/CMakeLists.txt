@@ -4,9 +4,6 @@
 file(GLOB EXE_SOURCES *.c)
 file(GLOB EXE_HEADERS *.h)
 
-# Set dependent 3rd-party library linkages
-set(LIBS_OUTSIDE  m)
-
 # Check if the platform is macOS (Darwin)
 if(APPLE)
     # Find Sodium and mbedTLS packages
@@ -23,12 +20,11 @@ if(APPLE)
     endif()
 else()
     # Non-Apple platforms
-    set(LIBS_OUTSIDE ${LIBS_OUTSIDE} sodium mbedtls)
+    list(APPEND LIBS_OUTSIDE ${LIBSODIUM_LIB} ${MBEDTLS_LIBS})
 endif()
 
 # Add sources and make executable "simple" (or "simple.exe")
 add_executable(simple ${EXE_SOURCES} ${EXE_HEADERS})
-
 
 # Specify the default library directory
 set(DEFAULT_LIBRARY_DIR /usr/local/opt/mbedtls/lib)
@@ -36,7 +32,7 @@ set(DEFAULT_LIBRARY_DIR /usr/local/opt/mbedtls/lib)
 # Check if a specific file exists
 file(GLOB LIBRARY_SPECIAL_CHECK /opt/homebrew/Cellar/mbedtls/3.5.1/lib/libmbedtls.a)
 if(LIBRARY_SPECIAL_CHECK)
-   # Target-specific libraries for the other computer
+    # Target-specific libraries for the other computer
     target_link_libraries(simple e3db_lib ${LIBS_OUTSIDE}
                           /opt/homebrew/Cellar/mbedtls/3.5.1/lib/libmbedtls.a
                           /opt/homebrew/Cellar/mbedtls/3.5.1/lib/libmbedcrypto.a
@@ -44,12 +40,21 @@ if(LIBRARY_SPECIAL_CHECK)
     
     # Target-specific library search path for the other computer
     link_directories(/opt/homebrew/Cellar/mbedtls/3.5.1/lib)
-else()
-    # Default libraries and library search path
+endif()
+
+file(GLOB LIBRARY_SPECIAL_CHECKS /usr/local/opt/mbedtls/lib/libmbedtls.a)
+if(LIBRARY_SPECIAL_CHECKS)
+    # Target-specific libraries for the other computer
     target_link_libraries(simple e3db_lib ${LIBS_OUTSIDE}
                           /usr/local/opt/mbedtls/lib/libmbedtls.a
                           /usr/local/opt/mbedtls/lib/libmbedcrypto.a
                           /usr/local/opt/mbedtls/lib/libmbedx509.a)
+    
+    # Default library search path
+    link_directories(${DEFAULT_LIBRARY_DIR})
+else()
+    # Default libraries and library search path
+    target_link_libraries(simple e3db_lib ${LIBS_OUTSIDE})
     
     # Default library search path
     link_directories(${DEFAULT_LIBRARY_DIR})

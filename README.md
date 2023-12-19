@@ -26,10 +26,28 @@ To build with CMake:
 Note: *These instruction are for Linux command line only for now.*
 
 ```
+# Get these sources
+$ git clone https://github.com/tozny/e3db-core.git
+$ cd e3db-core
+
+# Get mbedTLS library source
+$ git clone https://github.com/tozny/e3db-core.git
+
+# Get Sodium library source (with CMake wrapper)
+$ git clone --recursive https://github.com/robinlinden/libsodium-cmake.git
+
+# Build
 $ mkdir build
 $ cd build
 $ cmake ..
 $ make
+
+# For verbose build outputs:
+$ cmake -DCMAKE_VERBOSE_MAKEFILE=ON ..
+$ make VERBOSE=1
+
+# For verbose debug outputs:
+$ cmake -DCMAKE_BUILD_TYPE=Debug ..
 ```
 
 Then to run command line from the `build` directory:
