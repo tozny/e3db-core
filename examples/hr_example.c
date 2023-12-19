@@ -48,7 +48,7 @@ sds get_home_dir(void)
 }
 #if USE_HARDCODED_CONFIG_JSON
 /* Read the JSON configuration from a file or hardcoded string*/
-static void get_config_json(char *configLocation, sds *config) +
+static void get_config_json(char *configLocation, sds *config)
 {
 	// Copy the hard-coded JSON configuration
 	*config = sdsnew(config_json);

@@ -135,3 +135,9 @@ cmake-build: clean
 	cd build && \
 	cmake .. && \
 	make 
+
+cmake-build-config-file: clean
+	mkdir build && \
+	cd build && \
+	cmake -DUSE_HARDCODED_CONFIG_JSON=true .. && \
+	make 
