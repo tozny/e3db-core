@@ -4,9 +4,6 @@
 file(GLOB EXE_SOURCES *.c)
 file(GLOB EXE_HEADERS *.h)
 
-# Set dependent 3rd-party library linkages
-set(LIBS_OUTSIDE  m)
-
 # Check if the platform is macOS (Darwin)
 if(APPLE)
     # Find Sodium and mbedTLS packages
@@ -23,7 +20,7 @@ if(APPLE)
     endif()
 else()
     # Non-Apple platforms
-    set(LIBS_OUTSIDE ${LIBS_OUTSIDE} sodium mbedtls)
+    list(APPEND LIBS_OUTSIDE ${LIBSODIUM_LIB} ${MBEDTLS_LIBS})
 endif()
 
 # Add sources and make executable "simple" (or "simple.exe")
@@ -46,10 +43,7 @@ if(LIBRARY_SPECIAL_CHECK)
     link_directories(/opt/homebrew/Cellar/mbedtls/3.5.1/lib)
 else()
     # Default libraries and library search path
-    target_link_libraries(simple e3db_lib ${LIBS_OUTSIDE}
-                          /usr/local/opt/mbedtls/lib/libmbedtls.a
-                          /usr/local/opt/mbedtls/lib/libmbedcrypto.a
-                          /usr/local/opt/mbedtls/lib/libmbedx509.a)
+    target_link_libraries(simple e3db_lib ${LIBS_OUTSIDE})
     
     # Default library search path
     link_directories(${DEFAULT_LIBRARY_DIR})

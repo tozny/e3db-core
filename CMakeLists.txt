@@ -36,7 +36,22 @@ if(APPLE)
     endif()
 else()
     # Non-Apple platforms
-    list(APPEND LIBS_OUTSIDE sodium mbedtls)
+
+    # Build and use local copy of mbedTLS
+    add_subdirectory(mbedtls)
+    set(MBEDTLS_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/mbedtls/include")
+    include_directories(${MBEDTLS_INCLUDE_DIRS})
+    set(MBEDTLS_LIB_BUILD_DIR "${CMAKE_BINARY_DIR}/mbedtls/library")
+    set(MBEDTLS_LIBS  ${MBEDTLS_LIB_BUILD_DIR}/libmbedtls.a
+                    ${MBEDTLS_LIB_BUILD_DIR}/libmbedcrypto.a
+                    ${MBEDTLS_LIB_BUILD_DIR}/libmbedx509.a)
+    
+    # Build and use local copy of Sodium library
+    add_subdirectory(libsodium-cmake)
+    include_directories(${LIBSODIUM_INCLUDE_DIR})
+    set(LIBSODIUM_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/libsodium-cmake/libsodium/src/libsodium/include/")
+    set(LIBSODIUM_LIB_BUILD_DIR "${CMAKE_BINARY_DIR}/libsodium-cmake")
+    set(LIBSODIUM_LIB "${LIBSODIUM_LIB_BUILD_DIR}/libsodium.a")
 endif()
 
 # Enable below for debugging memory issues.
