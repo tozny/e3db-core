@@ -23,6 +23,12 @@ else()
     list(APPEND LIBS_OUTSIDE ${LIBSODIUM_LIB} ${MBEDTLS_LIBS})
 endif()
 
+# Use a hard-coded configuration?
+if(USE_HARDCODED_CONFIG_JSON)
+    include_directories("../example-config")
+    list(APPEND EXE_SOURCES "../example-config/config_json.c" "../example-config/config_json.h")
+endif()
+
 # Add sources and make executable "simple" (or "simple.exe")
 add_executable(simple ${EXE_SOURCES} ${EXE_HEADERS})
 

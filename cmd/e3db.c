@@ -12,17 +12,21 @@
 #include "sds.h"
 #include "cJSON.h"
 
+#if USE_HARDCODED_CONFIG_JSON
+#include "config_json.h"
+#endif
+
 const char usage[] =
-	"Usage: e3db [OPTIONS] COMMAND [ARGS...]\n"
-	"Tozny E3DB Command Line Interface\n"
-	"\n"
-	"Available options:\n"
-	"  -h, --help           print this help and exit\n"
-	"      --version        output version info and exit\n"
-	"\n"
-	"Available commands:\n"
-	" read-record          read records\n"
-	" write-record         write record\n";
+    "Usage: e3db [OPTIONS] COMMAND [ARGS...]\n"
+    "Tozny E3DB Command Line Interface\n"
+    "\n"
+    "Available options:\n"
+    "  -h, --help           print this help and exit\n"
+    "      --version        output version info and exit\n"
+    "\n"
+    "Available commands:\n"
+    " read-record          read records\n"
+    " write-record         write record\n";
 
 /* Get the user's home directory.
  *
@@ -48,8 +52,16 @@ sds get_home_dir(void)
 	return sdsnew(pw->pw_dir);
 }
 
-/* Load the user's e3db configuration into an E3DB_ClientOptions. */
-E3DB_ClientOptions *load_config(char *configLocation)
+#if USE_HARDCODED_CONFIG_JSON
+/* Read the JSON configuration from a file or hardcoded string*/
+static void get_config_json(char *configLocation, sds *config) +
+{
+	// Copy the hard-coded JSON configuration
+	*config = sdsnew(config_json);
+}
+#else
+/* Read the JSON configuration from a file or hardcoded string*/
+static void get_config_json(char *configLocation, sds *config)
 {
 
 	sds config_file = NULL;
@@ -70,18 +82,26 @@ E3DB_ClientOptions *load_config(char *configLocation)
 		exit(1);
 	}
 
-	sds config = sdsempty();
-
 	while (!feof(in))
 	{
 		char buf[4096];
 		size_t len;
 
 		len = fread(buf, 1, sizeof(buf), in);
-		config = sdscatlen(config, buf, len);
+		*config = sdscatlen(*config, buf, len);
 	}
 
 	fclose(in);
+	sdsfree(config_file);
+}
+#endif
+
+/* Load the user's e3db configuration into an E3DB_ClientOptions. */
+E3DB_ClientOptions *load_config(char *configLocation)
+{
+	// Get JSON text from file or hardcoded string
+	sds config = sdsempty();
+	get_config_json(configLocation, &config);
 	cJSON *json = cJSON_Parse(config);
 	if (json == NULL)
 	{
@@ -141,7 +161,6 @@ E3DB_ClientOptions *load_config(char *configLocation)
 	E3DB_ClientOptions_SetPublicKey(opts, public_key->valuestring);
 	E3DB_ClientOptions_SetPrivateSigningKey(opts, private_signing_key->valuestring);
 
-	sdsfree(config_file);
 	sdsfree(config);
 	cJSON_Delete(json);
 
@@ -154,14 +173,14 @@ int cmdWrite(int argc, char **argv)
 	if (argc < 2)
 	{
 		fputs(
-			"Usage: e3db write [OPTIONS] -t TYPE -d @filename or JSON  -m @filename or JSON \n"
-			"Write a record to E3DB.\n"
-			"Pass in as JSON or fileName"
-			"\n"
-			"Available options:\n"
-			"-c 		       config File Path\n"
-			" -h, --help           print this help and exit\n",
-			stderr);
+		    "Usage: e3db write [OPTIONS] -t TYPE -d @filename or JSON  -m @filename or JSON \n"
+		    "Write a record to E3DB.\n"
+		    "Pass in as JSON or fileName"
+		    "\n"
+		    "Available options:\n"
+		    "-c 		       config File Path\n"
+		    " -h, --help           print this help and exit\n",
+		    stderr);
 		return 1;
 	}
 
@@ -353,13 +372,13 @@ int cmdRead(int argc, char **argv)
 	if (argc < 2)
 	{
 		fputs(
-			"Usage: e3db read [OPTIONS] RECORD_ID...\n"
-			"Read one or more records from E3DB.\n"
-			"\n"
-			"Available options:\n"
-			"-c 		       config File Path\n"
-			"  -h, --help           print this help and exit\n",
-			stderr);
+		    "Usage: e3db read [OPTIONS] RECORD_ID...\n"
+		    "Read one or more records from E3DB.\n"
+		    "\n"
+		    "Available options:\n"
+		    "-c 		       config File Path\n"
+		    "  -h, --help           print this help and exit\n",
+		    stderr);
 		return 1;
 	}
 

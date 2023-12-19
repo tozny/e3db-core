@@ -47,7 +47,13 @@ $ cmake -DCMAKE_VERBOSE_MAKEFILE=ON ..
 $ make VERBOSE=1
 
 # For verbose debug outputs:
+```
 $ cmake -DCMAKE_BUILD_TYPE=Debug ..
+```
+
+# To use a hardcoded configuration JSON (not loaded from a file)
+```
+$ cmake -DUSE_HARDCODED_CONFIG_JSON=true ..
 ```
 
 Then to run command line from the `build` directory:
