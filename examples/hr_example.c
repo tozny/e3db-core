@@ -19,6 +19,10 @@
 #include "sds.h"
 #include "cJSON.h"
 
+#if USE_HARDCODED_CONFIG_JSON
+#include "config_json.h"
+#endif
+
 /* Get the user's home directory.
  *
  */
@@ -42,8 +46,16 @@ sds get_home_dir(void)
 
 	return sdsnew(pw->pw_dir);
 }
-/* Load the user's e3db configuration into an E3DB_ClientOptions. */
-E3DB_ClientOptions *load_config(char *configLocation)
+#if USE_HARDCODED_CONFIG_JSON
+/* Read the JSON configuration from a file or hardcoded string*/
+static void get_config_json(char *configLocation, sds *config)
+{
+	// Copy the hard-coded JSON configuration
+	*config = sdsnew(config_json);
+}
+#else
+/* Read the JSON configuration from a file or hardcoded string*/
+static void get_config_json(char *configLocation, sds *config)
 {
 
 	sds config_file = NULL;
@@ -64,18 +76,26 @@ E3DB_ClientOptions *load_config(char *configLocation)
 		exit(1);
 	}
 
-	sds config = sdsempty();
-
 	while (!feof(in))
 	{
 		char buf[4096];
 		size_t len;
 
 		len = fread(buf, 1, sizeof(buf), in);
-		config = sdscatlen(config, buf, len);
+		*config = sdscatlen(*config, buf, len);
 	}
 
 	fclose(in);
+	sdsfree(config_file);
+}
+#endif
+
+/* Load the user's e3db configuration into an E3DB_ClientOptions. */
+E3DB_ClientOptions *load_config(char *configLocation)
+{
+	// Get JSON text from file or hardcoded string
+	sds config = sdsempty();
+	get_config_json(configLocation, &config);
 	cJSON *json = cJSON_Parse(config);
 	if (json == NULL)
 	{
@@ -135,7 +155,6 @@ E3DB_ClientOptions *load_config(char *configLocation)
 	E3DB_ClientOptions_SetPublicKey(opts, public_key->valuestring);
 	E3DB_ClientOptions_SetPrivateSigningKey(opts, private_signing_key->valuestring);
 
-	sdsfree(config_file);
 	sdsfree(config);
 	cJSON_Delete(json);
 

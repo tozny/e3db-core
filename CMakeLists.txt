@@ -59,6 +59,11 @@ endif()
 # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
 # set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fsanitize=address")
 
+# Use a hard-coded configuration
+if(USE_HARDCODED_CONFIG_JSON)
+    set(CMAKE_C_FLAGS ${CMAKE_C_FLAGS} "-DUSE_HARDCODED_CONFIG_JSON=1")
+endif()
+
 # Build library, command-line application, and simple example
 add_subdirectory(lib)
 add_subdirectory(cmd)
