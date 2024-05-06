@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include "cJSON.h"
 #include "utlist.h"
@@ -198,4 +199,151 @@ E3DB_Record *ReadRecords(E3DB_Client *client, const char **all_record_ids, int r
 		E3DB_Op_Delete(op);
 	}
 	return records;
+}
+
+/*
+ * {EncryptRecord}
+ * Encrypts record with a cached access key and returns an encrypted record to use
+ */
+
+E3DB_Record *EncryptRecord(E3DB_Client *client, const char **record_type, cJSON *data, cJSON *meta, unsigned char *accesskey)
+{
+	// Write Record
+	E3DB_Op *op = E3DB_EncryptRecord_Begin(client, record_type, data, meta, accesskey);
+	mbedtls_run_op(op);
+	free(accesskey);
+	// Get Result
+	E3DB_EncryptRecordResult *result = E3DB_EncryptRecord_GetResult(op);
+	// Create return item
+	E3DB_Record *writtenRecord = (E3DB_Record *)xmalloc(sizeof(E3DB_Record));
+	E3DB_RecordMeta *writtenMeta = (E3DB_RecordMeta *)xmalloc(sizeof(E3DB_RecordMeta));
+	cJSON *recordWritten = result->json->child;
+	char *copy = cJSON_Print(recordWritten);
+	char *child = strdup(copy);
+	cJSON *recordCopy = cJSON_Parse(child);
+	// cleanup
+	free(copy);
+	free(child);
+
+	// Copy over Meta
+	cJSON *metaObj = cJSON_GetObjectItem(recordCopy, "meta");
+	if (metaObj == NULL || metaObj->type != cJSON_Object)
+	{
+		fprintf(stderr, "Error: meta field doesn't exist.\n");
+		abort();
+	}
+
+	// Deep copy metaObj
+	cJSON *metaObjCopy = cJSON_Duplicate(metaObj, 1);
+
+	E3DB_GetRecordMetaFromJSON(metaObjCopy, writtenMeta);
+	cJSON_Delete(metaObjCopy);
+
+	writtenRecord->meta = writtenMeta;
+
+	// Copy over data
+	cJSON *dataObj = cJSON_GetObjectItem(recordCopy, "data");
+	if (dataObj == NULL || dataObj->type != cJSON_Object)
+	{
+		fprintf(stderr, "Error: Data field doesn't exist.\n");
+		abort();
+	}
+
+	// deep copy
+	writtenRecord->data = cJSON_Duplicate(dataObj, 1);
+
+	// Copy over signature
+	cJSON *signObj = cJSON_GetObjectItem(recordCopy, "rec_sig");
+	if (signObj == NULL)
+	{
+		fprintf(stderr, "Error: Signature field doesn't exist.\n");
+		abort();
+	}
+	writtenRecord->rec_sig = cJSON_Print(signObj);
+
+	// cleanup
+	cJSON_Delete(recordCopy);
+	if (op)
+	{
+		E3DB_Op_Delete(op);
+	}
+	return writtenRecord;
+}
+
+/*
+ * {FetchRecordAccessKey}
+ * Fetches a record access key for a user, or creates one to return
+ */
+
+E3DB_Record *FetchRecordAccessKey(E3DB_Client *client, const char **record_type)
+{
+	// Step 1: Get Access Key
+	E3DB_Op *op = E3DB_GetEncryptedAccessKeys_Begin(client, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)record_type);
+
+	int responseCode = mbedtls_run_op_with_expected_response_code(op, 404);
+
+	if (responseCode == 404)
+	{
+		// Path B: Access Key Does Not Exist
+		// Create Access Key
+		E3DB_Op *operationCreateAccessKey = E3DB_CreateAccessKeys_Begin(client, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)record_type, (const char **)client->options->public_key);
+		mbedtls_run_op(operationCreateAccessKey);
+		// Fetch Encrypted Access Key
+		E3DB_Op_Delete(op);
+		op = E3DB_GetEncryptedAccessKeys_Begin(client, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)record_type);
+		mbedtls_run_op(op);
+		E3DB_Op_Delete(operationCreateAccessKey);
+	}
+
+	// Step 2: Decrypt Access Key
+	E3DB_EncryptedAccessKeyResult *EAKResult = E3DB_EAK_GetResult(op);
+	E3DB_GetEAKResultIterator *EAKIt = E3DB_GetEAKResultIterator_GetIterator(EAKResult);
+	E3DB_EAK *eak = E3DB_ResultIterator_GetEAK(EAKIt);
+	char *rawEAK = (char *)E3DB_EAK_GetEAK(eak);
+	char *authPublicKey = (char *)E3DB_EAK_GetAuthPubKey(eak);
+
+	unsigned char *ak = (unsigned char *)E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, op->client->options->private_key);
+
+	// cleanup
+	free(EAKIt);
+	if (op)
+	{
+		E3DB_Op_Delete(op);
+	}
+	return ak;
+}
+
+/*
+ * {DecryptRecord}
+ *
+ */
+E3DB_Record *DecryptRecord(E3DB_Client *client, const char **record_type, cJSON *data, cJSON *meta, unsigned char *accesskey)
+{
+	E3DB_Record *record = (E3DB_Record *)xmalloc(sizeof(E3DB_Record));
+
+	// At this point we have encrypted data
+	E3DB_RecordMeta *meta = meta;
+	E3DB_Legacy_Record *record = data;
+
+	// Set the record meta
+	record->meta = meta;
+
+	// Decrypt the record data
+	E3DB_RecordFieldIterator *f_it = E3DB_Record_GetFieldIterator(record);
+	cJSON *decryptedData = cJSON_CreateObject();
+	while (!E3DB_RecordFieldIterator_IsDone(f_it))
+	{
+		unsigned char *edata = (unsigned char *)E3DB_RecordFieldIterator_GetValue(f_it);
+		const char *ddata = E3DB_RecordFieldIterator_DecryptValue(edata, accesskey);
+		const char *name = E3DB_RecordFieldIterator_GetName(f_it);
+
+		cJSON_AddStringToObject(decryptedData, name, ddata);
+
+		free((void *)ddata);
+		E3DB_RecordFieldIterator_Next(f_it);
+	}
+	record->data = decryptedData;
+	E3DB_RecordFieldIterator_Delete(f_it);
+
+	return record;
 }
