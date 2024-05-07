@@ -206,7 +206,7 @@ E3DB_Record *ReadRecords(E3DB_Client *client, const char **all_record_ids, int r
  * Encrypts record with a cached access key and returns an encrypted record to use
  */
 
-E3DB_Record *EncryptRecord(E3DB_Client *client, const char **record_type, cJSON *data, cJSON *meta, unsigned char *accesskey)
+E3DB_Record *EncryptRecord(E3DB_Client *client, const char **record_type, cJSON *data, cJSON *meta, char *accesskey)
 {
 	// Write Record
 	E3DB_Op *op = E3DB_EncryptRecord_Begin(client, record_type, data, meta, accesskey);
@@ -275,7 +275,7 @@ E3DB_Record *EncryptRecord(E3DB_Client *client, const char **record_type, cJSON 
  * Fetches a record access key for a user, or creates one to return
  */
 
-E3DB_Record *FetchRecordAccessKey(E3DB_Client *client, const char **record_type)
+char *FetchRecordAccessKey(E3DB_Client *client, const char **record_type)
 {
 	// Step 1: Get Access Key
 	E3DB_Op *op = E3DB_GetEncryptedAccessKeys_Begin(client, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)record_type);
@@ -302,7 +302,7 @@ E3DB_Record *FetchRecordAccessKey(E3DB_Client *client, const char **record_type)
 	char *rawEAK = (char *)E3DB_EAK_GetEAK(eak);
 	char *authPublicKey = (char *)E3DB_EAK_GetAuthPubKey(eak);
 
-	unsigned char *ak = (unsigned char *)E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, op->client->options->private_key);
+	char *ak = (char *)E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, op->client->options->private_key);
 
 	// cleanup
 	free(EAKIt);
@@ -320,10 +320,7 @@ E3DB_Record *FetchRecordAccessKey(E3DB_Client *client, const char **record_type)
 E3DB_Record *DecryptRecord(E3DB_Client *client, const char **record_type, cJSON *data, cJSON *meta, unsigned char *accesskey)
 {
 	E3DB_Record *record = (E3DB_Record *)xmalloc(sizeof(E3DB_Record));
-
-	// At this point we have encrypted data
-	E3DB_RecordMeta *meta = meta;
-	E3DB_Legacy_Record *record = data;
+	record->data = data;
 
 	// Set the record meta
 	record->meta = meta;

@@ -172,7 +172,7 @@ int main(void)
 	char *record_type = "employees";
 	const char *EmployeeRecords[4];
 
-	// ----------------------------------------- Kate Williams
+	// ----------------------------------------- Rob Williams
 	cJSON *data = cJSON_CreateObject();
 	cJSON *meta = cJSON_CreateObject();
 
@@ -187,7 +187,36 @@ int main(void)
 	cJSON_AddStringToObject(meta, "Type", "Employee");
 	cJSON_AddStringToObject(meta, "Company", "Tozny");
 	cJSON_AddStringToObject(meta, "Team", "Software");
-	E3DB_Record *record = WriteRecord(client, (const char **)record_type, data, meta);
+
+	// Fetch Access Key
+	char *accessKey = FetchRecordAccessKey(client, record_type);
+
+	// Encrypt Record
+	E3DB_Record *record = EncryptRecord(client, record_type, data, meta, accessKey);
+
+	// Clean up
+	cJSON_Delete(data);
+	E3DB_FreeRecordMeta(record->meta);
+	cJSON_Delete(record->data);
+	free(record->rec_sig);
+	free(record);
+
+	// ----------------------------------------- Kate Williams
+	data = cJSON_CreateObject();
+	meta = cJSON_CreateObject();
+
+	// Data remains encrypted end to end
+	cJSON_AddStringToObject(data, "First Name", "Katie");
+	cJSON_AddStringToObject(data, "Last Name", "Williams");
+	cJSON_AddStringToObject(data, "Phone Number", "111-222-3333");
+	cJSON_AddStringToObject(data, "Hourly Pay", "20");
+	cJSON_AddStringToObject(data, "Max Hours Allowed", "10");
+
+	// Meta are Searchable terms stored in plain text for indexing and fast retrieval
+	cJSON_AddStringToObject(meta, "Type", "Employee");
+	cJSON_AddStringToObject(meta, "Company", "Tozny");
+	cJSON_AddStringToObject(meta, "Team", "Software");
+	record = WriteRecord(client, (const char **)record_type, data, meta);
 	EmployeeRecords[0] = strdup(record->meta->record_id);
 
 	// Clean up
