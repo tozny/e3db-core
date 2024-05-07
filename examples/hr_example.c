@@ -187,19 +187,21 @@ int main(void)
 	cJSON_AddStringToObject(meta, "Type", "Employee");
 	cJSON_AddStringToObject(meta, "Company", "Tozny");
 	cJSON_AddStringToObject(meta, "Team", "Software");
+	printf("%s", "Fetching record access key");
 
 	// Fetch Access Key
 	char *accessKey = FetchRecordAccessKey(client, record_type);
-
+	printf("%s ", accessKey);
 	// Encrypt Record
-	E3DB_Record *record = EncryptRecord(client, record_type, data, meta, accessKey);
+	printf("%s ", "Encrypt record");
+	E3DB_Record *record2 = EncryptRecord(client, record_type, data, meta, accessKey);
 
-	// Clean up
-	cJSON_Delete(data);
-	E3DB_FreeRecordMeta(record->meta);
-	cJSON_Delete(record->data);
-	free(record->rec_sig);
-	free(record);
+	// // Clean up
+	// cJSON_Delete(data);
+	// E3DB_FreeRecordMeta(record->meta);
+	// cJSON_Delete(record->data);
+	// free(record->rec_sig);
+	// free(record);
 
 	// ----------------------------------------- Kate Williams
 	data = cJSON_CreateObject();
@@ -216,7 +218,7 @@ int main(void)
 	cJSON_AddStringToObject(meta, "Type", "Employee");
 	cJSON_AddStringToObject(meta, "Company", "Tozny");
 	cJSON_AddStringToObject(meta, "Team", "Software");
-	record = WriteRecord(client, (const char **)record_type, data, meta);
+	E3DB_Record *record = WriteRecord(client, (const char **)record_type, data, meta);
 	EmployeeRecords[0] = strdup(record->meta->record_id);
 
 	// Clean up

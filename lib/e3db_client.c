@@ -208,6 +208,7 @@ E3DB_Record *ReadRecords(E3DB_Client *client, const char **all_record_ids, int r
 
 E3DB_Record *EncryptRecord(E3DB_Client *client, const char **record_type, cJSON *data, cJSON *meta, char *accesskey)
 {
+	printf("%s ", " Encrypt Record");
 	// Write Record
 	E3DB_Op *op = E3DB_EncryptRecord_Begin(client, record_type, data, meta, accesskey);
 	mbedtls_run_op(op);
@@ -252,15 +253,6 @@ E3DB_Record *EncryptRecord(E3DB_Client *client, const char **record_type, cJSON 
 	// deep copy
 	writtenRecord->data = cJSON_Duplicate(dataObj, 1);
 
-	// Copy over signature
-	cJSON *signObj = cJSON_GetObjectItem(recordCopy, "rec_sig");
-	if (signObj == NULL)
-	{
-		fprintf(stderr, "Error: Signature field doesn't exist.\n");
-		abort();
-	}
-	writtenRecord->rec_sig = cJSON_Print(signObj);
-
 	// cleanup
 	cJSON_Delete(recordCopy);
 	if (op)
@@ -277,11 +269,12 @@ E3DB_Record *EncryptRecord(E3DB_Client *client, const char **record_type, cJSON 
 
 char *FetchRecordAccessKey(E3DB_Client *client, const char **record_type)
 {
+	printf("%s", "Fetching record access key");
 	// Step 1: Get Access Key
 	E3DB_Op *op = E3DB_GetEncryptedAccessKeys_Begin(client, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)record_type);
 
 	int responseCode = mbedtls_run_op_with_expected_response_code(op, 404);
-
+	printf(" Response code %+v", responseCode);
 	if (responseCode == 404)
 	{
 		// Path B: Access Key Does Not Exist
@@ -301,9 +294,9 @@ char *FetchRecordAccessKey(E3DB_Client *client, const char **record_type)
 	E3DB_EAK *eak = E3DB_ResultIterator_GetEAK(EAKIt);
 	char *rawEAK = (char *)E3DB_EAK_GetEAK(eak);
 	char *authPublicKey = (char *)E3DB_EAK_GetAuthPubKey(eak);
-
+	printf(" RAW EAK %s ", rawEAK);
 	char *ak = (char *)E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, op->client->options->private_key);
-
+	printf("%s ", ak);
 	// cleanup
 	free(EAKIt);
 	if (op)
