@@ -137,6 +137,7 @@ extern "C"
 
     typedef struct _E3DB_RecordMeta E3DB_RecordMeta;
     typedef struct _E3DB_Record E3DB_Record;
+    typedef struct _E3DB_LocalRecord E3DB_LocalRecord;
 
     /*
      * Encrypted Access Key

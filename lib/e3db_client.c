@@ -206,7 +206,7 @@ E3DB_Record *ReadRecords(E3DB_Client *client, const char **all_record_ids, int r
  * Encrypts record with a cached access key and returns an encrypted record to use
  */
 
-E3DB_Record *EncryptRecord(E3DB_Client *client, const char **record_type, cJSON *data, cJSON *meta, char *accesskey)
+E3DB_Record *EncryptRecord(E3DB_Client *client, const char **record_type, cJSON *data, cJSON *meta, unsigned char *accesskey)
 {
 	printf("%s ", " Encrypt Record");
 	// Write Record
@@ -267,14 +267,12 @@ E3DB_Record *EncryptRecord(E3DB_Client *client, const char **record_type, cJSON 
  * Fetches a record access key for a user, or creates one to return
  */
 
-char *FetchRecordAccessKey(E3DB_Client *client, const char **record_type)
+unsigned char *FetchRecordAccessKey(E3DB_Client *client, char *record_type)
 {
-	printf("%s", "Fetching record access key");
 	// Step 1: Get Access Key
 	E3DB_Op *op = E3DB_GetEncryptedAccessKeys_Begin(client, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)record_type);
 
 	int responseCode = mbedtls_run_op_with_expected_response_code(op, 404);
-	printf(" Response code %+v", responseCode);
 	if (responseCode == 404)
 	{
 		// Path B: Access Key Does Not Exist
@@ -294,46 +292,44 @@ char *FetchRecordAccessKey(E3DB_Client *client, const char **record_type)
 	E3DB_EAK *eak = E3DB_ResultIterator_GetEAK(EAKIt);
 	char *rawEAK = (char *)E3DB_EAK_GetEAK(eak);
 	char *authPublicKey = (char *)E3DB_EAK_GetAuthPubKey(eak);
-	printf(" RAW EAK %s ", rawEAK);
 	char *ak = (char *)E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, op->client->options->private_key);
-	printf("%s ", ak);
 	// cleanup
 	free(EAKIt);
 	if (op)
 	{
 		E3DB_Op_Delete(op);
 	}
-	return ak;
+	return (unsigned char *)ak;
 }
 
 /*
  * {DecryptRecord}
  *
  */
-E3DB_Record *DecryptRecord(E3DB_Client *client, const char **record_type, cJSON *data, cJSON *meta, unsigned char *accesskey)
+E3DB_LocalRecord *DecryptRecord(E3DB_Client *client, const char **record_type, cJSON *data, cJSON *meta, unsigned char *accesskey)
 {
-	E3DB_Record *record = (E3DB_Record *)xmalloc(sizeof(E3DB_Record));
+	E3DB_LocalRecord *record = (E3DB_LocalRecord *)xmalloc(sizeof(E3DB_LocalRecord));
 	record->data = data;
 
 	// Set the record meta
-	record->meta = meta;
+	record->plain = meta;
 
-	// Decrypt the record data
-	E3DB_RecordFieldIterator *f_it = E3DB_Record_GetFieldIterator(record);
-	cJSON *decryptedData = cJSON_CreateObject();
-	while (!E3DB_RecordFieldIterator_IsDone(f_it))
-	{
-		unsigned char *edata = (unsigned char *)E3DB_RecordFieldIterator_GetValue(f_it);
-		const char *ddata = E3DB_RecordFieldIterator_DecryptValue(edata, accesskey);
-		const char *name = E3DB_RecordFieldIterator_GetName(f_it);
+	// // Decrypt the record data
+	// E3DB_RecordFieldIterator *f_it = E3DB_Record_GetFieldIterator(record);
+	// cJSON *decryptedData = cJSON_CreateObject();
+	// while (!E3DB_RecordFieldIterator_IsDone(f_it))
+	// {
+	// 	unsigned char *edata = (unsigned char *)E3DB_RecordFieldIterator_GetValue(f_it);
+	// 	const char *ddata = E3DB_RecordFieldIterator_DecryptValue(edata, accesskey);
+	// 	const char *name = E3DB_RecordFieldIterator_GetName(f_it);
 
-		cJSON_AddStringToObject(decryptedData, name, ddata);
+	// 	cJSON_AddStringToObject(decryptedData, name, ddata);
 
-		free((void *)ddata);
-		E3DB_RecordFieldIterator_Next(f_it);
-	}
-	record->data = decryptedData;
-	E3DB_RecordFieldIterator_Delete(f_it);
+	// 	free((void *)ddata);
+	// 	E3DB_RecordFieldIterator_Next(f_it);
+	// }
+	// record->data = decryptedData;
+	// E3DB_RecordFieldIterator_Delete(f_it);
 
 	return record;
 }

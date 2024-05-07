@@ -445,6 +445,12 @@ struct _E3DB_Record
   cJSON *data;
   char *rec_sig;
 };
+struct _E3DB_LocalRecord
+{
+  cJSON *plain;
+  cJSON *data;
+  char *rec_sig;
+};
 
 /*
  * Authorizer signing key

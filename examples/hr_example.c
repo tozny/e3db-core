@@ -190,11 +190,12 @@ int main(void)
 	printf("%s", "Fetching record access key");
 
 	// Fetch Access Key
-	char *accessKey = FetchRecordAccessKey(client, record_type);
+	unsigned char *accessKey = (unsigned char *)xmalloc(32);
+	accessKey = FetchRecordAccessKey(client, record_type);
 	printf("%s ", accessKey);
 	// Encrypt Record
 	printf("%s ", "Encrypt record");
-	E3DB_Record *record2 = EncryptRecord(client, record_type, data, meta, accessKey);
+	E3DB_Record *record2 = EncryptRecord(client, (const char **)record_type, data, meta, accessKey);
 
 	// // Clean up
 	// cJSON_Delete(data);
