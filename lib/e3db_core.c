@@ -684,13 +684,11 @@ const char *E3DB_RecordFieldIterator_GetValue(E3DB_RecordFieldIterator *it)
 
 static sds E3DB_GetAuthHeader(E3DB_Client *client)
 {
-  printf(" API URL ");
   sds credentials = sdscatprintf(sdsempty(), "%s:%s", client->options->api_key, client->options->api_secret);
   char *credentials_base64 = encode64_length(credentials, strlen(credentials));
 
   sds auth_header = sdsnew("Basic ");
   auth_header = sdscat(auth_header, credentials_base64);
-  printf(" API URL ");
   free(credentials_base64);
   sdsfree(credentials);
 
@@ -732,7 +730,6 @@ static void E3DB_HandleAuthResponse(E3DB_Op *op, int response_code, const char *
  */
 static void E3DB_InitAuthOp(E3DB_Client *client, E3DB_Op *op, E3DB_Op_HttpNextStateFn next_state)
 {
-  printf(" API E3DB_InitAuthOp ");
   op->state = E3DB_OP_STATE_HTTP;
   op->request.http.url = sdscatprintf(sdsempty(), "%s/token", DEFAULT_AUTH_URL);
 
@@ -745,7 +742,6 @@ static void E3DB_InitAuthOp(E3DB_Client *client, E3DB_Op *op, E3DB_Op_HttpNextSt
   E3DB_HttpHeaderList_Add(op->request.http.headers, "Authorization", auth_header);
   E3DB_HttpHeaderList_Add(op->request.http.headers, "Content-Type", "application/x-www-form-urlencoded");
   sdsfree(auth_header);
-  printf(" end of E3DB_InitAuthOp ");
 }
 
 typedef struct _E3DB_ListRecordsResult
@@ -1436,11 +1432,9 @@ E3DB_Op *E3DB_GetEncryptedAccessKeys_Begin(
 
   op->result = result;
   op->free_result = E3DB_EncryptedAccessKeyResult_Delete;
-  printf("%s", "Setting up for fetch");
   // TODO: Also fetch auth token if our access token is expired.
   if (client->access_token == NULL)
   {
-    printf("%s", "CLIENT NULL");
     E3DB_InitAuthOp(client, op, E3DB_EncryptedAccessKey_Request);
   }
   else
@@ -2066,6 +2060,7 @@ static void E3DB_EncryptRecordResult_Delete(void *p)
 E3DB_Op *E3DB_EncryptRecord_Begin(
     E3DB_Client *client, const char **record_type, cJSON *data, cJSON *meta, unsigned char *accessKey)
 {
+  printf("ENCRYPT RECORD BEGIN %s", "here");
   E3DB_Op *op = E3DB_Op_New(client, E3DB_OP_ENCRYPT_RECORD);
   E3DB_EncryptRecordResult *result = xmalloc(sizeof(*result));
 
@@ -2087,12 +2082,15 @@ E3DB_Op *E3DB_EncryptRecord_Begin(
     temp = temp->next;
   }
   char *printData = cJSON_Print(encryptedData);
+  printf("PRINT DATA %s", printData);
   free(printData);
 
   result->record_type = record_type;
   result->data = encryptedData;
   result->meta = meta;
-
+  printf("RESULT TYPE : %s", record_type);
+  // printf("RESULT %s", encryptedData);
+  // printf("RESULT %s", meta);
   op->result = result;
   op->free_result = E3DB_EncryptRecordResult_Delete;
   // TODO Should we add a signature field

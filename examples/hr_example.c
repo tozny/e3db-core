@@ -187,18 +187,16 @@ int main(void)
 	cJSON_AddStringToObject(meta, "Type", "Employee");
 	cJSON_AddStringToObject(meta, "Company", "Tozny");
 	cJSON_AddStringToObject(meta, "Team", "Software");
-	printf("%s", "Fetching record access key");
 
 	// Fetch Access Key
 	unsigned char *accessKey = (unsigned char *)xmalloc(32);
 	accessKey = FetchRecordAccessKey(client, record_type);
-	printf("%s ", accessKey);
 	// Encrypt Record
 	printf("%s ", "Encrypt record");
-	E3DB_Record *record2 = EncryptRecord(client, (const char **)record_type, data, meta, accessKey);
+	E3DB_LocalRecord *record2 = EncryptRecord(client, (const char **)record_type, data, meta, accessKey);
 
 	// // Clean up
-	// cJSON_Delete(data);
+	cJSON_Delete(data);
 	// E3DB_FreeRecordMeta(record->meta);
 	// cJSON_Delete(record->data);
 	// free(record->rec_sig);

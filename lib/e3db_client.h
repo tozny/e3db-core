@@ -30,6 +30,18 @@ extern "C"
 
 	E3DB_Record *WriteRecord(E3DB_Client *client, const char **record_type, cJSON *data, cJSON *meta);
 
+	/*
+	 * {EncryptRecord}
+	 *
+	 */
+	E3DB_LocalRecord *EncryptRecord(E3DB_Client *client, const char **record_type, cJSON *data, cJSON *meta, unsigned char *accesskey);
+
+	/*
+	 * {FetchRecordAccessKey}
+	 *
+	 */
+	unsigned char *FetchRecordAccessKey(E3DB_Client *client, char *record_type);
+
 #ifdef __cplusplus
 }
 #endif
