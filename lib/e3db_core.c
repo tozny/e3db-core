@@ -1402,14 +1402,12 @@ static void E3DB_EncryptedAccessKeys_InitOp(E3DB_Op *op)
   auth_header = sdscat(auth_header, op->client->access_token);
   E3DB_HttpHeaderList_Add(op->request.http.headers, "Authorization", auth_header);
   sdsfree(auth_header);
-  printf("%s", "done with set up record access key");
 }
 
 static int E3DB_EncryptedAccessKey_Request(E3DB_Op *op, int response_code,
                                            const char *body, E3DB_HttpHeaderList *headers,
                                            size_t num_headers)
 {
-  printf(" E3DB_EncryptedAccessKey_Request ");
   // TODO wonder if in the below response i can say "if its 404 or 200" but ill affect the read recorddd
   E3DB_HandleAuthResponse(op, response_code, body);
   E3DB_EncryptedAccessKeys_InitOp(op);
@@ -2059,7 +2057,6 @@ static void E3DB_EncryptRecordResult_Delete(void *p)
 E3DB_Op *E3DB_EncryptRecord_Begin(
     E3DB_Client *client, const char **record_type, cJSON *data, cJSON *meta, unsigned char *accessKey)
 {
-  printf("ENCRYPT RECORD BEGIN %s", "here");
   E3DB_Op *op = E3DB_Op_New(client, E3DB_OP_ENCRYPT_RECORD);
   E3DB_EncryptRecordResult *result = xmalloc(sizeof(*result));
 
@@ -2081,15 +2078,11 @@ E3DB_Op *E3DB_EncryptRecord_Begin(
     temp = temp->next;
   }
   char *printData = cJSON_Print(encryptedData);
-  printf("PRINT DATA %s", printData);
   free(printData);
 
   result->record_type = record_type;
   result->data = encryptedData;
   result->meta = meta;
-  printf("RESULT TYPE : %s", record_type);
-  // printf("RESULT %s", encryptedData);
-  // printf("RESULT %s", meta);
   op->result = result;
   op->free_result = E3DB_EncryptRecordResult_Delete;
   // TODO Should we add a signature field

@@ -208,55 +208,20 @@ E3DB_Record *ReadRecords(E3DB_Client *client, const char **all_record_ids, int r
 
 E3DB_LocalRecord *EncryptRecord(E3DB_Client *client, const char **record_type, cJSON *data, cJSON *meta, unsigned char *accesskey)
 {
-	printf("%s ", " Encrypt Record");
 	// Write Record
 	E3DB_Op *op = E3DB_EncryptRecord_Begin(client, record_type, data, meta, accesskey);
 	// Get Result
 	E3DB_EncryptRecordResult *result = E3DB_EncryptRecord_GetResult(op);
 	// Create return item
 	E3DB_LocalRecord *writtenRecord = (E3DB_LocalRecord *)xmalloc(sizeof(E3DB_LocalRecord));
-	// E3DB_RecordMeta *writtenMeta = (E3DB_RecordMeta *)xmalloc(sizeof(E3DB_RecordMeta));
-	// cJSON *recordWritten = result->json->child;
-	// char *copy = cJSON_Print(recordWritten);
-	// char *child = strdup(copy);
-	// cJSON *recordCopy = cJSON_Parse(child);
-	// // cleanup
-	// free(copy);
-	// free(child);
-
-	// // Copy over Meta
-	// cJSON *metaObj = cJSON_GetObjectItem(recordCopy, "meta");
-	// if (metaObj == NULL || metaObj->type != cJSON_Object)
-	// {
-	// 	fprintf(stderr, "Error: meta field doesn't exist.\n");
-	// 	abort();
-	// }
-
-	// // Deep copy metaObj
-	// cJSON *metaObjCopy = cJSON_Duplicate(metaObj, 1);
-
-	// E3DB_GetRecordMetaFromJSON(metaObjCopy, writtenMeta);
-	// cJSON_Delete(metaObjCopy);
-
+	// Set data
 	writtenRecord->plain = meta;
-
-	// // Copy over data
-	// cJSON *dataObj = cJSON_GetObjectItem(recordCopy, "data");
-	// if (dataObj == NULL || dataObj->type != cJSON_Object)
-	// {
-	// 	fprintf(stderr, "Error: Data field doesn't exist.\n");
-	// 	abort();
-	// }
-
-	// deep copy
 	writtenRecord->data = result->data;
-
-	// // cleanup
-	// cJSON_Delete(recordCopy);
-	// if (op)
-	// {
-	// 	E3DB_Op_Delete(op);
-	// }
+	// cleanup
+	if (op)
+	{
+		E3DB_Op_Delete(op);
+	}
 	return writtenRecord;
 }
 
