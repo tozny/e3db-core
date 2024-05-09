@@ -202,12 +202,9 @@ int main(void)
 	printf("Data %s", data_str);
 	plain_str = cJSON_Print(recordDecrypted->plain);
 	printf("Plain Meta %s", plain_str);
-	// // Clean up
+	// Clean up
 	cJSON_Delete(data);
-	cJSON_Delete(encryptedRecord->data);
-	cJSON_Delete(encryptedRecord->plain);
-	cJSON_Delete(recordDecrypted->data);
-	cJSON_Delete(recordDecrypted->plain);
+	cJSON_Delete(meta);
 	free(encryptedRecord);
 	free(recordDecrypted);
 
