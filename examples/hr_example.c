@@ -177,7 +177,7 @@ int main(void)
 	cJSON *meta = cJSON_CreateObject();
 
 	// Data remains encrypted end to end
-	cJSON_AddStringToObject(data, "First Name", "Katie");
+	cJSON_AddStringToObject(data, "First Name", "Rob");
 	cJSON_AddStringToObject(data, "Last Name", "Williams");
 	cJSON_AddStringToObject(data, "Phone Number", "111-222-3333");
 	cJSON_AddStringToObject(data, "Hourly Pay", "20");
@@ -186,7 +186,7 @@ int main(void)
 	// Meta are Searchable terms stored in plain text for indexing and fast retrieval
 	cJSON_AddStringToObject(meta, "Type", "Employee");
 	cJSON_AddStringToObject(meta, "Company", "Tozny");
-	cJSON_AddStringToObject(meta, "Team", "Software");
+	cJSON_AddStringToObject(meta, "Team", "Hardware");
 
 	// Fetch Access Key
 	unsigned char *accessKey = (unsigned char *)xmalloc(32);
