@@ -173,6 +173,7 @@ int main(void)
 	const char *EmployeeRecords[4];
 
 	// ----------------------------------------- Rob Williams
+	printf("Local Encryption Test:   %s\n\n", "");
 	cJSON *data = cJSON_CreateObject();
 	cJSON *meta = cJSON_CreateObject();
 
@@ -193,15 +194,19 @@ int main(void)
 	accessKey = FetchRecordAccessKey(client, record_type);
 	// Encrypt Record
 	E3DB_LocalRecord *encryptedRecord = EncryptRecord(client, (const char **)record_type, data, meta, accessKey);
+	printf("Local Encrypted Record: %s  \n\n", "");
 	char *data_str = cJSON_Print(encryptedRecord->data);
-	printf("Data %s", data_str);
+	printf("\nData %s \n", data_str);
 	char *plain_str = cJSON_Print(encryptedRecord->plain);
-	printf("Plain Meta %s", plain_str);
+	printf("\nPlain Meta %s \n", plain_str);
+
+	printf("Local Decryption Test: %s  \n\n", "");
 	E3DB_LocalRecord *recordDecrypted = DecryptRecord(client, (const char **)record_type, encryptedRecord->data, encryptedRecord->plain, accessKey);
 	data_str = cJSON_Print(recordDecrypted->data);
-	printf("Data %s", data_str);
+	printf("Local Decrypted Record:  %s \n\n", "");
+	printf("\nData %s \n", data_str);
 	plain_str = cJSON_Print(recordDecrypted->plain);
-	printf("Plain Meta %s", plain_str);
+	printf("\nPlain Meta %s \n", plain_str);
 	// Clean up
 	cJSON_Delete(data);
 	cJSON_Delete(meta);
