@@ -307,27 +307,26 @@ unsigned char *FetchRecordAccessKey(E3DB_Client *client, char *record_type)
 E3DB_LocalRecord *DecryptRecord(E3DB_Client *client, const char **record_type, cJSON *data, cJSON *meta, unsigned char *accesskey)
 {
 	E3DB_LocalRecord *record = (E3DB_LocalRecord *)xmalloc(sizeof(E3DB_LocalRecord));
-	record->data = data;
-
 	// Set the record meta
 	record->plain = meta;
+	E3DB_Legacy_Record *recordData = (E3DB_Legacy_Record *)xmalloc(sizeof(E3DB_Legacy_Record));
+	recordData->json = data;
+	// Decrypt the record data
+	E3DB_RecordFieldIterator *f_it = E3DB_Record_GetFieldIterator(recordData);
+	cJSON *decryptedData = cJSON_CreateObject();
+	while (!E3DB_RecordFieldIterator_IsDone(f_it))
+	{
+		unsigned char *edata = (unsigned char *)E3DB_RecordFieldIterator_GetValue(f_it);
+		const char *ddata = E3DB_RecordFieldIterator_DecryptValue(edata, accesskey);
+		const char *name = E3DB_RecordFieldIterator_GetName(f_it);
 
-	// // Decrypt the record data
-	// E3DB_RecordFieldIterator *f_it = E3DB_Record_GetFieldIterator(record);
-	// cJSON *decryptedData = cJSON_CreateObject();
-	// while (!E3DB_RecordFieldIterator_IsDone(f_it))
-	// {
-	// 	unsigned char *edata = (unsigned char *)E3DB_RecordFieldIterator_GetValue(f_it);
-	// 	const char *ddata = E3DB_RecordFieldIterator_DecryptValue(edata, accesskey);
-	// 	const char *name = E3DB_RecordFieldIterator_GetName(f_it);
+		cJSON_AddStringToObject(decryptedData, name, ddata);
 
-	// 	cJSON_AddStringToObject(decryptedData, name, ddata);
-
-	// 	free((void *)ddata);
-	// 	E3DB_RecordFieldIterator_Next(f_it);
-	// }
-	// record->data = decryptedData;
-	// E3DB_RecordFieldIterator_Delete(f_it);
+		free((void *)ddata);
+		E3DB_RecordFieldIterator_Next(f_it);
+	}
+	record->data = decryptedData;
+	E3DB_RecordFieldIterator_Delete(f_it);
 
 	return record;
 }

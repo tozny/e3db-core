@@ -192,15 +192,24 @@ int main(void)
 	unsigned char *accessKey = (unsigned char *)xmalloc(32);
 	accessKey = FetchRecordAccessKey(client, record_type);
 	// Encrypt Record
-	printf("%s ", "Encrypt record");
-	E3DB_LocalRecord *record2 = EncryptRecord(client, (const char **)record_type, data, meta, accessKey);
-
+	E3DB_LocalRecord *encryptedRecord = EncryptRecord(client, (const char **)record_type, data, meta, accessKey);
+	char *data_str = cJSON_Print(encryptedRecord->data);
+	printf("Data %s", data_str);
+	char *plain_str = cJSON_Print(encryptedRecord->plain);
+	printf("Plain Meta %s", plain_str);
+	E3DB_LocalRecord *recordDecrypted = DecryptRecord(client, (const char **)record_type, encryptedRecord->data, encryptedRecord->plain, accessKey);
+	data_str = cJSON_Print(recordDecrypted->data);
+	printf("Data %s", data_str);
+	plain_str = cJSON_Print(recordDecrypted->plain);
+	printf("Plain Meta %s", plain_str);
 	// // Clean up
 	cJSON_Delete(data);
-	// E3DB_FreeRecordMeta(record->meta);
-	// cJSON_Delete(record->data);
-	// free(record->rec_sig);
-	// free(record);
+	cJSON_Delete(encryptedRecord->data);
+	cJSON_Delete(encryptedRecord->plain);
+	cJSON_Delete(recordDecrypted->data);
+	cJSON_Delete(recordDecrypted->plain);
+	free(encryptedRecord);
+	free(recordDecrypted);
 
 	// ----------------------------------------- Kate Williams
 	data = cJSON_CreateObject();
