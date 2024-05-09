@@ -80,7 +80,7 @@ $(SIMPLE_LIB): $(SIMPLE_OBJECTS)
 $(EXAMPLES): $(EXAMPLES_OBJECTS) $(EXAMPLES_HEADERS) $(SIMPLE_LIB) $(SIMPLE_HEADERS)
 	@printf "%-10s %s\n" "LINK" "$@"
 	@-mkdir -p $(dir $@)
-	@gcc $(CFLAGS) $(LDFLAGS) -o $@ -Ilib $< $(SIMPLE_LIB) -lm-lsodium -lmbedcrypto
+	@gcc $(CFLAGS) $(LDFLAGS) -o $@ -Ilib $< $(SIMPLE_LIB) -lm -lsodium -lmbedcrypto
 
 $(SIMPLE_BUILD_DIR)/%.o: %.c $(SIMPLE_HEADERS)
 	@printf "%-10s %s\n" "CC" "$@"

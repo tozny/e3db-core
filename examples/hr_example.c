@@ -172,9 +172,50 @@ int main(void)
 	char *record_type = "employees";
 	const char *EmployeeRecords[4];
 
-	// ----------------------------------------- Kate Williams
+	// ----------------------------------------- Rob Williams
+	printf("Local Encryption Test:   %s\n\n", "");
 	cJSON *data = cJSON_CreateObject();
 	cJSON *meta = cJSON_CreateObject();
+
+	// Data remains encrypted end to end
+	cJSON_AddStringToObject(data, "First Name", "Rob");
+	cJSON_AddStringToObject(data, "Last Name", "Williams");
+	cJSON_AddStringToObject(data, "Phone Number", "111-222-3333");
+	cJSON_AddStringToObject(data, "Hourly Pay", "20");
+	cJSON_AddStringToObject(data, "Max Hours Allowed", "10");
+
+	// Meta are Searchable terms stored in plain text for indexing and fast retrieval
+	cJSON_AddStringToObject(meta, "Type", "Employee");
+	cJSON_AddStringToObject(meta, "Company", "Tozny");
+	cJSON_AddStringToObject(meta, "Team", "Hardware");
+
+	// Fetch Access Key
+	unsigned char *accessKey = (unsigned char *)xmalloc(32);
+	accessKey = FetchRecordAccessKey(client, record_type);
+	// Encrypt Record
+	E3DB_LocalRecord *encryptedRecord = EncryptRecord(client, (const char **)record_type, data, meta, accessKey);
+	printf("Local Encrypted Record: %s  \n\n", "");
+	char *data_str = cJSON_Print(encryptedRecord->data);
+	printf("\nData %s \n", data_str);
+	char *plain_str = cJSON_Print(encryptedRecord->plain);
+	printf("\nPlain Meta %s \n", plain_str);
+
+	printf("Local Decryption Test: %s  \n\n", "");
+	E3DB_LocalRecord *recordDecrypted = DecryptRecord(client, (const char **)record_type, encryptedRecord->data, encryptedRecord->plain, accessKey);
+	data_str = cJSON_Print(recordDecrypted->data);
+	printf("Local Decrypted Record:  %s \n\n", "");
+	printf("\nData %s \n", data_str);
+	plain_str = cJSON_Print(recordDecrypted->plain);
+	printf("\nPlain Meta %s \n", plain_str);
+	// Clean up
+	cJSON_Delete(data);
+	cJSON_Delete(meta);
+	free(encryptedRecord);
+	free(recordDecrypted);
+
+	// ----------------------------------------- Kate Williams
+	data = cJSON_CreateObject();
+	meta = cJSON_CreateObject();
 
 	// Data remains encrypted end to end
 	cJSON_AddStringToObject(data, "First Name", "Katie");

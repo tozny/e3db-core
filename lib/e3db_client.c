@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include "cJSON.h"
 #include "utlist.h"
@@ -198,4 +199,99 @@ E3DB_Record *ReadRecords(E3DB_Client *client, const char **all_record_ids, int r
 		E3DB_Op_Delete(op);
 	}
 	return records;
+}
+
+/*
+ * {EncryptRecord}
+ * Encrypts record with a cached access key and returns an encrypted record to use
+ */
+
+E3DB_LocalRecord *EncryptRecord(E3DB_Client *client, const char **record_type, cJSON *data, cJSON *meta, unsigned char *accesskey)
+{
+	// Write Record
+	E3DB_Op *op = E3DB_EncryptRecord_Begin(client, record_type, data, meta, accesskey);
+	// Get Result
+	E3DB_EncryptRecordResult *result = E3DB_EncryptRecord_GetResult(op);
+	// Create return item
+	E3DB_LocalRecord *writtenRecord = (E3DB_LocalRecord *)xmalloc(sizeof(E3DB_LocalRecord));
+	// Set data
+	writtenRecord->plain = meta;
+	writtenRecord->data = result->data;
+	// cleanup
+	if (op)
+	{
+		E3DB_Op_Delete(op);
+	}
+	return writtenRecord;
+}
+
+/*
+ * {FetchRecordAccessKey}
+ * Fetches a record access key for a user, or creates one to return
+ */
+
+unsigned char *FetchRecordAccessKey(E3DB_Client *client, char *record_type)
+{
+	// Step 1: Get Access Key
+	E3DB_Op *op = E3DB_GetEncryptedAccessKeys_Begin(client, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)record_type);
+
+	int responseCode = mbedtls_run_op_with_expected_response_code(op, 404);
+	if (responseCode == 404)
+	{
+		// Path B: Access Key Does Not Exist
+		// Create Access Key
+		E3DB_Op *operationCreateAccessKey = E3DB_CreateAccessKeys_Begin(client, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)record_type, (const char **)client->options->public_key);
+		mbedtls_run_op(operationCreateAccessKey);
+		// Fetch Encrypted Access Key
+		E3DB_Op_Delete(op);
+		op = E3DB_GetEncryptedAccessKeys_Begin(client, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)client->options->client_id, (const char **)record_type);
+		mbedtls_run_op(op);
+		E3DB_Op_Delete(operationCreateAccessKey);
+	}
+
+	// Step 2: Decrypt Access Key
+	E3DB_EncryptedAccessKeyResult *EAKResult = E3DB_EAK_GetResult(op);
+	E3DB_GetEAKResultIterator *EAKIt = E3DB_GetEAKResultIterator_GetIterator(EAKResult);
+	E3DB_EAK *eak = E3DB_ResultIterator_GetEAK(EAKIt);
+	char *rawEAK = (char *)E3DB_EAK_GetEAK(eak);
+	char *authPublicKey = (char *)E3DB_EAK_GetAuthPubKey(eak);
+	char *ak = (char *)E3DB_EAK_DecryptEAK(rawEAK, authPublicKey, op->client->options->private_key);
+	// cleanup
+	free(EAKIt);
+	if (op)
+	{
+		E3DB_Op_Delete(op);
+	}
+	return (unsigned char *)ak;
+}
+
+/*
+ * {DecryptRecord}
+ *
+ */
+E3DB_LocalRecord *DecryptRecord(E3DB_Client *client, const char **record_type, cJSON *data, cJSON *meta, unsigned char *accesskey)
+{
+	E3DB_LocalRecord *record = (E3DB_LocalRecord *)xmalloc(sizeof(E3DB_LocalRecord));
+	// Set the record meta
+	record->plain = meta;
+	E3DB_Legacy_Record *recordData = (E3DB_Legacy_Record *)xmalloc(sizeof(E3DB_Legacy_Record));
+	recordData->json = data;
+	// Decrypt the record data
+	E3DB_RecordFieldIterator *f_it = E3DB_Record_GetFieldIterator(recordData);
+	cJSON *decryptedData = cJSON_CreateObject();
+	while (!E3DB_RecordFieldIterator_IsDone(f_it))
+	{
+		unsigned char *edata = (unsigned char *)E3DB_RecordFieldIterator_GetValue(f_it);
+		const char *ddata = E3DB_RecordFieldIterator_DecryptValue(edata, accesskey);
+		const char *name = E3DB_RecordFieldIterator_GetName(f_it);
+
+		cJSON_AddStringToObject(decryptedData, name, ddata);
+
+		free((void *)ddata);
+		E3DB_RecordFieldIterator_Next(f_it);
+	}
+	record->data = decryptedData;
+	E3DB_RecordFieldIterator_Delete(f_it);
+
+	return record;
 }

@@ -137,6 +137,7 @@ extern "C"
 
     typedef struct _E3DB_RecordMeta E3DB_RecordMeta;
     typedef struct _E3DB_Record E3DB_Record;
+    typedef struct _E3DB_LocalRecord E3DB_LocalRecord;
 
     /*
      * Encrypted Access Key
@@ -238,6 +239,7 @@ extern "C"
     typedef struct _E3DB_ReadRecordsResult E3DB_ReadRecordsResult;
     typedef struct _E3DB_WriteRecordsResult E3DB_WriteRecordsResult;
     typedef struct _E3DB_ReadRecordsResultIterator E3DB_ReadRecordsResultIterator;
+    typedef struct _E3DB_EncryptRecordResult E3DB_EncryptRecordResult;
 
     E3DB_Op *E3DB_ReadRecords_Begin(
         E3DB_Client *client, const char *record_ids[], size_t num_record_ids,

@@ -148,6 +148,7 @@ typedef enum
   E3DB_OP_READ_RECORDS,
   E3DB_OP_ENCRYPTED_ACCESS_KEYS,
   E3DB_OP_WRITE_RECORD,
+  E3DB_OP_ENCRYPT_RECORD,
   E3DB_OP_CREATE_ACCESS_KEYS,
 } E3DB_OpType;
 
@@ -444,6 +445,11 @@ struct _E3DB_Record
   cJSON *data;
   char *rec_sig;
 };
+struct _E3DB_LocalRecord
+{
+  cJSON *plain;
+  cJSON *data;
+};
 
 /*
  * Authorizer signing key
@@ -682,7 +688,6 @@ static sds E3DB_GetAuthHeader(E3DB_Client *client)
 
   sds auth_header = sdsnew("Basic ");
   auth_header = sdscat(auth_header, credentials_base64);
-
   free(credentials_base64);
   sdsfree(credentials);
 
@@ -1424,7 +1429,6 @@ E3DB_Op *E3DB_GetEncryptedAccessKeys_Begin(
 
   op->result = result;
   op->free_result = E3DB_EncryptedAccessKeyResult_Delete;
-
   // TODO: Also fetch auth token if our access token is expired.
   if (client->access_token == NULL)
   {
@@ -2011,4 +2015,77 @@ void E3DB_CleanupRecords(E3DB_Record *records, int count)
 
   free(records);
   records = NULL;
+}
+
+/*
+ * {Encrypt Records}
+ *
+ *
+ */
+
+struct _E3DB_EncryptRecordResult
+{
+  cJSON *json; // entire ciphertext response body
+  const char **record_type;
+  cJSON *data;
+  cJSON *meta;
+};
+
+/* Return the result of a successful "read records" operation. Returns
+ * NULL if the operation is not complete. The returned structure has the
+ * same lifetime as the containing operation and does not need to be freed. */
+E3DB_EncryptRecordResult *E3DB_EncryptRecord_GetResult(E3DB_Op *op)
+{
+  return op->result;
+}
+
+static void E3DB_EncryptRecordResult_Delete(void *p)
+{
+  E3DB_EncryptRecordResult *result = p;
+
+  if (result != NULL)
+  {
+    if (result->json != NULL)
+    {
+      cJSON_Delete(result->json);
+      result->json = NULL;
+    }
+    xfree(result);
+  }
+}
+
+E3DB_Op *E3DB_EncryptRecord_Begin(
+    E3DB_Client *client, const char **record_type, cJSON *data, cJSON *meta, unsigned char *accessKey)
+{
+  E3DB_Op *op = E3DB_Op_New(client, E3DB_OP_ENCRYPT_RECORD);
+  E3DB_EncryptRecordResult *result = xmalloc(sizeof(*result));
+
+  // Encrypt Record Begins ------------------------------------------------------
+  cJSON *temp = data;
+  cJSON *encryptedData = cJSON_CreateObject();
+
+  // Base Case
+  char *encryptedField = EncryptRecordField(accessKey, temp->child->valuestring);
+  cJSON_AddStringToObject(encryptedData, temp->child->string, encryptedField);
+
+  // Recursive Case
+  temp = temp->child->next;
+  while (temp != NULL)
+  {
+    free(encryptedField);
+    encryptedField = EncryptRecordField(accessKey, temp->valuestring);
+    cJSON_AddStringToObject(encryptedData, temp->string, encryptedField);
+    temp = temp->next;
+  }
+  char *printData = cJSON_Print(encryptedData);
+  free(printData);
+
+  result->record_type = record_type;
+  result->data = encryptedData;
+  result->meta = meta;
+  op->result = result;
+  op->free_result = E3DB_EncryptRecordResult_Delete;
+  // TODO Should we add a signature field
+  free((char *)encryptedField);
+  return op;
 }
