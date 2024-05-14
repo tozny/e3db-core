@@ -21,7 +21,7 @@ int main(void)
 	// Load Up Client
 	// See e3db.c file for examples on how to read this in from a file
 	char *configFile = NULL;
-	E3DB_Client *client = load_client(configFile);
+	E3DB_Client *client = LoadClient(configFile);
 
 	// Set up Record Type Bucket
 	char *record_type = "employees";

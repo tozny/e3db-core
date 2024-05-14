@@ -48,6 +48,12 @@ extern "C"
 	 */
 	E3DB_LocalRecord *DecryptRecord(E3DB_Client *client, const char **record_type, cJSON *data, cJSON *meta, unsigned char *accesskey);
 
+	/*
+	 * {LoadClient}
+	 *
+	 */
+	E3DB_Client *LoadClient(char *configLocation);
+
 #ifdef __cplusplus
 }
 #endif

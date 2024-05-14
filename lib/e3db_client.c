@@ -156,7 +156,7 @@ E3DB_ClientOptions *load_config(char *configLocation)
 	return opts;
 }
 
-E3DB_Client *load_client(char *configLocation)
+E3DB_Client *LoadClient(char *configLocation)
 {
 	return E3DB_Client_New(load_config(configLocation));
 }
