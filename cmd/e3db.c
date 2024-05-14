@@ -31,7 +31,7 @@ const char usage[] =
 /* Get the user's home directory.
  *
  */
-sds get_home_dir(void)
+sds get_home_dir_for_cli(void)
 {
 	char *home;
 
@@ -54,20 +54,20 @@ sds get_home_dir(void)
 
 #if USE_HARDCODED_CONFIG_JSON
 /* Read the JSON configuration from a file or hardcoded string*/
-static void get_config_json(char *configLocation, sds *config)
+static void get_config_json_for_cli(char *configLocation, sds *config)
 {
 	// Copy the hard-coded JSON configuration
 	*config = sdsnew(config_json);
 }
 #else
 /* Read the JSON configuration from a file or hardcoded string*/
-static void get_config_json(char *configLocation, sds *config)
+static void get_config_json_for_cli(char *configLocation, sds *config)
 {
 
 	sds config_file = NULL;
 	if (!configLocation)
 	{
-		config_file = sdscat(get_home_dir(), "/.tozny/e3db.json");
+		config_file = sdscat(get_home_dir_for_cli(), "/.tozny/e3db.json");
 	}
 	else
 	{
@@ -97,11 +97,11 @@ static void get_config_json(char *configLocation, sds *config)
 #endif
 
 /* Load the user's e3db configuration into an E3DB_ClientOptions. */
-E3DB_ClientOptions *load_config(char *configLocation)
+E3DB_ClientOptions *cli_load_config(char *configLocation)
 {
 	// Get JSON text from file or hardcoded string
 	sds config = sdsempty();
-	get_config_json(configLocation, &config);
+	get_config_json_for_cli(configLocation, &config);
 	cJSON *json = cJSON_Parse(config);
 	if (json == NULL)
 	{
@@ -226,11 +226,11 @@ int cmdWrite(int argc, char **argv)
 	E3DB_Client *client;
 	if (configLocation)
 	{
-		client = E3DB_Client_New(load_config(configLocation + 1));
+		client = E3DB_Client_New(cli_load_config(configLocation + 1));
 	}
 	else
 	{
-		client = E3DB_Client_New(load_config(NULL));
+		client = E3DB_Client_New(cli_load_config(NULL));
 	}
 
 	if (record_type == NULL || data == NULL || meta == NULL)
@@ -394,11 +394,11 @@ int cmdRead(int argc, char **argv)
 	E3DB_Client *client;
 	if (configLocation)
 	{
-		client = E3DB_Client_New(load_config(configLocation + 1));
+		client = E3DB_Client_New(cli_load_config(configLocation + 1));
 	}
 	else
 	{
-		client = E3DB_Client_New(load_config(NULL));
+		client = E3DB_Client_New(cli_load_config(NULL));
 	}
 
 	// Set up parameters
