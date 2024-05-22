@@ -1840,66 +1840,70 @@ static int E3DB_WriteRecords_Request(E3DB_Op *op, int response_code,
 
 char *EncryptRecordField(unsigned char *ak, char *field)
 {
-
   // Create dk
   unsigned char dk[crypto_secretbox_KEYBYTES];
   randombytes_buf(dk, sizeof dk);
 
   // Create efN
-  unsigned char efN[crypto_box_NONCEBYTES];
+  unsigned char efN[crypto_secretbox_NONCEBYTES];
   randombytes_buf(efN, sizeof efN);
   if (sizeof efN != crypto_box_NONCEBYTES)
   {
     printf("Failed to get nonce bytes");
     abort();
   }
+
   // Encrypt Symmetric
-  unsigned char ef[crypto_box_MACBYTES + strlen(field)];
-  int status = crypto_secretbox_easy(ef, (unsigned char *)field, strlen(field), efN, dk);
-  if (status < 0)
+  unsigned long field_len = strlen(field);
+  unsigned char ef[crypto_secretbox_MACBYTES + field_len];
+
+  if (crypto_secretbox_easy(ef, (unsigned char *)field, field_len, efN, dk) != 0)
   {
-    printf("Failed to Encrypt Field");
+    printf("Failed to Encrypt Field\n");
     abort();
   }
+
   // Create edkN
   unsigned char edkN[crypto_box_NONCEBYTES];
   randombytes_buf(edkN, sizeof edkN);
-  if (sizeof edkN != crypto_box_NONCEBYTES)
-  {
-    printf("Failed to get nonce bytes");
-    abort();
-  }
+
   // Encrypt Symmetric
   unsigned char edk[crypto_box_MACBYTES + crypto_secretbox_KEYBYTES];
-  status = crypto_secretbox_easy(edk, dk, crypto_secretbox_KEYBYTES, edkN, ak);
-  if (status < 0)
+  if (crypto_secretbox_easy(edk, dk, crypto_secretbox_KEYBYTES, edkN, ak) != 0)
   {
-    printf("Failed to Encrypt Data Key");
+    printf("Failed to Encrypt Data Key\n");
     abort();
   }
 
-  char *edk_base64 = encode64_length((const char *)edk, crypto_box_MACBYTES + crypto_secretbox_KEYBYTES);
-  char *edkN_base64 = encode64_length((const char *)edkN, crypto_box_NONCEBYTES);
-  char *ef_base64 = encode64_length((const char *)ef, crypto_box_MACBYTES + strlen(field));
-  char *efN_base64 = encode64_length((const char *)efN, crypto_box_NONCEBYTES);
-
   // edk.edkN.ef.efN
-  unsigned char *encryptedField = (unsigned char *)xmalloc(strlen(edk_base64) + strlen(edkN_base64) + strlen(ef_base64) + strlen(efN_base64) + 3 + 1);
+  char *edk_base64 = encode64_length((const char *)edk, sizeof edk);
+  char *edkN_base64 = encode64_length((const char *)edkN, sizeof edkN);
+  char *ef_base64 = encode64_length((const char *)ef, sizeof ef);
+  char *efN_base64 = encode64_length((const char *)efN, sizeof efN);
+
+  unsigned long encrypted_field_len = strlen(edk_base64) + strlen(edkN_base64) + strlen(ef_base64) + strlen(efN_base64) + 3 + 1;
+  unsigned char *encryptedField = (unsigned char *)xmalloc(encrypted_field_len);
+  if (encryptedField == NULL)
+  {
+    printf("Failed to allocate memory\n");
+    abort();
+  }
+
   strcpy((char *)encryptedField, edk_base64);
-  strncat((char *)encryptedField, ".", 1);
-  strncat((char *)encryptedField, edkN_base64, strlen(edkN_base64));
-  strncat((char *)encryptedField, ".", 1);
-  strncat((char *)encryptedField, ef_base64, strlen(ef_base64));
-  strncat((char *)encryptedField, ".", 1);
-  strncat((char *)encryptedField, efN_base64, strlen(efN_base64));
+  strcat((char *)encryptedField, ".");
+  strcat((char *)encryptedField, edkN_base64);
+  strcat((char *)encryptedField, ".");
+  strcat((char *)encryptedField, ef_base64);
+  strcat((char *)encryptedField, ".");
+  strcat((char *)encryptedField, efN_base64);
 
   free(edk_base64);
   free(edkN_base64);
   free(ef_base64);
   free(efN_base64);
+
   return (char *)encryptedField;
 }
-
 E3DB_Op *E3DB_WriteRecord_Begin(
     E3DB_Client *client, const char **record_type, cJSON *data, cJSON *meta, unsigned char *accessKey)
 {

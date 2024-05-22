@@ -17,7 +17,13 @@
 char *encode64_length(const char *input, size_t length)
 {
 	/* set up a destination buffer large enough to hold the encoded data */
-	char *output = (char *)xmalloc(200);
+	size_t output_len = ((length + 2) / 3) * 4 + 1; // +1 for null-terminator
+	char *output = (char *)xmalloc(output_len);
+	if (output == NULL)
+	{
+		printf("Failed to allocate memory\n");
+		abort();
+	}
 	/* keep track of our encoded position */
 	char *c = output;
 	/* store the number of bytes encoded by a single call */
@@ -35,25 +41,18 @@ char *encode64_length(const char *input, size_t length)
 	   there is no more input data; finalise the encoding */
 	cnt = base64_encode_blockend(c, &s);
 	c += cnt;
+	*c = 0; // Null-terminate
 	/*---------- STOP ENCODING  ----------*/
 
-	/* we want to print the encoded data, so null-terminate it: */
-	*c = 0;
-
-	int result_len = strlen(output);
-	for (int i = 0; i < result_len; i++)
+	// Replace '/' with '_' and '+' with '-' for URL safety
+	for (char *p = output; *p; p++)
 	{
-		switch (output[i])
-		{
-		case '/':
-			output[i] = '_';
-			break;
-		case '+':
-			output[i] = '-';
-			break;
-		}
+		if (*p == '/')
+			*p = '_';
+		else if (*p == '+')
+			*p = '-';
 	}
-	output[result_len] = '\0';
+
 	return output;
 }
 
