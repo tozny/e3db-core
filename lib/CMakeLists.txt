@@ -9,4 +9,7 @@ ADD_LIBRARY(e3db_lib STATIC
             ${LIB_SOURCES}
             ${LIB_HEADERS})
 
-target_link_libraries(e3db_lib ${LIBS_OUTSIDE})
+# Conditionally link libraries if the platform is not Apple
+if(NOT APPLE)
+    target_link_libraries(e3db_lib sodium)
+endif()
