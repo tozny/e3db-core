@@ -45,8 +45,7 @@ int main(void)
 	cJSON_AddStringToObject(meta, "Team", "Hardware");
 
 	// Fetch Access Key
-	unsigned char *accessKey = (unsigned char *)xmalloc(32);
-	accessKey = FetchRecordAccessKey(client, record_type);
+	unsigned char *accessKey = FetchRecordAccessKey(client, record_type);
 	// Encrypt Record
 	E3DB_LocalRecord *encryptedRecord = EncryptRecord(client, (const char **)record_type, data, meta, accessKey);
 	printf("Local Encrypted Record: %s  \n\n", "");
