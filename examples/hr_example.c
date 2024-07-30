@@ -24,30 +24,41 @@ int main(void)
 	E3DB_Client *client = LoadClient(configFile);
 
 	// Set up Record Type Bucket
-	char *record_type = "employees";
+	char *record_type = "d2c-encrypted-data";
 	const char *EmployeeRecords[4];
 
 	// ----------------------------------------- Rob Williams
 	printf("Local Encryption Test:   %s\n\n", "");
 	cJSON *data = cJSON_CreateObject();
 	cJSON *meta = cJSON_CreateObject();
+	char *payload = "{"
+			"\"gatewayId\" : \"9999999\","
+			"\"enqueuedTimestamp\" : 1707207541000,"
+			"\"deviceId\" : \"coreId\","
+			"\"appProperties\" : {"
+			"\"deviceType\" : \"core\","
+			"\"eventType\" : \"telemetry\","
+			"\"dataType\" : \"location\""
+			"},"
+			"\"payload\": {"
+			"\"zoneInfo\" : \"zone 1\","
+			"\"timestamp\" : 1707901342000,"
+			"\"coreLocation\": {"
+			"\"x\" : 43.8,"
+			"\"y\" : 45,"
+			"\"z\" : 12"
+			"}"
+			"}"
+			"}";
 
 	// Data remains encrypted end to end
-	cJSON_AddStringToObject(data, "First Name", "Rob");
-	cJSON_AddStringToObject(data, "Last Name", "Williams");
-	cJSON_AddStringToObject(data, "Phone Number", "111-222-3333");
-	cJSON_AddStringToObject(data, "Hourly Pay", "20");
-	cJSON_AddStringToObject(data, "Max Hours Allowed", "10");
+	cJSON_AddStringToObject(data, "payload", payload);
 
-	// Meta are Searchable terms stored in plain text for indexing and fast retrieval
-	cJSON_AddStringToObject(meta, "Type", "Employee");
-	cJSON_AddStringToObject(meta, "Company", "Tozny");
-	cJSON_AddStringToObject(meta, "Team", "Hardware");
-
+	// Data remains encrypted end to end
 	// Fetch Access Key
 	unsigned char *accessKey = FetchRecordAccessKey(client, record_type);
 	// Encrypt Record
-	E3DB_LocalRecord *encryptedRecord = EncryptRecord(client, (const char **)record_type, data, meta, accessKey);
+	E3DB_LocalRecord *encryptedRecord = EncryptRecord(client, (const char **)record_type, data, NULL, accessKey);
 	printf("Local Encrypted Record: %s  \n\n", "");
 	char *data_str = cJSON_Print(encryptedRecord->data);
 	printf("\nData %s \n", data_str);
@@ -63,128 +74,8 @@ int main(void)
 	printf("\nPlain Meta %s \n", plain_str);
 	// Clean up
 	cJSON_Delete(data);
-	cJSON_Delete(meta);
 	free(encryptedRecord);
 	free(recordDecrypted);
-
-	// ----------------------------------------- Kate Williams
-	data = cJSON_CreateObject();
-	meta = cJSON_CreateObject();
-
-	// Data remains encrypted end to end
-	cJSON_AddStringToObject(data, "First Name", "Katie");
-	cJSON_AddStringToObject(data, "Last Name", "Williams");
-	cJSON_AddStringToObject(data, "Phone Number", "111-222-3333");
-	cJSON_AddStringToObject(data, "Hourly Pay", "20");
-	cJSON_AddStringToObject(data, "Max Hours Allowed", "10");
-
-	// Meta are Searchable terms stored in plain text for indexing and fast retrieval
-	cJSON_AddStringToObject(meta, "Type", "Employee");
-	cJSON_AddStringToObject(meta, "Company", "Tozny");
-	cJSON_AddStringToObject(meta, "Team", "Software");
-	E3DB_Record *record = WriteRecord(client, (const char **)record_type, data, meta);
-	EmployeeRecords[0] = strdup(record->meta->record_id);
-
-	// Clean up
-	cJSON_Delete(data);
-	E3DB_FreeRecordMeta(record->meta);
-	cJSON_Delete(record->data);
-	free(record->rec_sig);
-	free(record);
-
-	// -----------------------------------------  Liliana Perez
-	data = cJSON_CreateObject();
-	meta = cJSON_CreateObject();
-
-	// Data remains encrypted end to end
-	cJSON_AddStringToObject(data, "First Name", "Liliana");
-	cJSON_AddStringToObject(data, "Last Name", "Perez");
-	cJSON_AddStringToObject(data, "Phone Number", "111-222-3333");
-	cJSON_AddStringToObject(data, "Hourly Pay", "5");
-	cJSON_AddStringToObject(data, "Max Hours Allowed", "30");
-
-	// Meta are Searchable terms stored in plain text for indexing and fast retrieval
-	cJSON_AddStringToObject(meta, "Type", "Employee");
-	cJSON_AddStringToObject(meta, "Company", "Tozny");
-	cJSON_AddStringToObject(meta, "Team", "Sales");
-
-	record = WriteRecord(client, (const char **)record_type, data, meta);
-	EmployeeRecords[1] = strdup(record->meta->record_id);
-
-	// Clean up
-	cJSON_Delete(data);
-	E3DB_FreeRecordMeta(record->meta);
-	cJSON_Delete(record->data);
-	free(record->rec_sig);
-	free(record);
-
-	// ----------------------------------------- Jason Smith
-	data = cJSON_CreateObject();
-	meta = cJSON_CreateObject();
-
-	// Data remains encrypted end to end
-	cJSON_AddStringToObject(data, "First Name", "Jason");
-	cJSON_AddStringToObject(data, "Last Name", "Smith");
-	cJSON_AddStringToObject(data, "Phone Number", "111-222-3333");
-	cJSON_AddStringToObject(data, "Hourly Pay", "1");
-	cJSON_AddStringToObject(data, "Max Hours Allowed", "10");
-
-	// Meta are Searchable terms stored in plain text for indexing and fast retrieval
-	cJSON_AddStringToObject(meta, "Type", "Employee");
-	cJSON_AddStringToObject(meta, "Company", "Tozny");
-	cJSON_AddStringToObject(meta, "Team", "Design");
-
-	record = WriteRecord(client, (const char **)record_type, data, meta);
-	EmployeeRecords[2] = strdup(record->meta->record_id);
-
-	// Clean up
-	cJSON_Delete(data);
-	E3DB_FreeRecordMeta(record->meta);
-	cJSON_Delete(record->data);
-	free(record->rec_sig);
-	free(record);
-
-	// -----------------------------------------  Meredith Yang
-	data = cJSON_CreateObject();
-	meta = cJSON_CreateObject();
-
-	// Data remains encrypted end to end
-	cJSON_AddStringToObject(data, "First Name", "Meredith");
-	cJSON_AddStringToObject(data, "Last Name", "Yang");
-	cJSON_AddStringToObject(data, "Phone Number", "111-222-3333");
-	cJSON_AddStringToObject(data, "Hourly Pay", "15");
-	cJSON_AddStringToObject(data, "Max Hours Allowed", "30");
-
-	// Meta are Searchable terms stored in plain text for indexing and fast retrieval
-	cJSON_AddStringToObject(meta, "Type", "Employee");
-	cJSON_AddStringToObject(meta, "Company", "Tozny");
-	cJSON_AddStringToObject(meta, "Team", "Hardware");
-	record = WriteRecord(client, (const char **)record_type, data, meta);
-	EmployeeRecords[3] = strdup(record->meta->record_id);
-
-	// Clean up
-	cJSON_Delete(data);
-	E3DB_FreeRecordMeta(record->meta);
-	cJSON_Delete(record->data);
-	free(record->rec_sig);
-	free(record);
-
-	// View all Records
-	E3DB_Record *records = ReadRecords(client, EmployeeRecords, 4);
-
-	// Display Returned Data
-	for (int i = 0; i < 4; i++)
-	{
-		printf("\nEmployee %d", i + 1);
-
-		char *plain_str = cJSON_Print(records[i].meta->plain);
-		printf("\n%-20s \n%s\n", "plain:", plain_str);
-		free(plain_str);
-
-		char *data_str = cJSON_Print(records[i].data);
-		printf("\n%-20s \n%s\n", "data:", data_str);
-		free(data_str);
-	}
 
 	// Clean up
 	if (configFile)
@@ -192,13 +83,6 @@ int main(void)
 		free(configFile);
 	}
 
-	// Free each element of the EmployeeRecords id array
-	for (int i = 0; i < 4; i++)
-	{
-		free((void *)EmployeeRecords[i]); // Cast to void* because the array is of type const char*
-		EmployeeRecords[i] = NULL;
-	}
-	E3DB_CleanupRecords(records, 4);
 	E3DB_Client_Delete(client);
 	return 0;
 }
