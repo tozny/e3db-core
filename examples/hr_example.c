@@ -20,15 +20,13 @@ int main(void)
 {
 	// Load Up Client
 	// See e3db.c file for examples on how to read this in from a file
-	char *configFile = NULL;
+	char *configFile = "/Users/katierosas/GitHub/e3db-core/examples/config.json";
 	E3DB_Client *client = LoadClient(configFile);
 
 	// Set up Record Type Bucket
 	char *record_type = "d2c-encrypted-data";
-	const char *EmployeeRecords[4];
 
-	// ----------------------------------------- Rob Williams
-	printf("Local Encryption Test:   %s\n\n", "");
+	printf("Local Encryption Test:   %s\n\n", client->options->client_id);
 	cJSON *data = cJSON_CreateObject();
 	cJSON *meta = cJSON_CreateObject();
 	char *payload = "{"

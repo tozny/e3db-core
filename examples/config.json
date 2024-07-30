@@ -1,12 +1,12 @@
 {
   "version": "2",
-  "public_signing_key": "RveDgHnDiY25vdFmnoMoJ02hqZxal8lKtMFl7z6c49E",
-  "private_signing_key": "Fq4V3JouNDEH7_FRf5nTlJuejbXThMiGzmIcRUp7UNRG94OAecOJjbm90WaegygnTaGpnFqXyUq0wWXvPpzj0Q",
-  "client_id": "d96102c7-6930-4907-8ca8-e9fc0520f22d",
-  "api_key_id": "c883050f5d0d3d29020a8b12ede16ce6b31de22a4cdd05a1d33422f218b6534f",
-  "api_secret": "4624dd5f730df9bc367a97087c0aaf315ff9325c7bc83ba279a7521c4942a366",
-  "public_key": "zsZL2o_khBgN_baQ6H9cg8zWwLn9DYObWFjm9scNJlQ",
-  "private_key": "twNjRBtOJrOHxt9a0JPQV1x5NZN3vW1rTrl3C-34ub8",
+  "public_signing_key": "1JrwQCGin1078M2RSrIpn9pq0nryoXXUw82p68YnY5M",
+  "private_signing_key": "e1QSPVoDOjzQHB58PnH1IKwIyTTJ3QRMSwLYVzWZnYjUmvBAIaKfXTvwzZFKsimf2mrSevKhddTDzanrxidjkw",
+  "client_id": "6cffe523-27b4-47c7-bcf6-6db29e5a6ef1",
+  "api_key_id": "7c6e9bb68a6c2f6d5092251f724cebcb655776851971dc5ca0123c8ef5aa9417",
+  "api_secret": "29154a379f72f0a78f38cbb4e271d2bd854cfd518656fea82a3511886d832844",
+  "public_key": "C7qlAUKKl_q5ELfGpT0ctt51gDf86nxj-ilpt7cEUWM",
+  "private_key": "gv0REZZix4EuD2SS1CZTUk4Rt9Y_mEejddG3LhJYji8",
   "api_url": "https://api.e3db.com",
   "client_email": ""
 }
